@@ -3,6 +3,7 @@ import { sounds } from '../audio/soundManager';
 import confetti from 'canvas-confetti';
 
 export type CameraMode = 'third_person' | 'isometric' | 'close_action';
+export type RoundWinner = 'player' | 'bot' | 'draw';
 
 export interface GameState {
   timeRemaining: number;
@@ -11,14 +12,16 @@ export interface GameState {
   playerRoundWins: number; // 0 to 3 (first to 3 wins)
   botRoundWins: number;    // 0 to 3
   currentRound: number;    // 1 to 5
-  roundBannerText: string | null; // e.g. "ROUND 1: KAI WINS!"
+  roundHistory: RoundWinner[]; // e.g. ['player', 'draw', 'bot']
+  roundBannerText: string | null; // e.g. "ROUND 1: KAI WINS!" or "ROUND 1: DRAW!"
+  roundBannerType: RoundWinner | null;
   playerCharge: number;    // 0 to 100%
   isAiming: boolean;
   aimAngle: number;
   countdown: number;       // 3, 2, 1, 0 (0 = FIGHT!)
   isPaused: boolean;
   isGameOver: boolean;
-  winner: 'player' | 'bot' | null;
+  winner: 'player' | 'bot' | 'draw' | null;
   cameraMode: CameraMode;
   warningText: string | null;
 }
@@ -55,7 +58,10 @@ export class GameEngine {
   private botRoundWins = 0;
   private currentRound = 1;
   private readonly maxRoundWins = 3; // First to 3 wins
+  private readonly maxRounds = 5;    // Maximum 5 rounds in match
+  private roundHistory: RoundWinner[] = [];
   private roundTimeoutId: number | null = null;
+  private warningSoundCooldown = 0;
 
   // Aim Reticle
   private aimReticleGroup: THREE.Group;
@@ -65,7 +71,7 @@ export class GameEngine {
   private ringMesh: THREE.Mesh;
   private initialRadius = 13.0;
   private currentRadius = 13.0;
-  private matchDuration = 180; // 3 minutes
+  private matchDuration = 60; // 60 seconds (1 minute per round)
   private elapsedTime = 0;
 
   // Characters
@@ -96,7 +102,9 @@ export class GameEngine {
       playerRoundWins: 0,
       botRoundWins: 0,
       currentRound: 1,
+      roundHistory: [],
       roundBannerText: null,
+      roundBannerType: null,
       playerCharge: 100, // Starts fully charged at round 1
       isAiming: false,
       aimAngle: 0,
@@ -541,9 +549,17 @@ export class GameEngine {
     this.playerRoundWins = 0;
     this.botRoundWins = 0;
     this.currentRound = 1;
+    this.roundHistory = [];
     this.elapsedTime = 0;
+    this.warningSoundCooldown = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
+
+    if (this.ringMesh && this.ringMesh.material) {
+      (this.ringMesh.material as THREE.MeshStandardMaterial).color.setHex(0x00f5ff);
+      (this.ringMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x00d5ff);
+      (this.ringMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.5;
+    }
 
     this.player.pos.set(0, 0, 6);
     this.player.vel.set(0, 0, 0);
@@ -573,7 +589,9 @@ export class GameEngine {
       playerRoundWins: 0,
       botRoundWins: 0,
       currentRound: 1,
+      roundHistory: [],
       roundBannerText: null,
+      roundBannerType: null,
       playerCharge: 100,
       isAiming: false,
       aimAngle: 0,
@@ -628,43 +646,63 @@ export class GameEngine {
       return;
     }
 
-    // 1. Match Timer & Arena Shrink Logic
+    // 1. Match Timer & 3-Phase Shrinking Arena Logic (60s total)
     if (!this.state.isGameOver) {
       this.elapsedTime += dt;
       const remaining = Math.max(0, this.matchDuration - this.elapsedTime);
       this.state.timeRemaining = Math.ceil(remaining);
 
-      // Arena shrinks progressively down to 0 at 3 minutes!
-      const progress = Math.min(1.0, this.elapsedTime / this.matchDuration);
-      this.currentRadius = Math.max(0.01, this.initialRadius * (1 - progress));
-      this.state.arenaRadius = this.currentRadius;
+      // Phase 1 (60s to 40s): Stable arena at full radius (13.0m)
+      if (this.elapsedTime <= 20) {
+        this.currentRadius = this.initialRadius;
+        this.state.warningText = null;
+        if (this.ringMesh && this.ringMesh.material) {
+          const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
+          mat.color.setHex(0x00f5ff);
+          mat.emissive.setHex(0x00d5ff);
+          mat.emissiveIntensity = 1.5;
+        }
+      }
+      // Phase 2 (40s to 15s): Active collapse from 13.0m down to 6.0m
+      else if (this.elapsedTime <= 45) {
+        const t = (this.elapsedTime - 20) / 25; // 0.0 to 1.0
+        this.currentRadius = 13.0 - t * (13.0 - 6.0);
+        this.state.warningText = '⚠️ ARENA COLLAPSING!';
+        if (this.ringMesh && this.ringMesh.material) {
+          const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
+          mat.color.setHex(0xf59e0b);
+          mat.emissive.setHex(0xd97706);
+          const pulse = 1.4 + Math.sin(this.elapsedTime * 6) * 0.6;
+          mat.emissiveIntensity = pulse;
+        }
+      }
+      // Phase 3 (15s to 0s): Sudden Death collapse from 6.0m down to 3.5m micro-ring
+      else {
+        const t = Math.min(1.0, (this.elapsedTime - 45) / 15); // 0.0 to 1.0
+        this.currentRadius = 6.0 - t * (6.0 - 3.5);
+        this.state.warningText = '🚨 SUDDEN DEATH: CRITICAL CORE!';
+        const blink = Math.sin(this.elapsedTime * 14) > 0;
+        if (this.ringMesh && this.ringMesh.material) {
+          const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
+          mat.color.setHex(blink ? 0xff0033 : 0x770011);
+          mat.emissive.setHex(0xff0033);
+          mat.emissiveIntensity = blink ? 2.8 : 0.8;
+        }
 
-      // Scale the arena visual
+        this.warningSoundCooldown -= dt;
+        if (this.warningSoundCooldown <= 0 && remaining > 0) {
+          sounds.playWarning();
+          this.warningSoundCooldown = 1.3;
+        }
+      }
+
+      this.state.arenaRadius = this.currentRadius;
       const scale = this.currentRadius / this.initialRadius;
       this.arenaGroup.scale.set(scale, 1, scale);
 
-      // Warning states
-      if (remaining <= 30 && remaining > 15) {
-        this.state.warningText = '⚠️ CRITICAL: ARENA COLLAPSE!';
-        (this.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0xff9900);
-      } else if (remaining <= 15 && remaining > 0) {
-        this.state.warningText = '🚨 SUDDEN DEATH: SHRINKING TO ZERO!';
-        const blink = Math.sin(this.elapsedTime * 12) > 0;
-        (this.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(blink ? 0xff0033 : 0x550011);
-      } else {
-        this.state.warningText = null;
-        (this.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x00f5ff);
-      }
-
-      // If timer hits 0 and both survive: Tiebreaker by highest distance to center
+      // If timer hits 0 and both fighters survived: ROUND DRAW!
       if (remaining <= 0 && !this.state.isGameOver) {
-        const pDist = Math.hypot(this.player.pos.x, this.player.pos.z);
-        const bDist = Math.hypot(this.bot.pos.x, this.bot.pos.z);
-        if (pDist <= bDist) {
-          this.handleRoundFinish('player');
-        } else {
-          this.handleRoundFinish('bot');
-        }
+        this.handleRoundFinish('draw');
       }
     }
 
@@ -925,19 +963,22 @@ export class GameEngine {
     }
   }
 
-  private handleRoundFinish(roundWinner: 'player' | 'bot') {
+  private handleRoundFinish(roundWinner: RoundWinner) {
     if (this.state.isGameOver || this.state.roundBannerText) return;
+
+    this.roundHistory.push(roundWinner);
+    this.state.roundHistory = [...this.roundHistory];
 
     if (roundWinner === 'player') {
       this.playerRoundWins++;
-    } else {
+    } else if (roundWinner === 'bot') {
       this.botRoundWins++;
     }
 
     this.state.playerRoundWins = this.playerRoundWins;
     this.state.botRoundWins = this.botRoundWins;
 
-    // Check if entire match is won (First to 3 wins)
+    // 1. Check if either reached 3 round wins immediately (First to 3)
     if (this.playerRoundWins >= this.maxRoundWins) {
       this.triggerMatchVictory();
       return;
@@ -946,28 +987,56 @@ export class GameEngine {
       return;
     }
 
-    // Round ended: display round banner and transition smoothly to next round!
-    const winnerName = roundWinner === 'player' ? 'KAI' : 'SHADOWNINJA';
-    this.state.roundBannerText = `ROUND ${this.currentRound}: ${winnerName} WINS!`;
-    this.onStateChange({ ...this.state });
-
-    if (roundWinner === 'player') {
-      sounds.playBump(2.2);
-    } else {
-      sounds.playBump(1.6);
+    // 2. Check if all 5 rounds have completed
+    if (this.currentRound >= this.maxRounds) {
+      if (this.playerRoundWins > this.botRoundWins) {
+        this.triggerMatchVictory();
+      } else if (this.botRoundWins > this.playerRoundWins) {
+        this.triggerMatchDefeat();
+      } else {
+        this.triggerMatchDraw();
+      }
+      return;
     }
+
+    // 3. Round ended: display round banner and transition smoothly to next round!
+    if (roundWinner === 'draw') {
+      this.state.roundBannerText = `ROUND ${this.currentRound}: DRAW!`;
+      this.state.roundBannerType = 'draw';
+      sounds.playDraw();
+      this.spawnDashParticles(new THREE.Vector3(0, 0, 0), 0xffffff, 20);
+    } else {
+      const winnerName = roundWinner === 'player' ? 'KAI' : 'SHADOWNINJA';
+      this.state.roundBannerText = `ROUND ${this.currentRound}: ${winnerName} WINS!`;
+      this.state.roundBannerType = roundWinner;
+      if (roundWinner === 'player') {
+        sounds.playBump(2.2);
+      } else {
+        sounds.playBump(1.6);
+      }
+    }
+
+    this.onStateChange({ ...this.state });
 
     this.roundTimeoutId = window.setTimeout(() => {
       this.startNextRound();
-    }, 2000);
+    }, 2200);
   }
 
   private startNextRound() {
     this.roundTimeoutId = null;
     this.currentRound++;
     this.elapsedTime = 0;
+    this.warningSoundCooldown = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
+
+    if (this.ringMesh && this.ringMesh.material) {
+      const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
+      mat.color.setHex(0x00f5ff);
+      mat.emissive.setHex(0x00d5ff);
+      mat.emissiveIntensity = 1.5;
+    }
 
     this.player.pos.set(0, 0, 6);
     this.player.vel.set(0, 0, 0);
@@ -993,7 +1062,9 @@ export class GameEngine {
       ...this.state,
       countdown: 3,
       currentRound: this.currentRound,
+      roundHistory: [...this.roundHistory],
       roundBannerText: null,
+      roundBannerType: null,
       timeRemaining: this.matchDuration,
       arenaRadius: this.initialRadius,
       playerCharge: 100,
@@ -1009,6 +1080,7 @@ export class GameEngine {
     this.state.isGameOver = true;
     this.state.winner = 'player';
     this.state.roundBannerText = null;
+    this.state.roundBannerType = null;
     sounds.playVictory();
 
     confetti({
@@ -1025,7 +1097,26 @@ export class GameEngine {
     this.state.isGameOver = true;
     this.state.winner = 'bot';
     this.state.roundBannerText = null;
+    this.state.roundBannerType = null;
     sounds.playDefeat();
+    this.onStateChange({ ...this.state });
+  }
+
+  private triggerMatchDraw() {
+    if (this.state.isGameOver) return;
+    this.state.isGameOver = true;
+    this.state.winner = 'draw';
+    this.state.roundBannerText = null;
+    this.state.roundBannerType = null;
+    sounds.playDraw();
+
+    confetti({
+      particleCount: 130,
+      spread: 75,
+      origin: { y: 0.6 },
+      colors: ['#ffffff', '#e2e8f0', '#94a3b8', '#38bdf8'],
+    });
+
     this.onStateChange({ ...this.state });
   }
 

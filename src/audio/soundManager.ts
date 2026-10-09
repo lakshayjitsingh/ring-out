@@ -179,6 +179,32 @@ class SoundManager {
     osc.start();
     osc.stop(this.ctx.currentTime + 0.26);
   }
+
+  // Neutral harmonious chime for Draw rounds
+  playDraw() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    [523.25, 659.25, 783.99].forEach((freq) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+      gain.gain.setValueAtTime(0, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.25 * this.volume, this.ctx.currentTime + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.005, this.ctx.currentTime + 0.55);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.6);
+    });
+  }
 }
 
 export const sounds = new SoundManager();

@@ -7,13 +7,15 @@ export function App() {
   const engineRef = useRef<GameEngine | null>(null);
 
   const [gameState, setGameState] = useState<GameState>({
-    timeRemaining: 180,
+    timeRemaining: 60,
     arenaRadius: 13,
     initialRadius: 13,
     playerRoundWins: 0,
     botRoundWins: 0,
     currentRound: 1,
+    roundHistory: [],
     roundBannerText: null,
+    roundBannerType: null,
     playerCharge: 0,
     isAiming: false,
     aimAngle: 0,

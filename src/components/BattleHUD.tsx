@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import type { GameState, CameraMode } from '../game/GameEngine';
 import { sounds } from '../audio/soundManager';
-import { Volume2, VolumeX, Pause, Play, RotateCcw, Video, Trophy, Flame } from 'lucide-react';
+import { Volume2, VolumeX, Pause, Play, RotateCcw, Video, Trophy, Flame, Shield } from 'lucide-react';
 
 interface BattleHUDProps {
   state: GameState;
@@ -184,14 +184,28 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
       {/* 0. ROUND FINISH BANNER OVERLAY */}
       {state.roundBannerText && !state.isGameOver && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 bg-black/45 backdrop-blur-xs">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 bg-black/55 backdrop-blur-xs">
           <div className="text-center animate-in zoom-in-90 duration-200">
-            <div className="text-5xl md:text-7xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 drop-shadow-[0_8px_25px_rgba(245,158,11,0.8)]">
-              {state.roundBannerText}
-            </div>
-            <p className="text-base font-bold text-cyan-300 uppercase mt-3 tracking-widest">
-              Preparing next round...
-            </p>
+            {state.roundBannerType === 'draw' || state.roundBannerText.includes('DRAW') ? (
+              <div className="p-8 rounded-3xl bg-slate-900/90 border-2 border-white/80 shadow-[0_0_60px_rgba(255,255,255,0.45)]">
+                <div className="text-5xl md:text-7xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-300 drop-shadow-[0_8px_30px_rgba(255,255,255,0.9)]">
+                  {state.roundBannerText}
+                </div>
+                <p className="text-sm md:text-base font-bold text-slate-200 uppercase mt-3 tracking-widest flex items-center justify-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+                  Both brawlers survived the collapse! Next round starting...
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div className="text-5xl md:text-7xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 drop-shadow-[0_8px_25px_rgba(245,158,11,0.8)]">
+                  {state.roundBannerText}
+                </div>
+                <p className="text-base font-bold text-cyan-300 uppercase mt-3 tracking-widest">
+                  Preparing next round...
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -222,24 +236,56 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           </div>
         </div>
 
-        {/* Center: Match Timer & Best-of-5 Round Indicator */}
+        {/* Center: Match Timer & 5-Round Outcome Tracker */}
         <div className="flex flex-col items-center">
           <div className="bg-slate-900/90 backdrop-blur-md px-6 py-2 rounded-2xl border border-slate-700/60 shadow-xl flex items-center gap-2">
-            <span className="text-xl md:text-2xl font-black tracking-wider text-amber-400 font-mono">
+            <span className={`text-xl md:text-2xl font-black tracking-wider font-mono ${
+              state.timeRemaining <= 15 ? 'text-rose-400 animate-pulse' : 'text-amber-400'
+            }`}>
               {formatTime(state.timeRemaining)}
             </span>
           </div>
 
-          <div className="mt-1 px-3 py-0.5 bg-slate-800/80 border border-slate-700 rounded-full flex items-center gap-1.5">
-            <span className="text-[10px] font-black tracking-widest uppercase text-slate-300">
-              Round {state.currentRound}/5
+          {/* 5-Round Outcomes Track */}
+          <div className="mt-1.5 px-3 py-1 bg-slate-900/85 backdrop-blur-md border border-slate-700/80 rounded-full flex items-center gap-2 shadow-lg">
+            <span className="text-[10px] font-black tracking-widest uppercase text-slate-400">
+              R{state.currentRound}/5
             </span>
+            <div className="flex items-center gap-1.5">
+              {[0, 1, 2, 3, 4].map((i) => {
+                const res = state.roundHistory?.[i];
+                let dotClass = 'bg-slate-800 border-slate-600';
+                let dotTitle = `Round ${i + 1}: Upcoming`;
+
+                if (res === 'player') {
+                  dotClass = 'bg-cyan-400 border-cyan-300 shadow-[0_0_8px_#00f5ff]';
+                  dotTitle = `Round ${i + 1}: Kai Won`;
+                } else if (res === 'bot') {
+                  dotClass = 'bg-purple-400 border-purple-300 shadow-[0_0_8px_#a855f7]';
+                  dotTitle = `Round ${i + 1}: ShadowNinja Won`;
+                } else if (res === 'draw') {
+                  dotClass = 'bg-white border-white shadow-[0_0_10px_#ffffff]';
+                  dotTitle = `Round ${i + 1}: DRAW`;
+                } else if (i === state.currentRound - 1) {
+                  dotClass = 'bg-amber-400/40 border-amber-300 animate-pulse';
+                  dotTitle = `Round ${i + 1}: Current`;
+                }
+
+                return (
+                  <div
+                    key={i}
+                    className={`w-2.5 h-2.5 rounded-full border transition-all ${dotClass}`}
+                    title={dotTitle}
+                  />
+                );
+              })}
+            </div>
             {isFinalRound ? (
-              <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest animate-pulse">
-                • FINAL ROUND!
+              <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest animate-pulse ml-0.5">
+                • FINAL
               </span>
             ) : isMatchPoint ? (
-              <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
+              <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest ml-0.5">
                 • MATCH POINT
               </span>
             ) : null}
@@ -414,7 +460,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   </div>
                 </div>
               </>
-            ) : (
+            ) : state.winner === 'bot' ? (
               <>
                 <div className="w-20 h-20 mx-auto rounded-full bg-rose-500/20 border-2 border-rose-500 flex items-center justify-center mb-3 shadow-lg shadow-rose-500/30">
                   <span className="text-3xl">💥</span>
@@ -437,6 +483,34 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   <div>
                     <div className="text-[10px] text-slate-400 font-bold uppercase">Account XP</div>
                     <div className="text-lg font-black text-cyan-400">+40 ⭐</div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 mx-auto rounded-full bg-slate-100/10 border-2 border-white/80 flex items-center justify-center mb-3 shadow-lg shadow-white/30 animate-pulse">
+                  <Shield className="w-10 h-10 text-white drop-shadow-md" />
+                </div>
+                <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
+                  MATCH DRAW!
+                </h2>
+                <p className="text-slate-300 text-sm mt-1">
+                  STALEMATE — The match concluded without a victor ({state.playerRoundWins} - {state.botRoundWins})!
+                </p>
+
+                {/* Stalemate Split Rewards */}
+                <div className="grid grid-cols-3 gap-2 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-3 my-4">
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">Trophies</div>
+                    <div className="text-lg font-black text-slate-200">+10 🏆</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">Gold</div>
+                    <div className="text-lg font-black text-yellow-300">+50 🟡</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">Account XP</div>
+                    <div className="text-lg font-black text-cyan-400">+60 ⭐</div>
                   </div>
                 </div>
               </>

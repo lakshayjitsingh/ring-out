@@ -543,23 +543,24 @@ function createLeoMesh(): CreatedChampion {
   capGroup.rotation.x = -0.20; // Tilted backward naturally
   group.add(capGroup);
 
-  // Cap Crown Dome (covers top of skull down to forehead band)
-  const capDomeGeo = new THREE.SphereGeometry(0.298, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.44);
+  // Cap Crown Dome (solid half-sphere extending past rim seam to eliminate any transparent gap)
+  const capDomeGeo = new THREE.SphereGeometry(0.298, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.52);
   const capDome = new THREE.Mesh(capDomeGeo, vestMat);
   capDome.castShadow = true;
   capGroup.add(capDome);
 
-  // Sweatband Rim Ring
-  const capRimGeo = new THREE.TorusGeometry(0.295, 0.020, 10, 28);
+  // Sweatband Rim Ring (thickened to seamlessly seal the dome base)
+  const capRimGeo = new THREE.TorusGeometry(0.295, 0.025, 12, 32);
   capRimGeo.rotateX(Math.PI / 2);
   const capRim = new THREE.Mesh(capRimGeo, vestDarkMat);
+  capRim.position.set(0, 0, 0);
   capGroup.add(capRim);
 
   // Backwards Visor Brim (extending backward over the rear hair)
-  const visorGeo = new THREE.BoxGeometry(0.28, 0.024, 0.22);
+  const visorGeo = new THREE.BoxGeometry(0.28, 0.026, 0.22);
   visorGeo.rotateX(0.12);
   const visor = new THREE.Mesh(visorGeo, vestDarkMat);
-  visor.position.set(0, 0.02, 0.28);
+  visor.position.set(0, 0.01, 0.28);
   capGroup.add(visor);
 
   // Top Golden Button

@@ -8,11 +8,14 @@ export interface GameState {
   timeRemaining: number;
   arenaRadius: number;
   initialRadius: number;
-  playerStocks: number;
-  botStocks: number;
-  dashCooldownRemaining: number;
-  dashCooldownMax: number;
-  countdown: number; // 3, 2, 1, 0 (0 = FIGHT!)
+  playerRoundWins: number; // 0 to 3 (first to 3 wins)
+  botRoundWins: number;    // 0 to 3
+  currentRound: number;    // 1 to 5
+  roundBannerText: string | null; // e.g. "ROUND 1: KAI WINS!"
+  playerCharge: number;    // 0 to 100%
+  isAiming: boolean;
+  aimAngle: number;
+  countdown: number;       // 3, 2, 1, 0 (0 = FIGHT!)
   isPaused: boolean;
   isGameOver: boolean;
   winner: 'player' | 'bot' | null;
@@ -31,7 +34,8 @@ interface Brawler {
   currentAngle: number;
   isDashing: boolean;
   dashTimer: number;
-  dashCooldown: number;
+  dashPowerPercent: number; // records the charge % used for active dash
+  chargePercent: number;    // 0 - 100%
   radius: number;
   isGrounded: boolean;
   isKnockedOut: boolean;
@@ -45,6 +49,16 @@ export class GameEngine {
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private clock: THREE.Clock;
+
+  // Rounds & Match State
+  private playerRoundWins = 0;
+  private botRoundWins = 0;
+  private currentRound = 1;
+  private readonly maxRoundWins = 3; // First to 3 wins
+  private roundTimeoutId: number | null = null;
+
+  // Aim Reticle
+  private aimReticleGroup: THREE.Group;
 
   // Arena
   private arenaGroup: THREE.Group;
@@ -62,6 +76,7 @@ export class GameEngine {
   // Inputs
   private inputVector = { x: 0, z: 0 };
   private keys: { [key: string]: boolean } = {};
+  private spaceKeyHeld = false;
 
   // Game flow
   public state: GameState;
@@ -78,10 +93,13 @@ export class GameEngine {
       timeRemaining: this.matchDuration,
       arenaRadius: this.initialRadius,
       initialRadius: this.initialRadius,
-      playerStocks: 1,
-      botStocks: 1,
-      dashCooldownRemaining: 0,
-      dashCooldownMax: 2.2,
+      playerRoundWins: 0,
+      botRoundWins: 0,
+      currentRound: 1,
+      roundBannerText: null,
+      playerCharge: 100, // Starts fully charged at round 1
+      isAiming: false,
+      aimAngle: 0,
       countdown: 3,
       isPaused: false,
       isGameOver: false,
@@ -122,6 +140,10 @@ export class GameEngine {
     this.scene.add(this.arenaGroup);
 
     this.setupCharacters();
+
+    // 5. Aim Reticle on Ground
+    this.aimReticleGroup = this.createAimReticle();
+    this.scene.add(this.aimReticleGroup);
 
     // 5. Event Listeners
     window.addEventListener('resize', this.onResize);
@@ -210,6 +232,39 @@ export class GameEngine {
     return { arena, ring };
   }
 
+  private createAimReticle(): THREE.Group {
+    const group = new THREE.Group();
+
+    // 1. Dotted / Dashed laser guide on ground
+    const shaftGeo = new THREE.PlaneGeometry(0.32, 4.2);
+    shaftGeo.rotateX(-Math.PI / 2);
+    const shaftMat = new THREE.MeshBasicMaterial({
+      color: 0x00f5ff,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+    });
+    const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+    shaft.position.z = -2.1;
+    group.add(shaft);
+
+    // 2. Glowing Arrowhead
+    const tipGeo = new THREE.ConeGeometry(0.48, 0.9, 16);
+    tipGeo.rotateX(-Math.PI / 2);
+    const tipMat = new THREE.MeshBasicMaterial({
+      color: 0x00f5ff,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const tip = new THREE.Mesh(tipGeo, tipMat);
+    tip.position.z = -4.5;
+    group.add(tip);
+
+    group.position.y = 0.04;
+    group.visible = false;
+    return group;
+  }
+
   private createBrawlerMesh(isBot: boolean): { group: THREE.Group; body: THREE.Mesh; core: THREE.Mesh; fists: THREE.Mesh[] } {
     const group = new THREE.Group();
 
@@ -274,7 +329,8 @@ export class GameEngine {
       currentAngle: 0,
       isDashing: false,
       dashTimer: 0,
-      dashCooldown: 0,
+      dashPowerPercent: 0,
+      chargePercent: 100,
       radius: 0.8,
       isGrounded: true,
       isKnockedOut: false,
@@ -299,7 +355,8 @@ export class GameEngine {
       currentAngle: Math.PI,
       isDashing: false,
       dashTimer: 0,
-      dashCooldown: 2.0,
+      dashPowerPercent: 0,
+      chargePercent: 100,
       radius: 0.8,
       isGrounded: true,
       isKnockedOut: false,
@@ -311,36 +368,158 @@ export class GameEngine {
   // Input Handling
   private onKeyDown = (e: KeyboardEvent) => {
     this.keys[e.key.toLowerCase()] = true;
-    if (e.code === 'Space') {
-      this.triggerDash();
+    if (e.code === 'Space' && !this.spaceKeyHeld) {
+      this.spaceKeyHeld = true;
+      // Start aiming in current movement direction
+      this.setAim(true);
     }
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
     this.keys[e.key.toLowerCase()] = false;
+    if (e.code === 'Space' && this.spaceKeyHeld) {
+      this.spaceKeyHeld = false;
+      this.triggerDash();
+    }
   };
 
   public setTouchJoystick(x: number, z: number) {
     this.inputVector.x = x;
     this.inputVector.z = z;
+    // If aiming with space key, update aim direction with joystick movement
+    if (this.spaceKeyHeld) {
+      this.setAim(true, x, z);
+    }
   }
 
-  public triggerDash() {
-    if (this.state.isGameOver || this.state.isPaused) return;
-    if (this.player.dashCooldown <= 0 && !this.player.isKnockedOut) {
-      this.player.isDashing = true;
-      this.player.dashTimer = 0.26;
-      this.player.dashCooldown = this.state.dashCooldownMax;
-
-      // Dash impulse in facing direction
-      const forwardX = -Math.sin(this.player.currentAngle);
-      const forwardZ = -Math.cos(this.player.currentAngle);
-      this.player.vel.x = forwardX * 24;
-      this.player.vel.z = forwardZ * 24;
-
-      sounds.playDash();
-      this.spawnDashParticles(this.player.pos, 0x00f5ff);
+  // Set 3D Aim Reticle (Option C: Hold & Drag to Aim)
+  public setAim(isAiming: boolean, aimX?: number, aimZ?: number) {
+    if (this.state.isGameOver || this.state.isPaused || this.player.isKnockedOut) {
+      this.aimReticleGroup.visible = false;
+      this.state.isAiming = false;
+      return;
     }
+
+    if (!isAiming) {
+      this.aimReticleGroup.visible = false;
+      this.state.isAiming = false;
+      this.onStateChange({ ...this.state });
+      return;
+    }
+
+    this.state.isAiming = true;
+    this.aimReticleGroup.visible = true;
+
+    // Determine direction
+    let dirX = 0;
+    let dirZ = -1; // Default forward into ring
+
+    if (aimX !== undefined && aimZ !== undefined && Math.hypot(aimX, aimZ) > 0.05) {
+      const len = Math.hypot(aimX, aimZ);
+      dirX = aimX / len;
+      dirZ = aimZ / len;
+    } else if (Math.hypot(this.inputVector.x, this.inputVector.z) > 0.05) {
+      const len = Math.hypot(this.inputVector.x, this.inputVector.z);
+      dirX = this.inputVector.x / len;
+      dirZ = this.inputVector.z / len;
+    } else {
+      dirX = -Math.sin(this.player.currentAngle);
+      dirZ = -Math.cos(this.player.currentAngle);
+    }
+
+    const angle = Math.atan2(-dirX, -dirZ);
+    this.state.aimAngle = angle;
+
+    // Update 3D reticle position, rotation & charge length
+    this.aimReticleGroup.position.set(this.player.pos.x, 0.04, this.player.pos.z);
+    this.aimReticleGroup.rotation.y = angle;
+
+    // Length scales noticeably with charge percent (10% to 100%)
+    const ratio = Math.max(0.1, this.player.chargePercent / 100);
+    const lengthScale = 0.5 + ratio * 1.5;
+    this.aimReticleGroup.scale.set(1, 1, lengthScale);
+
+    // Color reticle based on charge tier
+    let colorHex = 0x00f5ff;
+    if (ratio >= 0.98) colorHex = 0xff0055;
+    else if (ratio >= 0.7) colorHex = 0xf59e0b;
+    else if (ratio >= 0.4) colorHex = 0x8b5cf6;
+
+    this.aimReticleGroup.children.forEach((child) => {
+      const mesh = child as THREE.Mesh;
+      if (mesh.material) {
+        (mesh.material as THREE.MeshBasicMaterial).color.setHex(colorHex);
+      }
+    });
+
+    this.onStateChange({ ...this.state });
+  }
+
+  // Option C: Tap to dash in movement direction, or drag to aim and release
+  public triggerDash(aimX?: number, aimZ?: number) {
+    if (this.state.isGameOver || this.state.isPaused || this.player.isKnockedOut || this.state.countdown > 0) return;
+
+    // Minimum 10% charge to activate dash
+    if (this.player.chargePercent < 10) return;
+
+    const charge = this.player.chargePercent;
+    const ratio = charge / 100; // 0.1 to 1.0
+
+    // Scaled speed & duration: Every percentage is distinct!
+    // 10% charge -> speed 14, 40% -> speed 20.0, 50% -> speed 22.0, 100% -> speed 32.0
+    const speed = 12 + ratio * 20;
+    const duration = 0.16 + ratio * 0.18;
+
+    // Determine direction
+    let dirX = 0;
+    let dirZ = 0;
+
+    if (aimX !== undefined && aimZ !== undefined && Math.hypot(aimX, aimZ) > 0.05) {
+      const len = Math.hypot(aimX, aimZ);
+      dirX = aimX / len;
+      dirZ = aimZ / len;
+      this.player.currentAngle = Math.atan2(-dirX, -dirZ);
+      this.player.targetAngle = this.player.currentAngle;
+    } else if (Math.hypot(this.inputVector.x, this.inputVector.z) > 0.05) {
+      const len = Math.hypot(this.inputVector.x, this.inputVector.z);
+      dirX = this.inputVector.x / len;
+      dirZ = this.inputVector.z / len;
+      this.player.currentAngle = Math.atan2(-dirX, -dirZ);
+      this.player.targetAngle = this.player.currentAngle;
+    } else {
+      dirX = -Math.sin(this.player.currentAngle);
+      dirZ = -Math.cos(this.player.currentAngle);
+    }
+
+    this.player.isDashing = true;
+    this.player.dashTimer = duration;
+    this.player.dashPowerPercent = charge;
+    this.player.vel.x = dirX * speed;
+    this.player.vel.z = dirZ * speed;
+
+    // Sound scaling
+    sounds.playDash(charge);
+
+    // Particle visuals & color tiers
+    let colorHex = 0x00f5ff;
+    if (ratio >= 0.98) colorHex = 0xff0055;
+    else if (ratio >= 0.7) colorHex = 0xf59e0b;
+    else if (ratio >= 0.4) colorHex = 0x8b5cf6;
+
+    const particleCount = Math.floor(6 + ratio * 18);
+    this.spawnDashParticles(this.player.pos, colorHex, particleCount);
+
+    // Camera punch for high-power dashes
+    if (ratio >= 0.6) {
+      this.triggerScreenShake(0.12 * ratio, 0.25 * ratio);
+    }
+
+    // Reset charge and hide reticle
+    this.player.chargePercent = 0;
+    this.state.playerCharge = 0;
+    this.state.isAiming = false;
+    this.aimReticleGroup.visible = false;
+    this.onStateChange({ ...this.state });
   }
 
   public setCameraMode(mode: CameraMode) {
@@ -354,6 +533,14 @@ export class GameEngine {
   }
 
   public resetMatch() {
+    if (this.roundTimeoutId) {
+      clearTimeout(this.roundTimeoutId);
+      this.roundTimeoutId = null;
+    }
+
+    this.playerRoundWins = 0;
+    this.botRoundWins = 0;
+    this.currentRound = 1;
     this.elapsedTime = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
@@ -365,6 +552,7 @@ export class GameEngine {
     this.player.mesh.visible = true;
     this.player.currentAngle = 0;
     this.player.targetAngle = 0;
+    this.player.chargePercent = 100;
     this.player.mesh.rotation.set(0, 0, 0);
 
     this.bot.pos.set(0, 0, -6);
@@ -374,6 +562,7 @@ export class GameEngine {
     this.bot.mesh.visible = true;
     this.bot.currentAngle = Math.PI;
     this.bot.targetAngle = Math.PI;
+    this.bot.chargePercent = 100;
     this.bot.mesh.rotation.set(0, Math.PI, 0);
 
     this.state = {
@@ -381,17 +570,24 @@ export class GameEngine {
       countdown: 3,
       timeRemaining: this.matchDuration,
       arenaRadius: this.initialRadius,
-      dashCooldownRemaining: 0,
+      playerRoundWins: 0,
+      botRoundWins: 0,
+      currentRound: 1,
+      roundBannerText: null,
+      playerCharge: 100,
+      isAiming: false,
+      aimAngle: 0,
       isPaused: false,
       isGameOver: false,
       winner: null,
       warningText: null,
     };
+    this.aimReticleGroup.visible = false;
     this.onStateChange({ ...this.state });
   }
 
-  private spawnDashParticles(pos: THREE.Vector3, colorHex: number) {
-    for (let i = 0; i < 8; i++) {
+  private spawnDashParticles(pos: THREE.Vector3, colorHex: number, count: number = 8) {
+    for (let i = 0; i < count; i++) {
       const geo = new THREE.SphereGeometry(0.12, 6, 6);
       const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.9 });
       const p = new THREE.Mesh(geo, mat);
@@ -465,9 +661,9 @@ export class GameEngine {
         const pDist = Math.hypot(this.player.pos.x, this.player.pos.z);
         const bDist = Math.hypot(this.bot.pos.x, this.bot.pos.z);
         if (pDist <= bDist) {
-          this.triggerVictory();
+          this.handleRoundFinish('player');
         } else {
-          this.triggerDefeat();
+          this.handleRoundFinish('bot');
         }
       }
     }
@@ -504,10 +700,17 @@ export class GameEngine {
     this.checkRingOut(this.player, dt);
     this.checkRingOut(this.bot, dt);
 
-    // 7. Update Dash Cooldown
-    if (this.player.dashCooldown > 0) {
-      this.player.dashCooldown = Math.max(0, this.player.dashCooldown - dt);
-      this.state.dashCooldownRemaining = this.player.dashCooldown;
+    // 7. Update Continuous Dash Power Charge (0% to 100%)
+    if (!this.player.isDashing) {
+      this.player.chargePercent = Math.min(100, this.player.chargePercent + dt * 38);
+      this.state.playerCharge = this.player.chargePercent;
+    }
+
+    // Update 3D Aim Reticle if aiming
+    if (this.state.isAiming) {
+      this.aimReticleGroup.position.set(this.player.pos.x, 0.04, this.player.pos.z);
+      const ratio = Math.max(0.1, this.player.chargePercent / 100);
+      this.aimReticleGroup.scale.set(1, 1, 0.5 + ratio * 1.5);
     }
 
     // 8. Update Particles
@@ -588,7 +791,10 @@ export class GameEngine {
   private updateBotAI(dt: number) {
     if (this.bot.isKnockedOut || !this.bot.isGrounded) return;
 
-    this.bot.dashCooldown = Math.max(0, this.bot.dashCooldown - dt);
+    // Bot continuous power charge
+    if (!this.bot.isDashing) {
+      this.bot.chargePercent = Math.min(100, this.bot.chargePercent + dt * 34);
+    }
 
     const dx = this.player.pos.x - this.bot.pos.x;
     const dz = this.player.pos.z - this.bot.pos.z;
@@ -608,15 +814,18 @@ export class GameEngine {
       steerZ = steerZ * (1 - brakeWeight) + toCenterZ * brakeWeight;
     }
 
-    // Only dash if safely within the ring and lined up with the player!
-    if (distToPlayer < 4.0 && botDistToCenter < safeZone && this.bot.dashCooldown <= 0 && !this.bot.isDashing) {
+    // Bot executes power dash when in range and sufficiently charged (>= 60%)
+    if (distToPlayer < 4.2 && botDistToCenter < safeZone && this.bot.chargePercent >= 60 && !this.bot.isDashing) {
+      const bRatio = this.bot.chargePercent / 100;
       this.bot.isDashing = true;
-      this.bot.dashTimer = 0.22;
-      this.bot.dashCooldown = 3.0 + Math.random() * 1.0;
-      this.bot.vel.x = steerX * 16;
-      this.bot.vel.z = steerZ * 16;
-      sounds.playDash();
-      this.spawnDashParticles(this.bot.pos, 0xef4444);
+      this.bot.dashTimer = 0.16 + bRatio * 0.14;
+      this.bot.dashPowerPercent = this.bot.chargePercent;
+      const bSpeed = 12 + bRatio * 18;
+      this.bot.vel.x = steerX * bSpeed;
+      this.bot.vel.z = steerZ * bSpeed;
+      sounds.playDash(this.bot.chargePercent);
+      this.spawnDashParticles(this.bot.pos, 0xef4444, Math.floor(6 + bRatio * 16));
+      this.bot.chargePercent = 0;
     }
 
     this.updateBrawlerPhysics(this.bot, steerX, steerZ, dt);
@@ -643,32 +852,37 @@ export class GameEngine {
       this.bot.pos.x += nx * overlap * 0.5;
       this.bot.pos.z += nz * overlap * 0.5;
 
-      // Elastic knockback impulse
+      // Elastic knockback impulse - dynamically scaled by exact charge percentage!
       let pImpulse = 8;
       let bImpulse = 8;
 
       if (this.player.isDashing && !this.bot.isDashing) {
-        // Player landed heavy dash!
-        bImpulse = 18;
-        pImpulse = 4;
-        this.triggerScreenShake(0.25, 0.5);
-        sounds.playBump(2.0);
+        // Player landed power dash!
+        const pRatio = Math.max(0.1, this.player.dashPowerPercent / 100);
+        // 40% -> 18.8, 50% -> 21.0, 100% -> 32.0 (noticeable power differences!)
+        bImpulse = 10 + pRatio * 22;
+        pImpulse = 3.5;
+        this.triggerScreenShake(0.1 + pRatio * 0.3, 0.2 + pRatio * 0.6);
+        sounds.playBump(1.0 + pRatio * 1.5);
       } else if (this.bot.isDashing && !this.player.isDashing) {
-        // Bot landed heavy dash!
-        pImpulse = 18;
-        bImpulse = 4;
-        this.triggerScreenShake(0.25, 0.5);
-        sounds.playBump(2.0);
+        // Bot landed power dash!
+        const bRatio = Math.max(0.1, this.bot.dashPowerPercent / 100);
+        pImpulse = 10 + bRatio * 22;
+        bImpulse = 3.5;
+        this.triggerScreenShake(0.1 + bRatio * 0.3, 0.2 + bRatio * 0.6);
+        sounds.playBump(1.0 + bRatio * 1.5);
       } else if (this.player.isDashing && this.bot.isDashing) {
-        // Clash rebound!
-        pImpulse = 16;
-        bImpulse = 16;
+        // Clash! Higher percentage charge wins the momentum contest!
+        const pRatio = Math.max(0.1, this.player.dashPowerPercent / 100);
+        const bRatio = Math.max(0.1, this.bot.dashPowerPercent / 100);
+        pImpulse = 12 + bRatio * 14 - pRatio * 6;
+        bImpulse = 12 + pRatio * 14 - bRatio * 6;
         this.triggerScreenShake(0.35, 0.8);
-        sounds.playBump(2.5);
+        sounds.playBump(2.4);
       } else {
         // Normal bump
         sounds.playBump(1.0);
-        this.triggerScreenShake(0.1, 0.2);
+        this.triggerScreenShake(0.08, 0.18);
       }
 
       this.player.vel.x = -nx * pImpulse;
@@ -697,39 +911,120 @@ export class GameEngine {
         sounds.playFall();
       }
 
-      // Fully knocked out
+      // Fully knocked out -> trigger round finish!
       if (b.pos.y < -12) {
         b.isKnockedOut = true;
         b.mesh.visible = false;
 
         if (b.isBot) {
-          this.triggerVictory();
+          this.handleRoundFinish('player');
         } else {
-          this.triggerDefeat();
+          this.handleRoundFinish('bot');
         }
       }
     }
   }
 
-  private triggerVictory() {
+  private handleRoundFinish(roundWinner: 'player' | 'bot') {
+    if (this.state.isGameOver || this.state.roundBannerText) return;
+
+    if (roundWinner === 'player') {
+      this.playerRoundWins++;
+    } else {
+      this.botRoundWins++;
+    }
+
+    this.state.playerRoundWins = this.playerRoundWins;
+    this.state.botRoundWins = this.botRoundWins;
+
+    // Check if entire match is won (First to 3 wins)
+    if (this.playerRoundWins >= this.maxRoundWins) {
+      this.triggerMatchVictory();
+      return;
+    } else if (this.botRoundWins >= this.maxRoundWins) {
+      this.triggerMatchDefeat();
+      return;
+    }
+
+    // Round ended: display round banner and transition smoothly to next round!
+    const winnerName = roundWinner === 'player' ? 'KAI' : 'SHADOWNINJA';
+    this.state.roundBannerText = `ROUND ${this.currentRound}: ${winnerName} WINS!`;
+    this.onStateChange({ ...this.state });
+
+    if (roundWinner === 'player') {
+      sounds.playBump(2.2);
+    } else {
+      sounds.playBump(1.6);
+    }
+
+    this.roundTimeoutId = window.setTimeout(() => {
+      this.startNextRound();
+    }, 2000);
+  }
+
+  private startNextRound() {
+    this.roundTimeoutId = null;
+    this.currentRound++;
+    this.elapsedTime = 0;
+    this.currentRadius = this.initialRadius;
+    this.arenaGroup.scale.set(1, 1, 1);
+
+    this.player.pos.set(0, 0, 6);
+    this.player.vel.set(0, 0, 0);
+    this.player.isKnockedOut = false;
+    this.player.isGrounded = true;
+    this.player.mesh.visible = true;
+    this.player.currentAngle = 0;
+    this.player.targetAngle = 0;
+    this.player.chargePercent = 100;
+    this.player.mesh.rotation.set(0, 0, 0);
+
+    this.bot.pos.set(0, 0, -6);
+    this.bot.vel.set(0, 0, 0);
+    this.bot.isKnockedOut = false;
+    this.bot.isGrounded = true;
+    this.bot.mesh.visible = true;
+    this.bot.currentAngle = Math.PI;
+    this.bot.targetAngle = Math.PI;
+    this.bot.chargePercent = 100;
+    this.bot.mesh.rotation.set(0, Math.PI, 0);
+
+    this.state = {
+      ...this.state,
+      countdown: 3,
+      currentRound: this.currentRound,
+      roundBannerText: null,
+      timeRemaining: this.matchDuration,
+      arenaRadius: this.initialRadius,
+      playerCharge: 100,
+      isAiming: false,
+      warningText: null,
+    };
+    this.aimReticleGroup.visible = false;
+    this.onStateChange({ ...this.state });
+  }
+
+  private triggerMatchVictory() {
     if (this.state.isGameOver) return;
     this.state.isGameOver = true;
     this.state.winner = 'player';
+    this.state.roundBannerText = null;
     sounds.playVictory();
 
     confetti({
-      particleCount: 120,
-      spread: 70,
+      particleCount: 150,
+      spread: 80,
       origin: { y: 0.6 },
     });
 
     this.onStateChange({ ...this.state });
   }
 
-  private triggerDefeat() {
+  private triggerMatchDefeat() {
     if (this.state.isGameOver) return;
     this.state.isGameOver = true;
     this.state.winner = 'bot';
+    this.state.roundBannerText = null;
     sounds.playDefeat();
     this.onStateChange({ ...this.state });
   }
@@ -788,6 +1083,10 @@ export class GameEngine {
 
   public destroy() {
     cancelAnimationFrame(this.animationId);
+    if (this.roundTimeoutId) {
+      clearTimeout(this.roundTimeoutId);
+      this.roundTimeoutId = null;
+    }
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);

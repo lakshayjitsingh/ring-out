@@ -37,28 +37,48 @@ class SoundManager {
     osc.stop(this.ctx.currentTime + 0.16);
   }
 
-  // Dash boost whoosh
-  playDash() {
+  // Scaled Dash sound based on charge percent (0 - 100%)
+  playDash(percent: number = 100) {
     if (!this.enabled) return;
     this.initCtx();
     if (!this.ctx) return;
 
+    const ratio = Math.max(0.1, Math.min(1.0, percent / 100));
+    const startFreq = 160 + ratio * 120;
+    const peakFreq = 380 + ratio * 580;
+    const duration = 0.16 + ratio * 0.14;
+
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(220, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(650, this.ctx.currentTime + 0.12);
-    osc.frequency.exponentialRampToValueAtTime(180, this.ctx.currentTime + 0.25);
+    osc.type = ratio > 0.8 ? 'sawtooth' : 'sine';
+    osc.frequency.setValueAtTime(startFreq, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(peakFreq, this.ctx.currentTime + duration * 0.4);
+    osc.frequency.exponentialRampToValueAtTime(140, this.ctx.currentTime + duration);
 
-    gain.gain.setValueAtTime(0.4 * this.volume, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+    gain.gain.setValueAtTime((0.25 + ratio * 0.35) * this.volume, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
 
     osc.connect(gain);
     gain.connect(this.ctx.destination);
 
     osc.start();
-    osc.stop(this.ctx.currentTime + 0.26);
+    osc.stop(this.ctx.currentTime + duration + 0.01);
+
+    // Sub-bass thump for high-power charges (>= 75%)
+    if (ratio >= 0.75) {
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = 'triangle';
+      sub.frequency.setValueAtTime(90 * ratio, this.ctx.currentTime);
+      sub.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.22);
+      subGain.gain.setValueAtTime(0.5 * this.volume, this.ctx.currentTime);
+      subGain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.22);
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start();
+      sub.stop(this.ctx.currentTime + 0.23);
+    }
   }
 
   // Falling into the abyss whistle

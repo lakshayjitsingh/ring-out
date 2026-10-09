@@ -10,10 +10,13 @@ export function App() {
     timeRemaining: 180,
     arenaRadius: 13,
     initialRadius: 13,
-    playerStocks: 1,
-    botStocks: 1,
-    dashCooldownRemaining: 0,
-    dashCooldownMax: 2.2,
+    playerRoundWins: 0,
+    botRoundWins: 0,
+    currentRound: 1,
+    roundBannerText: null,
+    playerCharge: 0,
+    isAiming: false,
+    aimAngle: 0,
     countdown: 3,
     isPaused: false,
     isGameOver: false,
@@ -37,8 +40,12 @@ export function App() {
     };
   }, []);
 
-  const handleDash = () => {
-    engineRef.current?.triggerDash();
+  const handleDash = (aimX?: number, aimZ?: number) => {
+    engineRef.current?.triggerDash(aimX, aimZ);
+  };
+
+  const handleAimChange = (isAiming: boolean, aimX?: number, aimZ?: number) => {
+    engineRef.current?.setAim(isAiming, aimX, aimZ);
   };
 
   const handleJoystickMove = (x: number, z: number) => {
@@ -66,6 +73,7 @@ export function App() {
       <BattleHUD
         state={gameState}
         onDash={handleDash}
+        onAimChange={handleAimChange}
         onJoystickMove={handleJoystickMove}
         onCameraChange={handleCameraChange}
         onTogglePause={handleTogglePause}

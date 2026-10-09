@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { GameEngine, type GameState, type CameraMode } from './game/GameEngine';
 import { BattleHUD } from './components/BattleHUD';
+import { ChampionShowcase } from './components/ChampionShowcase';
+import { type ChampionId } from './game/championModels';
 
 export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+
+  const [activeScreen, setActiveScreen] = useState<'showcase' | 'battle'>('showcase');
+  const [selectedChampion, setSelectedChampion] = useState<ChampionId>('kai');
 
   const [gameState, setGameState] = useState<GameState>({
     timeRemaining: 60,
@@ -42,6 +47,11 @@ export function App() {
     };
   }, []);
 
+  const handleSelectChampion = (id: ChampionId) => {
+    setSelectedChampion(id);
+    engineRef.current?.setPlayerChampion(id);
+  };
+
   const handleDash = (aimX?: number, aimZ?: number) => {
     engineRef.current?.triggerDash(aimX, aimZ);
   };
@@ -68,19 +78,39 @@ export function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
-      {/* 3D WebGL Canvas */}
-      <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+      {/* 3D Battle Arena View */}
+      <div
+        className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
+          activeScreen === 'battle' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+        <BattleHUD
+          state={gameState}
+          selectedChampion={selectedChampion}
+          onOpenShowcase={() => setActiveScreen('showcase')}
+          onDash={handleDash}
+          onAimChange={handleAimChange}
+          onJoystickMove={handleJoystickMove}
+          onCameraChange={handleCameraChange}
+          onTogglePause={handleTogglePause}
+          onRestart={handleRestart}
+        />
+      </div>
 
-      {/* Interactive Mobile Battle HUD */}
-      <BattleHUD
-        state={gameState}
-        onDash={handleDash}
-        onAimChange={handleAimChange}
-        onJoystickMove={handleJoystickMove}
-        onCameraChange={handleCameraChange}
-        onTogglePause={handleTogglePause}
-        onRestart={handleRestart}
-      />
+      {/* 3D Champion Showcase (Shop & 360° Inspection) */}
+      {activeScreen === 'showcase' && (
+        <ChampionShowcase
+          selectedChampion={selectedChampion}
+          onSelectChampion={handleSelectChampion}
+          onBackToBattle={() => {
+            setActiveScreen('battle');
+            if (gameState.isGameOver) {
+              handleRestart();
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

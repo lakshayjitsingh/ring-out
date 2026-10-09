@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { sounds } from '../audio/soundManager';
 import confetti from 'canvas-confetti';
+import { createChampionMesh, type ChampionId } from './championModels';
 
 export type CameraMode = 'third_person' | 'isometric' | 'close_action';
 export type RoundWinner = 'player' | 'bot' | 'draw';
@@ -77,6 +78,8 @@ export class GameEngine {
   // Characters
   public player!: Brawler;
   public bot!: Brawler;
+  public playerChampionId: ChampionId = 'kai';
+  public botChampionId: ChampionId = 'kage';
   private particles: { mesh: THREE.Mesh; life: number; maxLife: number; vel: THREE.Vector3 }[] = [];
 
   // Inputs
@@ -273,63 +276,16 @@ export class GameEngine {
     return group;
   }
 
-  private createBrawlerMesh(isBot: boolean): { group: THREE.Group; body: THREE.Mesh; core: THREE.Mesh; fists: THREE.Mesh[] } {
-    const group = new THREE.Group();
-
-    const mainColor = isBot ? 0x9333ea : 0x00f5ff;
-    const accentColor = isBot ? 0xef4444 : 0x3b82f6;
-
-    // Body capsule / torso
-    const bodyGeo = new THREE.CapsuleGeometry(0.55, 0.65, 8, 16);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      metalness: 0.6,
-      roughness: 0.25,
-    });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 1.0;
-    body.castShadow = true;
-    group.add(body);
-
-    // Glowing core reactor on chest
-    const coreGeo = new THREE.SphereGeometry(0.25, 16, 16);
-    const coreMat = new THREE.MeshBasicMaterial({ color: mainColor });
-    const core = new THREE.Mesh(coreGeo, coreMat);
-    core.position.set(0, 1.05, -0.42);
-    group.add(core);
-
-    // Head visor / eyes
-    const visorGeo = new THREE.BoxGeometry(0.65, 0.16, 0.35);
-    const visorMat = new THREE.MeshBasicMaterial({ color: accentColor });
-    const visor = new THREE.Mesh(visorGeo, visorMat);
-    visor.position.set(0, 1.45, -0.32);
-    group.add(visor);
-
-    // Fists
-    const fistGeo = new THREE.SphereGeometry(0.24, 12, 12);
-    const fistMat = new THREE.MeshStandardMaterial({ color: mainColor, metalness: 0.5 });
-    const leftFist = new THREE.Mesh(fistGeo, fistMat);
-    const rightFist = new THREE.Mesh(fistGeo, fistMat);
-    leftFist.position.set(-0.75, 0.9, -0.3);
-    rightFist.position.set(0.75, 0.9, -0.3);
-    leftFist.castShadow = true;
-    rightFist.castShadow = true;
-    group.add(leftFist);
-    group.add(rightFist);
-
-    return { group, body, core, fists: [leftFist, rightFist] };
-  }
-
   private setupCharacters() {
     // Player on south side
-    const pMesh = this.createBrawlerMesh(false);
+    const pMesh = createChampionMesh(this.playerChampionId);
     pMesh.group.position.set(0, 0, 6);
     this.scene.add(pMesh.group);
 
     this.player = {
       mesh: pMesh.group,
-      bodyMesh: pMesh.body,
-      coreMesh: pMesh.core,
+      bodyMesh: pMesh.bodyMesh,
+      coreMesh: pMesh.coreMesh,
       fists: pMesh.fists,
       pos: pMesh.group.position,
       vel: new THREE.Vector3(0, 0, 0),
@@ -347,15 +303,15 @@ export class GameEngine {
     };
 
     // Bot on north side
-    const bMesh = this.createBrawlerMesh(true);
+    const bMesh = createChampionMesh(this.botChampionId);
     bMesh.group.position.set(0, 0, -6);
     bMesh.group.rotation.y = Math.PI;
     this.scene.add(bMesh.group);
 
     this.bot = {
       mesh: bMesh.group,
-      bodyMesh: bMesh.body,
-      coreMesh: bMesh.core,
+      bodyMesh: bMesh.bodyMesh,
+      coreMesh: bMesh.coreMesh,
       fists: bMesh.fists,
       pos: bMesh.group.position,
       vel: new THREE.Vector3(0, 0, 0),
@@ -371,6 +327,28 @@ export class GameEngine {
       walkCycle: 0,
       isBot: true,
     };
+  }
+
+  public setPlayerChampion(id: ChampionId) {
+    if (this.playerChampionId === id && this.player) return;
+    this.playerChampionId = id;
+
+    if (this.player && this.player.mesh) {
+      const pos = this.player.pos.clone();
+      const rotY = this.player.currentAngle;
+      this.scene.remove(this.player.mesh);
+
+      const pMesh = createChampionMesh(id);
+      pMesh.group.position.copy(pos);
+      pMesh.group.rotation.y = rotY;
+      this.scene.add(pMesh.group);
+
+      this.player.mesh = pMesh.group;
+      this.player.bodyMesh = pMesh.bodyMesh;
+      this.player.coreMesh = pMesh.coreMesh;
+      this.player.fists = pMesh.fists;
+      this.player.pos = pMesh.group.position;
+    }
   }
 
   // Input Handling

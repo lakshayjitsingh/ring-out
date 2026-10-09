@@ -1,10 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
 import type { GameState, CameraMode } from '../game/GameEngine';
 import { sounds } from '../audio/soundManager';
-import { Volume2, VolumeX, Pause, Play, RotateCcw, Video, Trophy, Flame, Shield } from 'lucide-react';
+import { CHAMPIONS, type ChampionId } from '../game/championModels';
+import { Volume2, VolumeX, Pause, Play, RotateCcw, Video, Trophy, Flame, Shield, Sparkles } from 'lucide-react';
 
 interface BattleHUDProps {
   state: GameState;
+  selectedChampion?: ChampionId;
+  onOpenShowcase: () => void;
   onDash: (aimX?: number, aimZ?: number) => void;
   onAimChange: (isAiming: boolean, aimX?: number, aimZ?: number) => void;
   onJoystickMove: (x: number, z: number) => void;
@@ -15,6 +18,8 @@ interface BattleHUDProps {
 
 export const BattleHUD: React.FC<BattleHUDProps> = ({
   state,
+  selectedChampion = 'kai',
+  onOpenShowcase,
   onDash,
   onAimChange,
   onJoystickMove,
@@ -213,28 +218,43 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
       {/* 1. TOP HEADER STATUS */}
       <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between pointer-events-auto">
         {/* Left: Player Stocks & Round Wins */}
-        <div className="flex items-center gap-3 bg-slate-900/85 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-cyan-500/30 shadow-lg">
-          <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400 flex items-center justify-center font-bold text-cyan-300">
-            K
-          </div>
-          <div>
-            <div className="text-xs font-bold text-cyan-300">Kai (You)</div>
-            {/* Round Win Pips (First to 3) */}
-            <div className="flex items-center gap-1.5 mt-1">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className={`w-3 h-3 rounded-full border transition-all ${
-                    i < state.playerRoundWins
-                      ? 'bg-cyan-400 border-cyan-300 shadow-[0_0_8px_#00f5ff]'
-                      : 'bg-slate-800 border-slate-600'
-                  }`}
-                  title={`Round Win ${i + 1}`}
-                />
-              ))}
+        {(() => {
+          const champ = CHAMPIONS[selectedChampion || 'kai'] || CHAMPIONS.kai;
+          return (
+            <div className="flex items-center gap-3 bg-slate-900/85 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-cyan-500/30 shadow-lg">
+              <div
+                className="w-9 h-9 rounded-xl border flex items-center justify-center font-black text-sm"
+                style={{
+                  backgroundColor: `${champ.color}20`,
+                  borderColor: champ.color,
+                  color: champ.color,
+                }}
+              >
+                {champ.name.charAt(0)}
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span style={{ color: champ.color }}>{champ.name}</span>
+                  <span className="text-[10px] text-slate-400 font-semibold">(You)</span>
+                </div>
+                {/* Round Win Pips (First to 3) */}
+                <div className="flex items-center gap-1.5 mt-1">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className={`w-3 h-3 rounded-full border transition-all ${
+                        i < state.playerRoundWins
+                          ? 'bg-cyan-400 border-cyan-300 shadow-[0_0_8px_#00f5ff]'
+                          : 'bg-slate-800 border-slate-600'
+                      }`}
+                      title={`Round Win ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Center: Match Timer & 5-Round Outcome Tracker */}
         <div className="flex flex-col items-center">
@@ -300,6 +320,18 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
         {/* Right: Bot Opponent & Quick Actions */}
         <div className="flex items-center gap-2">
+          {/* Locker / 3D Showcase Button */}
+          <button
+            onClick={onOpenShowcase}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-400/50 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+            title="Open Champion Locker & 360 Showcase"
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-black tracking-wider uppercase text-amber-300 hidden md:inline">
+              Locker
+            </span>
+          </button>
+
           <button
             onClick={cycleCamera}
             className="p-2.5 bg-slate-900/80 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 rounded-xl transition-all shadow-md active:scale-95"

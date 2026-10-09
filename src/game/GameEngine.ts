@@ -84,6 +84,13 @@ export class GameEngine {
   public botChampionId: ChampionId = 'kage';
   private particles: { mesh: THREE.Mesh; life: number; maxLife: number; vel: THREE.Vector3 }[] = [];
 
+  // Chapter 1: Emerald Isles Environment Elements
+  private clouds: { group: THREE.Group; speed: number }[] = [];
+  private breezeParticles: { mesh: THREE.Mesh; seed: number; speed: number }[] = [];
+  private oceanWaveRings: THREE.Mesh[] = [];
+  private sunCompassEmblem: THREE.Group | null = null;
+  private splashTriggered: { player: boolean; bot: boolean } = { player: false, bot: false };
+
   // Inputs
   private inputVector = { x: 0, z: 0 };
   private keys: { [key: string]: boolean } = {};
@@ -121,10 +128,10 @@ export class GameEngine {
       warningText: null,
     };
 
-    // 1. Three.js Scene & Camera
+    // 1. Three.js Scene & Camera (Chapter 1: Emerald Isles Tropical Daylight)
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x060913);
-    this.scene.fog = new THREE.FogExp2(0x060913, 0.018);
+    this.scene.background = new THREE.Color(0x38bdf8); // Radiant tropical azure sky
+    this.scene.fog = new THREE.FogExp2(0x7dd3fc, 0.005); // Soft coastal sea horizon haze
 
     const aspect = container.clientWidth / container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 1000);
@@ -140,11 +147,11 @@ export class GameEngine {
 
     this.clock = new THREE.Clock();
 
-    // 3. Environment & Lights
+    // 3. Environment & Lights (Tropical Sun, Ocean, Sky, Islands)
     this.setupLighting();
     this.setupEnvironment();
 
-    // 4. Arena & Characters
+    // 4. Arena & Characters (Grassy Island Plateau & Sun Compass)
     this.arenaGroup = new THREE.Group();
     const { arena, ring } = this.createArena();
     this.ringMesh = ring;
@@ -168,79 +175,524 @@ export class GameEngine {
   }
 
   private setupLighting() {
-    const hemi = new THREE.HemisphereLight(0x70a0ff, 0x101530, 0.7);
+    // Tropical Hemisphere Light (Azure sky bounce down, rich emerald grass bounce up)
+    const hemi = new THREE.HemisphereLight(0x7dd3fc, 0x16a34a, 1.15);
     this.scene.add(hemi);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
-    dirLight.position.set(15, 28, 15);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 60;
-    dirLight.shadow.camera.left = -16;
-    dirLight.shadow.camera.right = 16;
-    dirLight.shadow.camera.top = 16;
-    dirLight.shadow.camera.bottom = -16;
-    dirLight.shadow.bias = -0.0005;
-    this.scene.add(dirLight);
+    // Radiant Sun Directional Light (Warm golden sunlight casting crisp soft shadows)
+    const sunLight = new THREE.DirectionalLight(0xfffaea, 1.65);
+    sunLight.position.set(35, 52, 22);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 1024;
+    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 90;
+    sunLight.shadow.camera.left = -18;
+    sunLight.shadow.camera.right = 18;
+    sunLight.shadow.camera.top = 18;
+    sunLight.shadow.camera.bottom = -18;
+    sunLight.shadow.bias = -0.0005;
+    this.scene.add(sunLight);
 
-    const centerGlow = new THREE.PointLight(0x00f0ff, 1.2, 20);
-    centerGlow.position.set(0, 2, 0);
-    this.scene.add(centerGlow);
+    // Turquoise Ocean Ambient Fill Light
+    const oceanFill = new THREE.DirectionalLight(0x0284c7, 0.45);
+    oceanFill.position.set(-25, 12, -25);
+    this.scene.add(oceanFill);
+
+    // Center Sunlight Warmth Point
+    const centerWarmth = new THREE.PointLight(0xfef08a, 0.8, 18);
+    centerWarmth.position.set(0, 3, 0);
+    this.scene.add(centerWarmth);
   }
 
   private setupEnvironment() {
-    // Starfield particles in the background
-    const starGeo = new THREE.BufferGeometry();
-    const starCount = 350;
-    const starPos = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i += 3) {
-      starPos[i] = (Math.random() - 0.5) * 150;
-      starPos[i + 1] = Math.random() * 80 - 20;
-      starPos[i + 2] = (Math.random() - 0.5) * 150;
-    }
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    const starMat = new THREE.PointsMaterial({
-      color: 0x48bbff,
-      size: 0.75,
-      transparent: true,
-      opacity: 0.6,
+    // 1. Panoramic Sky Dome (Azure to Warm Coastal Horizon)
+    const skyGeo = new THREE.SphereGeometry(380, 32, 24);
+    const skyMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      side: THREE.BackSide,
     });
-    const starField = new THREE.Points(starGeo, starMat);
-    this.scene.add(starField);
+    const skyDome = new THREE.Mesh(skyGeo, skyMat);
+    this.scene.add(skyDome);
+
+    // 2. The Glowing Stylized Sun in the Sky
+    const sunGroup = new THREE.Group();
+    sunGroup.position.set(28, 6.2, -65);
+
+    const sunCoreGeo = new THREE.SphereGeometry(6.5, 16, 16);
+    const sunCoreMat = new THREE.MeshBasicMaterial({ color: 0xfffbeb });
+    const sunCore = new THREE.Mesh(sunCoreGeo, sunCoreMat);
+    sunGroup.add(sunCore);
+
+    const coronaGeo = new THREE.SphereGeometry(9.8, 16, 16);
+    const coronaMat = new THREE.MeshBasicMaterial({
+      color: 0xfef08a,
+      transparent: true,
+      opacity: 0.42,
+    });
+    const corona = new THREE.Mesh(coronaGeo, coronaMat);
+    sunGroup.add(corona);
+
+    const auraGeo = new THREE.SphereGeometry(15.5, 16, 16);
+    const auraMat = new THREE.MeshBasicMaterial({
+      color: 0xfef9c3,
+      transparent: true,
+      opacity: 0.16,
+    });
+    const aura = new THREE.Mesh(auraGeo, auraMat);
+    sunGroup.add(aura);
+
+    this.scene.add(sunGroup);
+
+    // 3. Drifting Fluffy 3D Low-Poly Clouds
+    const cloudsGroup = this.createClouds();
+    this.scene.add(cloudsGroup);
+
+    // 4. Sparkling Turquoise Tropical Ocean (surrounding below at y = -6.5)
+    const oceanGeo = new THREE.CircleGeometry(280, 64);
+    oceanGeo.rotateX(-Math.PI / 2);
+    const oceanMat = new THREE.MeshStandardMaterial({
+      color: 0x0284c7,
+      roughness: 0.12,
+      metalness: 0.32,
+    });
+    const ocean = new THREE.Mesh(oceanGeo, oceanMat);
+    ocean.position.y = -6.5;
+    this.scene.add(ocean);
+
+    // Concentric animated ocean wave foam rings around the island base
+    this.oceanWaveRings = [];
+    [26, 46].forEach((radius) => {
+      const waveGeo = new THREE.TorusGeometry(radius, radius === 26 ? 0.9 : 1.3, 8, 48);
+      waveGeo.rotateX(Math.PI / 2);
+      const waveMat = new THREE.MeshBasicMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.42,
+      });
+      const wave = new THREE.Mesh(waveGeo, waveMat);
+      wave.position.y = -6.42;
+      this.scene.add(wave);
+      this.oceanWaveRings.push(wave);
+    });
+
+    // 5. Distant Tropical Islands & Palm Groves on the Horizon
+    const distantIslands = this.createDistantIslands();
+    this.scene.add(distantIslands);
+
+    // 6. Island Breeze Leaf & Pollen Particles
+    this.createBreezeParticles(this.scene);
+  }
+
+  private createGrassTexture(): THREE.CanvasTexture {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    // 1. Base vibrant lawn gradient (Emerald, Lime, Forest)
+    const center = size / 2;
+    const grad = ctx.createRadialGradient(center, center, 20, center, center, center);
+    grad.addColorStop(0, '#4ade80');    // Vibrant sunny lime-green core
+    grad.addColorStop(0.35, '#22c55e'); // Lush island emerald green
+    grad.addColorStop(0.85, '#16a34a'); // Rich deep grass
+    grad.addColorStop(1.0, '#15803d');  // Edge border turf
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+
+    // 2. Concentric tournament mowing rings (Championship Lawn)
+    for (let r = 28; r < center; r += 26) {
+      ctx.beginPath();
+      ctx.arc(center, center, r, 0, Math.PI * 2);
+      ctx.lineWidth = 13;
+      ctx.strokeStyle = (r / 26) % 2 === 0 ? 'rgba(74, 222, 128, 0.18)' : 'rgba(21, 128, 61, 0.22)';
+      ctx.stroke();
+    }
+
+    // 3. Radial tournament lawn stripes (alternating mower passes)
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+      ctx.beginPath();
+      ctx.moveTo(center, center);
+      ctx.arc(center, center, center, a, a + Math.PI / 16);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.fill();
+    }
+
+    // 4. Subtle grass blade flecks & golden island pollen
+    for (let i = 0; i < 400; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * (center - 15);
+      const px = center + Math.cos(angle) * dist;
+      const py = center + Math.sin(angle) * dist;
+      ctx.fillStyle = Math.random() > 0.3 ? 'rgba(134, 239, 172, 0.45)' : 'rgba(254, 240, 138, 0.6)';
+      ctx.fillRect(px, py, 2, 3);
+    }
+
+    // 5. Outer sandy border ring trim
+    ctx.beginPath();
+    ctx.arc(center, center, center - 6, 0, Math.PI * 2);
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = 'rgba(253, 224, 71, 0.35)';
+    ctx.stroke();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    return texture;
+  }
+
+  private createClouds(): THREE.Group {
+    const group = new THREE.Group();
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.95,
+      metalness: 0.0,
+    });
+
+    this.clouds = [];
+
+    // 16 Drifting procedural cloud formations across the sky
+    for (let i = 0; i < 16; i++) {
+      const cloudGroup = new THREE.Group();
+      const cx = (Math.random() - 0.5) * 220;
+      // Altitudes distributed between 4.5 and 10 so they frame the horizon and sky
+      const cy = 4.5 + (i % 4) * 1.8;
+      const cz = -55 - (i % 3) * 15;
+      cloudGroup.position.set(cx, cy, cz);
+
+      // Clustered puffy low-poly spheres
+      const sphereCount = 5 + Math.floor(Math.random() * 3);
+      for (let s = 0; s < sphereCount; s++) {
+        const rad = 2.4 + Math.random() * 2.6;
+        const sphGeo = new THREE.SphereGeometry(rad, 7, 7);
+        const sph = new THREE.Mesh(sphGeo, cloudMat);
+        sph.position.set((s - sphereCount / 2) * 2.6 + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.8);
+        cloudGroup.add(sph);
+      }
+
+      group.add(cloudGroup);
+      this.clouds.push({
+        group: cloudGroup,
+        speed: 2.5 + Math.random() * 3.8,
+      });
+    }
+
+    return group;
+  }
+
+  private createDistantIslands(): THREE.Group {
+    const group = new THREE.Group();
+
+    const sandMat = new THREE.MeshStandardMaterial({
+      color: 0xfef08a,
+      roughness: 0.9,
+    });
+    const jungleMat = new THREE.MeshStandardMaterial({
+      color: 0x16a34a,
+      roughness: 0.7,
+    });
+    const trunkMat = new THREE.MeshStandardMaterial({
+      color: 0x78350f,
+      roughness: 0.8,
+    });
+    const frondMat = new THREE.MeshStandardMaterial({
+      color: 0x22c55e,
+      roughness: 0.5,
+    });
+
+    // 6 Distant tropical atolls gracefully lining the ocean horizon
+    const islandAngles = [0.4, 1.4, 2.5, 3.7, 4.9, 5.8];
+    const distances = [130, 155, 140, 160, 135, 145];
+
+    islandAngles.forEach((ang, idx) => {
+      const dist = distances[idx];
+      const ix = Math.cos(ang) * dist;
+      const iz = Math.sin(ang) * dist;
+
+      const island = new THREE.Group();
+      island.position.set(ix, -11.5, iz);
+
+      // Sandy beach mound resting on the ocean waterline
+      const beachGeo = new THREE.SphereGeometry(22, 8, 8);
+      beachGeo.scale(1.8, 0.28, 1.4);
+      const beach = new THREE.Mesh(beachGeo, sandMat);
+      beach.position.set(0, 3.5, 0);
+      island.add(beach);
+
+      // Lush jungle hill (soft gently-sloping canopy)
+      const hillGeo = new THREE.SphereGeometry(16, 8, 8);
+      hillGeo.scale(1.4, 0.42, 1.2);
+      const hill = new THREE.Mesh(hillGeo, jungleMat);
+      hill.position.set(0, 6.0, 0);
+      island.add(hill);
+
+      // 2 Stylized Palm Trees
+      [-5, 5].forEach((px) => {
+        const palmGroup = new THREE.Group();
+        palmGroup.position.set(px, 9.5, px > 0 ? 2 : -2);
+
+        const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 5.5, 6);
+        trunkGeo.rotateZ(px > 0 ? -0.15 : 0.15);
+        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+        palmGroup.add(trunk);
+
+        // 5 palm fronds
+        for (let f = 0; f < 5; f++) {
+          const frondGeo = new THREE.ConeGeometry(2.0, 3.5, 4);
+          frondGeo.rotateX(Math.PI / 2.6);
+          const frond = new THREE.Mesh(frondGeo, frondMat);
+          frond.rotation.y = (f / 5) * Math.PI * 2;
+          frond.position.set(0, 2.8, 0);
+          palmGroup.add(frond);
+        }
+
+        island.add(palmGroup);
+      });
+
+      group.add(island);
+    });
+
+    return group;
+  }
+
+  private createBreezeParticles(parent: THREE.Scene) {
+    this.breezeParticles = [];
+    const leafGeo = new THREE.PlaneGeometry(0.24, 0.36);
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: 0x4ade80,
+      roughness: 0.5,
+      side: THREE.DoubleSide,
+    });
+
+    for (let i = 0; i < 40; i++) {
+      const mesh = new THREE.Mesh(leafGeo, leafMat);
+      mesh.position.set(
+        (Math.random() - 0.5) * 28,
+        0.8 + Math.random() * 4.5,
+        (Math.random() - 0.5) * 28
+      );
+      mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+      parent.add(mesh);
+      this.breezeParticles.push({
+        mesh,
+        seed: Math.random() * 10,
+        speed: 1.5 + Math.random() * 2.5,
+      });
+    }
+  }
+
+  private createSunCompassEmblem(): THREE.Group {
+    const group = new THREE.Group();
+    group.position.set(0, 0.02, 0);
+
+    // Weathered ancient limestone center platform
+    const stoneGeo = new THREE.CylinderGeometry(3.5, 3.6, 0.04, 32);
+    const stoneMat = new THREE.MeshStandardMaterial({
+      color: 0x94a3b8,
+      roughness: 0.85,
+      metalness: 0.1,
+    });
+    const stone = new THREE.Mesh(stoneGeo, stoneMat);
+    stone.receiveShadow = true;
+    group.add(stone);
+
+    // Outer engraved golden compass ring
+    const ringGeo = new THREE.TorusGeometry(3.2, 0.05, 8, 32);
+    ringGeo.rotateX(Math.PI / 2);
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      metalness: 0.8,
+      roughness: 0.25,
+      emissive: 0xd97706,
+      emissiveIntensity: 0.3,
+    });
+    const ring = new THREE.Mesh(ringGeo, goldMat);
+    ring.position.y = 0.025;
+    group.add(ring);
+
+    // 4 Cardinal Star Points (North, East, South, West)
+    [0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2].forEach((rot) => {
+      const starPointGeo = new THREE.ConeGeometry(0.42, 2.8, 4);
+      starPointGeo.rotateX(Math.PI / 2);
+      starPointGeo.rotateY(Math.PI / 4);
+      const starPoint = new THREE.Mesh(starPointGeo, goldMat);
+      starPoint.rotation.y = rot;
+      starPoint.position.set(0, 0.025, 0);
+      group.add(starPoint);
+    });
+
+    // 4 Diagonal Minor Compass Pointers (Turquoise Jade stone)
+    const jadeMat = new THREE.MeshStandardMaterial({
+      color: 0x059669,
+      roughness: 0.4,
+      metalness: 0.3,
+      emissive: 0x059669,
+      emissiveIntensity: 0.2,
+    });
+    [Math.PI / 4, (Math.PI * 3) / 4, (Math.PI * 5) / 4, (Math.PI * 7) / 4].forEach((rot) => {
+      const diagPointGeo = new THREE.ConeGeometry(0.28, 1.8, 4);
+      diagPointGeo.rotateX(Math.PI / 2);
+      diagPointGeo.rotateY(Math.PI / 4);
+      const diagPoint = new THREE.Mesh(diagPointGeo, jadeMat);
+      diagPoint.rotation.y = rot;
+      diagPoint.position.set(0, 0.023, 0);
+      group.add(diagPoint);
+    });
+
+    // Center Golden Sun Core Medallion
+    const coreGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.05, 16);
+    const core = new THREE.Mesh(coreGeo, goldMat);
+    core.position.set(0, 0.03, 0);
+    group.add(core);
+
+    // Center radiant point glow
+    const coreGlow = new THREE.PointLight(0xfef08a, 0.8, 8);
+    coreGlow.position.set(0, 0.4, 0);
+    group.add(coreGlow);
+
+    return group;
+  }
+
+  private createWildflowersAndGrassTufts(parent: THREE.Group) {
+    const tuftMat = new THREE.MeshStandardMaterial({
+      color: 0x16a34a,
+      roughness: 0.6,
+      side: THREE.DoubleSide,
+    });
+
+    const flowerGoldMat = new THREE.MeshStandardMaterial({
+      color: 0xfacc15,
+      roughness: 0.4,
+      emissive: 0xf59e0b,
+      emissiveIntensity: 0.2,
+    });
+
+    const flowerWhiteMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.5,
+    });
+
+    const flowerPinkMat = new THREE.MeshStandardMaterial({
+      color: 0xf43f5e,
+      roughness: 0.4,
+      emissive: 0xe11d48,
+      emissiveIntensity: 0.2,
+    });
+
+    // Scatter 36 tufts and blossoms along perimeter radius (11.0m to 12.6m)
+    for (let i = 0; i < 36; i++) {
+      const angle = (i / 36) * Math.PI * 2 + Math.sin(i * 3) * 0.1;
+      const r = 11.2 + Math.abs(Math.sin(i * 7)) * 1.3;
+      const x = Math.cos(angle) * r;
+      const z = Math.sin(angle) * r;
+
+      const cluster = new THREE.Group();
+      cluster.position.set(x, 0, z);
+      cluster.rotation.y = Math.random() * Math.PI * 2;
+
+      // 3 Grass blades angled outward
+      for (let b = 0; b < 3; b++) {
+        const bladeGeo = new THREE.ConeGeometry(0.08, 0.38 + (b % 2) * 0.12, 4);
+        bladeGeo.rotateZ(0.25 - b * 0.25);
+        const blade = new THREE.Mesh(bladeGeo, tuftMat);
+        blade.position.set((b - 1) * 0.06, 0.18, 0);
+        cluster.add(blade);
+      }
+
+      // Add a flower blossom on every second cluster
+      if (i % 2 === 0) {
+        const mat = i % 6 === 0 ? flowerPinkMat : i % 4 === 0 ? flowerGoldMat : flowerWhiteMat;
+        const stemGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.25, 4);
+        const stem = new THREE.Mesh(stemGeo, tuftMat);
+        stem.position.set(0.05, 0.12, 0.05);
+        cluster.add(stem);
+
+        const blossomGeo = new THREE.SphereGeometry(0.08, 6, 6);
+        blossomGeo.scale(1.2, 0.5, 1.2);
+        const blossom = new THREE.Mesh(blossomGeo, mat);
+        blossom.position.set(0.05, 0.25, 0.05);
+        cluster.add(blossom);
+      }
+
+      parent.add(cluster);
+    }
   }
 
   private createArena() {
-    // Main circular arena slab
-    const cylinderGeo = new THREE.CylinderGeometry(this.initialRadius, this.initialRadius * 0.94, 1.2, 64);
-    const cylinderMat = new THREE.MeshStandardMaterial({
-      color: 0x18223c,
-      metalness: 0.5,
-      roughness: 0.2,
+    // 1. Rugged Coastal Island Cliff Base (Descends down into the turquoise ocean)
+    const cliffGeo = new THREE.CylinderGeometry(this.initialRadius, this.initialRadius * 0.78, 6.4, 48);
+    const cliffMat = new THREE.MeshStandardMaterial({
+      color: 0x544738, // Warm weathered limestone cliff rock
+      roughness: 0.88,
+      metalness: 0.05,
     });
-    const arena = new THREE.Mesh(cylinderGeo, cylinderMat);
-    arena.position.y = -0.6;
+    const cliff = new THREE.Mesh(cliffGeo, cliffMat);
+    cliff.position.y = -3.4;
+    cliff.receiveShadow = true;
+    this.arenaGroup.add(cliff);
+
+    // Upper Cliff Moss Lip Overhang
+    const mossRimGeo = new THREE.TorusGeometry(this.initialRadius, 0.35, 8, 64);
+    mossRimGeo.rotateX(Math.PI / 2);
+    const mossRimMat = new THREE.MeshStandardMaterial({
+      color: 0x1e3a1e, // Deep emerald cliff moss
+      roughness: 0.80,
+    });
+    const mossRim = new THREE.Mesh(mossRimGeo, mossRimMat);
+    mossRim.position.y = -0.25;
+    this.arenaGroup.add(mossRim);
+
+    // 2. Lush Stylized Grass Turf Lawn (Top Fighting Ground)
+    const grassTexture = this.createGrassTexture();
+    const turfGeo = new THREE.CylinderGeometry(this.initialRadius, this.initialRadius, 0.4, 64);
+    const turfMat = new THREE.MeshStandardMaterial({
+      map: grassTexture,
+      roughness: 0.65,
+      metalness: 0.04,
+    });
+    const arena = new THREE.Mesh(turfGeo, turfMat);
+    arena.position.y = -0.18;
     arena.receiveShadow = true;
 
-    // Glowing outer perimeter ring
-    const ringGeo = new THREE.TorusGeometry(this.initialRadius, 0.25, 16, 64);
+    // 3. Ancient Sun-Compass Center Emblem (Inlaid Gold & Jade Star)
+    this.sunCompassEmblem = this.createSunCompassEmblem();
+    this.arenaGroup.add(this.sunCompassEmblem);
+
+    // 4. Carved Ancient Limestone Perimeter Rim & Runes
+    const blockCount = 32;
+    const blockMat = new THREE.MeshStandardMaterial({
+      color: 0xcbd5e1, // Weathered limestone stone
+      roughness: 0.75,
+      metalness: 0.1,
+    });
+    for (let i = 0; i < blockCount; i++) {
+      const angle = (i / blockCount) * Math.PI * 2;
+      const bx = Math.cos(angle) * (this.initialRadius - 0.22);
+      const bz = Math.sin(angle) * (this.initialRadius - 0.22);
+
+      const blockGeo = new THREE.BoxGeometry(1.2, 0.16, 0.38);
+      const block = new THREE.Mesh(blockGeo, blockMat);
+      block.position.set(bx, 0.04, bz);
+      block.rotation.y = -angle;
+      this.arenaGroup.add(block);
+    }
+
+    // 5. Glowing Outer Perimeter Ring (Contracts & Warns when collapsing)
+    const ringGeo = new THREE.TorusGeometry(this.initialRadius, 0.22, 16, 64);
     ringGeo.rotateX(Math.PI / 2);
     const ringMat = new THREE.MeshStandardMaterial({
-      color: 0x00f5ff,
-      emissive: 0x00d5ff,
-      emissiveIntensity: 1.5,
+      color: 0x10b981, // Emerald green energy for Chapter 1
+      emissive: 0x059669,
+      emissiveIntensity: 1.4,
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.position.y = 0.05;
+    ring.position.y = 0.06;
 
-    // Center circular logo/target ring
-    const innerRingGeo = new THREE.RingGeometry(2.5, 2.7, 32);
-    innerRingGeo.rotateX(-Math.PI / 2);
-    const innerRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
-    const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
-    innerRing.position.y = 0.02;
-    this.arenaGroup.add(innerRing);
+    // 6. Sculpted 3D Grass Tufts & Wildflowers around the Outer Lawn
+    this.createWildflowersAndGrassTufts(this.arenaGroup);
 
     return { arena, ring };
   }
@@ -542,10 +994,12 @@ export class GameEngine {
     this.arenaGroup.scale.set(1, 1, 1);
 
     if (this.ringMesh && this.ringMesh.material) {
-      (this.ringMesh.material as THREE.MeshStandardMaterial).color.setHex(0x00f5ff);
-      (this.ringMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x00d5ff);
-      (this.ringMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.5;
+      (this.ringMesh.material as THREE.MeshStandardMaterial).color.setHex(0x10b981);
+      (this.ringMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x059669);
+      (this.ringMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.4;
     }
+
+    this.splashTriggered = { player: false, bot: false };
 
     this.player.pos.set(0, 0, 6);
     this.player.vel.set(0, 0, 0);
@@ -617,6 +1071,8 @@ export class GameEngine {
     this.animationId = requestAnimationFrame(this.loop);
     const dt = Math.min(this.clock.getDelta(), 0.05);
 
+    this.updateEnvironment(dt);
+
     if (!this.state.isPaused) {
       this.update(dt);
     }
@@ -624,6 +1080,75 @@ export class GameEngine {
     this.updateCamera(dt);
     this.renderer.render(this.scene, this.camera);
   };
+
+  private updateEnvironment(dt: number) {
+    // 1. Drifting Procedural Clouds across the tropical sky
+    this.clouds.forEach((cloud) => {
+      cloud.group.position.x += dt * cloud.speed;
+      if (cloud.group.position.x > 140) {
+        cloud.group.position.x = -140;
+      }
+    });
+
+    // 2. Concentric Ocean Wave Foam Rings around the island cliff base
+    this.oceanWaveRings.forEach((wave, idx) => {
+      const cycle = Math.sin(this.elapsedTime * 1.4 + idx * Math.PI);
+      const s = 1.0 + cycle * 0.08;
+      wave.scale.set(s, 1, s);
+      if (wave.material) {
+        (wave.material as THREE.MeshBasicMaterial).opacity = 0.3 + (cycle + 1) * 0.12;
+      }
+    });
+
+    // 3. Island Breeze Leaf & Pollen Particles floating in the wind
+    this.breezeParticles.forEach((leaf) => {
+      leaf.mesh.position.x += dt * leaf.speed;
+      leaf.mesh.position.y += Math.sin(this.elapsedTime * 2.4 + leaf.seed) * dt * 0.35;
+      leaf.mesh.rotation.y += dt * 1.6;
+      leaf.mesh.rotation.z += dt * 1.1;
+      if (leaf.mesh.position.x > 18) leaf.mesh.position.x = -18;
+    });
+
+    // 4. Subtle Sun Compass Center Medallion Sunlight Pulse
+    if (this.sunCompassEmblem) {
+      const sunPulse = 0.75 + Math.sin(this.elapsedTime * 2.2) * 0.25;
+      const light = this.sunCompassEmblem.children.find((c) => c instanceof THREE.PointLight) as THREE.PointLight | undefined;
+      if (light) light.intensity = sunPulse;
+    }
+  }
+
+  private spawnOceanSplash(x: number, z: number) {
+    // 1. Water droplets bursting upward
+    const dropGeo = new THREE.SphereGeometry(0.24, 6, 6);
+    const dropMat = new THREE.MeshBasicMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.9 });
+    for (let i = 0; i < 28; i++) {
+      const drop = new THREE.Mesh(dropGeo, dropMat);
+      drop.position.set(x + (Math.random() - 0.5) * 1.5, -6.2, z + (Math.random() - 0.5) * 1.5);
+      this.scene.add(drop);
+      const ang = Math.random() * Math.PI * 2;
+      const spd = 2.2 + Math.random() * 4.5;
+      this.particles.push({
+        mesh: drop,
+        life: 0,
+        maxLife: 0.9 + Math.random() * 0.4,
+        vel: new THREE.Vector3(Math.cos(ang) * spd, 8.5 + Math.random() * 5.5, Math.sin(ang) * spd),
+      });
+    }
+
+    // 2. Expanding white water foam ripple
+    const rippleGeo = new THREE.RingGeometry(0.8, 1.4, 24);
+    rippleGeo.rotateX(-Math.PI / 2);
+    const rippleMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+    const ripple = new THREE.Mesh(rippleGeo, rippleMat);
+    ripple.position.set(x, -6.35, z);
+    this.scene.add(ripple);
+    this.particles.push({
+      mesh: ripple,
+      life: 0,
+      maxLife: 1.2,
+      vel: new THREE.Vector3(0, 0, 0),
+    });
+  }
 
   private update(dt: number) {
     // 0. Match Countdown (3... 2... 1... FIGHT!)
@@ -649,9 +1174,9 @@ export class GameEngine {
         this.state.warningText = null;
         if (this.ringMesh && this.ringMesh.material) {
           const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
-          mat.color.setHex(0x00f5ff);
-          mat.emissive.setHex(0x00d5ff);
-          mat.emissiveIntensity = 1.5;
+          mat.color.setHex(0x10b981);
+          mat.emissive.setHex(0x059669);
+          mat.emissiveIntensity = 1.4;
         }
       }
       // Phase 2 (40s to 15s): Active collapse from 13.0m down to 6.0m
@@ -747,7 +1272,12 @@ export class GameEngine {
       const p = this.particles[i];
       p.life += dt;
       p.mesh.position.addScaledVector(p.vel, dt);
-      (p.mesh.material as THREE.MeshBasicMaterial).opacity = 1 - p.life / p.maxLife;
+      if (p.mesh.geometry instanceof THREE.RingGeometry) {
+        p.mesh.scale.addScalar(dt * 3.6);
+      } else if (p.mesh.position.y < 0) {
+        p.vel.y -= 22 * dt; // Gravity for water droplets
+      }
+      (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - p.life / p.maxLife);
       if (p.life >= p.maxLife) {
         this.scene.remove(p.mesh);
         this.particles.splice(i, 1);
@@ -984,6 +1514,13 @@ export class GameEngine {
         sounds.playFall();
       }
 
+      // Comic ocean splash when hitting turquoise water at y = -5.8
+      if (b.pos.y < -5.8 && !this.splashTriggered[b.isBot ? 'bot' : 'player']) {
+        this.splashTriggered[b.isBot ? 'bot' : 'player'] = true;
+        sounds.playSplash();
+        this.spawnOceanSplash(b.pos.x, b.pos.z);
+      }
+
       // Fully knocked out -> trigger round finish!
       if (b.pos.y < -12) {
         b.isKnockedOut = true;
@@ -1068,10 +1605,12 @@ export class GameEngine {
 
     if (this.ringMesh && this.ringMesh.material) {
       const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
-      mat.color.setHex(0x00f5ff);
-      mat.emissive.setHex(0x00d5ff);
-      mat.emissiveIntensity = 1.5;
+      mat.color.setHex(0x10b981);
+      mat.emissive.setHex(0x059669);
+      mat.emissiveIntensity = 1.4;
     }
+
+    this.splashTriggered = { player: false, bot: false };
 
     this.player.pos.set(0, 0, 6);
     this.player.vel.set(0, 0, 0);

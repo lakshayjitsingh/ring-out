@@ -247,57 +247,54 @@ function createLeoMesh(): CreatedChampion {
   });
 
   // ====================================================================
-  // 2. DENIM LEGS & SKATE HIGH-TOPS (Grounded Combat Hero Stance)
+  // 2. DENIM LEGS & SKATE HIGH-TOPS (Straight, Perfectly Vertical Stance)
   // ====================================================================
-  [-0.20, 0.20].forEach((xPos) => {
-    const isRight = xPos > 0;
+  [-0.18, 0.18].forEach((xPos) => {
     const legGroup = new THREE.Group();
     legGroup.position.set(xPos, 0, 0);
-    // Slight athletic outward stance
-    legGroup.rotation.z = isRight ? -0.04 : 0.04;
+    // 100% straight vertical alignment
     group.add(legGroup);
 
-    // Thigh with natural anatomical taper
-    const thighGeo = new THREE.CylinderGeometry(0.14, 0.125, 0.32, 14);
+    // Thigh with clean vertical taper
+    const thighGeo = new THREE.CylinderGeometry(0.13, 0.12, 0.32, 16);
     const thigh = new THREE.Mesh(thighGeo, denimMat);
     thigh.position.set(0, 0.56, 0);
     thigh.castShadow = true;
     legGroup.add(thigh);
 
     // Knee articulation
-    const kneeGeo = new THREE.BoxGeometry(0.22, 0.08, 0.24);
+    const kneeGeo = new THREE.BoxGeometry(0.20, 0.08, 0.22);
     const knee = new THREE.Mesh(kneeGeo, denimMat);
-    knee.position.set(0, 0.40, -0.01);
+    knee.position.set(0, 0.40, 0);
     legGroup.add(knee);
 
-    // Athletic calf
-    const calfGeo = new THREE.CylinderGeometry(0.12, 0.11, 0.22, 14);
+    // Straight calf
+    const calfGeo = new THREE.CylinderGeometry(0.12, 0.11, 0.22, 16);
     const calf = new THREE.Mesh(calfGeo, denimMat);
     calf.position.set(0, 0.28, 0);
     calf.castShadow = true;
     legGroup.add(calf);
 
     // Rolled-up cream denim cuffs
-    const cuffGeo = new THREE.TorusGeometry(0.12, 0.032, 8, 16);
+    const cuffGeo = new THREE.TorusGeometry(0.115, 0.03, 8, 16);
     cuffGeo.rotateX(Math.PI / 2);
     const cuff = new THREE.Mesh(cuffGeo, whiteClothMat);
     cuff.position.set(0, 0.18, 0);
     legGroup.add(cuff);
 
     // Bare athletic ankles
-    const ankleGeo = new THREE.CylinderGeometry(0.085, 0.085, 0.08, 12);
+    const ankleGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.08, 12);
     const ankle = new THREE.Mesh(ankleGeo, skinMat);
     ankle.position.set(0, 0.14, 0);
     legGroup.add(ankle);
 
-    // High-Top Skate Sneakers (Jordan/Dunk style)
+    // High-Top Skate Sneakers (Straight forward)
     const footGroup = new THREE.Group();
     footGroup.position.set(0, 0, 0);
-    footGroup.rotation.y = isRight ? 0.15 : -0.15;
     legGroup.add(footGroup);
 
     // Sneaker collar
-    const collarShoeGeo = new THREE.BoxGeometry(0.20, 0.15, 0.24);
+    const collarShoeGeo = new THREE.BoxGeometry(0.19, 0.15, 0.24);
     const collarShoe = new THREE.Mesh(collarShoeGeo, vestMat);
     collarShoe.position.set(0, 0.14, 0.03);
     footGroup.add(collarShoe);
@@ -315,13 +312,13 @@ function createLeoMesh(): CreatedChampion {
     footGroup.add(tonguePatch);
 
     // Shoe body
-    const shoeBodyGeo = new THREE.BoxGeometry(0.22, 0.12, 0.36);
+    const shoeBodyGeo = new THREE.BoxGeometry(0.21, 0.12, 0.36);
     const shoeBody = new THREE.Mesh(shoeBodyGeo, vestMat);
     shoeBody.position.set(0, 0.09, -0.05);
     footGroup.add(shoeBody);
 
     // Rubber toe bumper
-    const toeCapGeo = new THREE.SphereGeometry(0.11, 12, 12);
+    const toeCapGeo = new THREE.SphereGeometry(0.105, 12, 12);
     toeCapGeo.scale(1.0, 0.65, 0.85);
     const toeCap = new THREE.Mesh(toeCapGeo, whiteClothMat);
     toeCap.position.set(0, 0.08, -0.20);
@@ -329,14 +326,14 @@ function createLeoMesh(): CreatedChampion {
 
     // White shoe laces
     [-0.03, 0.01, 0.05].forEach((zOff, i) => {
-      const laceGeo = new THREE.BoxGeometry(0.12 - i * 0.015, 0.02, 0.025);
+      const laceGeo = new THREE.BoxGeometry(0.11 - i * 0.015, 0.02, 0.025);
       const lace = new THREE.Mesh(laceGeo, whiteClothMat);
       lace.position.set(0, 0.135 - i * 0.018, -0.04 + zOff);
       footGroup.add(lace);
     });
 
     // Side racing swoosh
-    [-0.115, 0.115].forEach((xSide) => {
+    [-0.11, 0.11].forEach((xSide) => {
       const stripeGeo = new THREE.BoxGeometry(0.018, 0.045, 0.18);
       const stripe = new THREE.Mesh(stripeGeo, whiteClothMat);
       stripe.position.set(xSide, 0.09, 0.02);
@@ -344,19 +341,19 @@ function createLeoMesh(): CreatedChampion {
     });
 
     // White rubber midsole
-    const midsoleGeo = new THREE.BoxGeometry(0.24, 0.055, 0.42);
+    const midsoleGeo = new THREE.BoxGeometry(0.23, 0.055, 0.42);
     const midsole = new THREE.Mesh(midsoleGeo, whiteClothMat);
     midsole.position.set(0, 0.035, -0.05);
     footGroup.add(midsole);
 
     // Dark rubber bottom outsole
-    const outsoleGeo = new THREE.BoxGeometry(0.24, 0.018, 0.42);
+    const outsoleGeo = new THREE.BoxGeometry(0.23, 0.018, 0.42);
     const outsole = new THREE.Mesh(outsoleGeo, soleDarkMat);
     outsole.position.set(0, 0.01, -0.05);
     footGroup.add(outsole);
 
     // Glowing green heel reflector
-    const heelReflectorGeo = new THREE.BoxGeometry(0.13, 0.035, 0.025);
+    const heelReflectorGeo = new THREE.BoxGeometry(0.12, 0.035, 0.025);
     const heelReflector = new THREE.Mesh(heelReflectorGeo, emeraldGlowMat);
     heelReflector.position.set(0, 0.085, 0.155);
     footGroup.add(heelReflector);
@@ -364,37 +361,45 @@ function createLeoMesh(): CreatedChampion {
   });
 
   // ====================================================================
-  // 3. ATHLETIC V-TAPER TORSO & LAYERED ISLAND SCOUT VEST
+  // 3. ATHLETIC TORSO & ALL-AROUND EMERALD VEST (No White Side Boxes!)
   // ====================================================================
-  // White cotton tee: Chest & Abdomen V-taper
-  const chestGeo = new THREE.BoxGeometry(0.66, 0.38, 0.38);
+  // Inner white cotton tee (narrowed so it only shows through front opening)
+  const chestGeo = new THREE.BoxGeometry(0.50, 0.38, 0.32);
   const chest = new THREE.Mesh(chestGeo, whiteClothMat);
-  chest.position.set(0, 1.20, 0);
+  chest.position.set(0, 1.20, -0.02);
   chest.castShadow = true;
   group.add(chest);
 
-  const waistGeo = new THREE.BoxGeometry(0.58, 0.22, 0.34);
+  const waistGeo = new THREE.BoxGeometry(0.48, 0.22, 0.30);
   const waist = new THREE.Mesh(waistGeo, whiteClothMat);
-  waist.position.set(0, 0.98, 0);
+  waist.position.set(0, 0.98, -0.02);
   group.add(waist);
 
-  // White crewneck ribbed collar
-  const crewneckGeo = new THREE.TorusGeometry(0.15, 0.028, 8, 16);
+  // White crewneck collar
+  const crewneckGeo = new THREE.TorusGeometry(0.14, 0.026, 8, 16);
   crewneckGeo.rotateX(Math.PI / 2);
   const crewneck = new THREE.Mesh(crewneckGeo, whiteClothMat);
   crewneck.position.set(0, 1.40, -0.02);
   group.add(crewneck);
 
-  // Open Emerald Vest: Back panel
-  const vestBackGeo = new THREE.BoxGeometry(0.68, 0.50, 0.16);
+  // Emerald Vest: Back panel (Green)
+  const vestBackGeo = new THREE.BoxGeometry(0.66, 0.50, 0.16);
   const vestBack = new THREE.Mesh(vestBackGeo, vestMat);
   vestBack.position.set(0, 1.16, 0.12);
   group.add(vestBack);
 
-  // Open Emerald Vest: Left & Right front panels with folded lapels
+  // Emerald Vest: Left & Right Side Wrap Panels (100% Green on Flanks!)
+  [-0.32, 0.32].forEach((xSide) => {
+    const sidePanelGeo = new THREE.BoxGeometry(0.06, 0.50, 0.38);
+    const sidePanel = new THREE.Mesh(sidePanelGeo, vestMat);
+    sidePanel.position.set(xSide, 1.16, 0.01);
+    group.add(sidePanel);
+  });
+
+  // Emerald Vest: Left & Right front panels with folded lapels
   [-0.23, 0.23].forEach((xSide) => {
     const isRight = xSide > 0;
-    const frontPanelGeo = new THREE.BoxGeometry(0.20, 0.50, 0.28);
+    const frontPanelGeo = new THREE.BoxGeometry(0.18, 0.50, 0.26);
     const frontPanel = new THREE.Mesh(frontPanelGeo, vestMat);
     frontPanel.position.set(xSide, 1.16, -0.07);
     group.add(frontPanel);
@@ -402,218 +407,124 @@ function createLeoMesh(): CreatedChampion {
     // Zipper track down lapel inner edge
     const zipGeo = new THREE.BoxGeometry(0.018, 0.44, 0.025);
     const zip = new THREE.Mesh(zipGeo, goldMat);
-    zip.position.set(isRight ? xSide - 0.10 : xSide + 0.10, 1.16, -0.21);
+    zip.position.set(isRight ? xSide - 0.09 : xSide + 0.09, 1.16, -0.20);
     group.add(zip);
 
     // Flap utility chest pockets
-    const pocketGeo = new THREE.BoxGeometry(0.14, 0.11, 0.04);
+    const pocketGeo = new THREE.BoxGeometry(0.13, 0.11, 0.04);
     const pocket = new THREE.Mesh(pocketGeo, vestDarkMat);
-    pocket.position.set(xSide, 1.08, -0.225);
+    pocket.position.set(xSide, 1.08, -0.215);
     group.add(pocket);
 
     const pocketSnapGeo = new THREE.SphereGeometry(0.018, 6, 6);
     const pocketSnap = new THREE.Mesh(pocketSnapGeo, goldMat);
-    pocketSnap.position.set(xSide, 1.12, -0.25);
+    pocketSnap.position.set(xSide, 1.12, -0.24);
     group.add(pocketSnap);
   });
 
   // Vest stand-up collar framing the neck
-  const vestCollarGeo = new THREE.CylinderGeometry(0.21, 0.23, 0.12, 16, 1, true, -Math.PI * 0.75, Math.PI * 1.5);
+  const vestCollarGeo = new THREE.CylinderGeometry(0.20, 0.22, 0.12, 16, 1, true, -Math.PI * 0.75, Math.PI * 1.5);
   const vestCollar = new THREE.Mesh(vestCollarGeo, vestDarkMat);
   vestCollar.position.set(0, 1.42, 0.02);
   group.add(vestCollar);
 
   // Leather neck necklace cord
-  const cordGeo = new THREE.TorusGeometry(0.16, 0.012, 6, 16, Math.PI);
+  const cordGeo = new THREE.TorusGeometry(0.15, 0.012, 6, 16, Math.PI);
   cordGeo.rotateX(Math.PI / 2 + 0.25);
   const cord = new THREE.Mesh(cordGeo, leatherMat);
-  cord.position.set(0, 1.32, -0.14);
+  cord.position.set(0, 1.32, -0.13);
   group.add(cord);
 
   // Golden Island Compass Medallion
   const coreGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.04, 16);
   coreGeo.rotateX(Math.PI / 2);
   const core = new THREE.Mesh(coreGeo, goldMat);
-  core.position.set(0, 1.20, -0.21);
+  core.position.set(0, 1.20, -0.20);
   group.add(core);
 
   // Glowing 4-point compass star core
   const starGeo = new THREE.RingGeometry(0.025, 0.07, 4);
   const star = new THREE.Mesh(starGeo, goldGlowMat);
-  star.position.set(0, 1.20, -0.235);
+  star.position.set(0, 1.20, -0.225);
   group.add(star);
   accentMeshes.push(star);
 
   // ====================================================================
-  // 4. ANATOMICAL HEAD & VIBRANT HERO BRAWLER SCULPT
+  // 4. CLEAN, SMOOTH HUMAN HEAD SCULPT (No Stepped Boxes!)
   // ====================================================================
-  // Athletic Neck with Adam's apple
-  const neckGeo = new THREE.CylinderGeometry(0.12, 0.145, 0.20, 16);
+  // Smooth athletic neck
+  const neckGeo = new THREE.CylinderGeometry(0.12, 0.14, 0.20, 20);
   const neck = new THREE.Mesh(neckGeo, skinMat);
   neck.position.set(0, 1.46, -0.02);
   neck.castShadow = true;
   group.add(neck);
 
-  const adamsAppleGeo = new THREE.SphereGeometry(0.022, 6, 6);
-  adamsAppleGeo.scale(1.0, 1.2, 0.7);
-  const adamsApple = new THREE.Mesh(adamsAppleGeo, skinMat);
-  adamsApple.position.set(0, 1.46, -0.14);
-  group.add(adamsApple);
+  // Unified Primary Head Sculpt: Smooth stylized human cranium & face
+  const headGeo = new THREE.SphereGeometry(0.28, 32, 28);
+  headGeo.scale(0.96, 1.10, 1.0); // Natural stylized anime/human proportion
+  const headMesh = new THREE.Mesh(headGeo, skinMat);
+  headMesh.position.set(0, 1.72, 0);
+  headMesh.castShadow = true;
+  group.add(headMesh);
 
-  // Cranium Dome (sits back in skull, leaving face clear)
-  const craniumGeo = new THREE.SphereGeometry(0.28, 24, 20);
-  const cranium = new THREE.Mesh(craniumGeo, skinMat);
-  cranium.position.set(0, 1.74, 0.03);
-  cranium.castShadow = true;
-  group.add(cranium);
-
-  // Midface / Cheeks / Brow structure
-  const midfaceGeo = new THREE.BoxGeometry(0.40, 0.20, 0.22);
-  const midface = new THREE.Mesh(midfaceGeo, skinMat);
-  midface.position.set(0, 1.71, -0.09);
-  midface.castShadow = true;
-  group.add(midface);
-
-  // Cheeks flush & warmth
-  [-0.15, 0.15].forEach((xSide) => {
-    const cheekGeo = new THREE.SphereGeometry(0.07, 10, 10);
-    cheekGeo.scale(1.0, 0.8, 0.7);
-    const cheek = new THREE.Mesh(cheekGeo, skinMat);
-    cheek.position.set(xSide, 1.66, -0.16);
-    group.add(cheek);
-  });
-
-  // Chiseled V-Taper Mandible & Jawline (clean hero silhouette)
-  const jawGeo = new THREE.BoxGeometry(0.34, 0.15, 0.20);
+  // Smooth tapered jaw contour seamlessly integrated into the head
+  const jawGeo = new THREE.CylinderGeometry(0.22, 0.13, 0.18, 32);
+  jawGeo.scale(1.0, 1.0, 0.85);
   const jaw = new THREE.Mesh(jawGeo, skinMat);
-  jaw.position.set(0, 1.61, -0.08);
+  jaw.position.set(0, 1.61, -0.02);
   group.add(jaw);
 
-  // Rounded Athletic Chin
-  const chinGeo = new THREE.BoxGeometry(0.14, 0.08, 0.10);
+  // Soft rounded chin
+  const chinGeo = new THREE.SphereGeometry(0.075, 16, 16);
+  chinGeo.scale(1.1, 0.8, 0.9);
   const chin = new THREE.Mesh(chinGeo, skinMat);
-  chin.position.set(0, 1.54, -0.16);
+  chin.position.set(0, 1.53, -0.08);
   group.add(chin);
 
-  // Sculpted Ears
-  [-0.28, 0.28].forEach((xSide) => {
+  // Sculpted Ears on sides
+  [-0.275, 0.275].forEach((xSide) => {
     const isRight = xSide > 0;
-    const earGroup = new THREE.Group();
-    earGroup.position.set(xSide, 1.68, -0.02);
-    earGroup.rotation.y = isRight ? 0.15 : -0.15;
-
-    const earGeo = new THREE.SphereGeometry(0.065, 10, 10);
+    const earGeo = new THREE.SphereGeometry(0.065, 12, 12);
     earGeo.scale(0.35, 1.25, 0.75);
     const ear = new THREE.Mesh(earGeo, skinMat);
-    earGroup.add(ear);
-
-    const innerEarGeo = new THREE.SphereGeometry(0.038, 6, 6);
-    innerEarGeo.scale(0.2, 0.8, 0.5);
-    const innerEar = new THREE.Mesh(innerEarGeo, hairMat);
-    innerEar.position.set(isRight ? -0.012 : 0.012, 0.01, 0.01);
-    earGroup.add(innerEar);
-
-    group.add(earGroup);
+    ear.position.set(xSide, 1.70, -0.01);
+    ear.rotation.y = isRight ? 0.12 : -0.12;
+    group.add(ear);
   });
 
   // ====================================================================
-  // 5. EXPRESSIVE HERO BRAWLER FACE (Almond Anime Eyes, Smirk, Nose)
+  // 5. FULL REAR & SIDES HAIR (Chestnut Hair Strictly on Back z >= 0)
   // ====================================================================
-  // Left & Right Almond-Shaped Brawler Eyes
-  [-0.115, 0.115].forEach((xPos) => {
-    const isRight = xPos > 0;
+  // Rear Hair Dome (phi: 0 to PI strictly covers the rear hemisphere z >= 0)
+  const backHairGeo = new THREE.SphereGeometry(0.288, 24, 20, 0, Math.PI, 0, Math.PI);
+  const backHair = new THREE.Mesh(backHairGeo, hairMat);
+  backHair.position.set(0, 1.72, 0.005);
+  group.add(backHair);
 
-    // Sclera (White eye backing with natural almond tilt)
-    const scleraGeo = new THREE.SphereGeometry(0.068, 14, 14);
-    scleraGeo.scale(1.15, 0.95, 0.35);
-    const sclera = new THREE.Mesh(scleraGeo, eyeWhiteMat);
-    sclera.position.set(xPos, 1.71, -0.205);
-    group.add(sclera);
-
-    // Bold Dark Upper Eyelash Contour (Sharp hero gaze)
-    const upperLidGeo = new THREE.BoxGeometry(0.13, 0.030, 0.04);
-    upperLidGeo.rotateZ(isRight ? -0.18 : 0.18);
-    const upperLid = new THREE.Mesh(upperLidGeo, hairMat);
-    upperLid.position.set(xPos, 1.775, -0.215);
-    group.add(upperLid);
-
-    // Radiant Ocean Azure Iris (Large & expressive)
-    const irisGeo = new THREE.SphereGeometry(0.046, 14, 14);
-    irisGeo.scale(1.0, 1.10, 0.28);
-    const iris = new THREE.Mesh(irisGeo, eyeIrisMat);
-    iris.position.set(xPos + (isRight ? -0.006 : 0.006), 1.705, -0.222);
-    group.add(iris);
-
-    // Deep Dark Pupil
-    const pupilGeo = new THREE.SphereGeometry(0.026, 10, 10);
-    pupilGeo.scale(1.0, 1.10, 0.25);
-    const pupil = new THREE.Mesh(pupilGeo, eyePupilMat);
-    pupil.position.set(xPos + (isRight ? -0.006 : 0.006), 1.705, -0.232);
-    group.add(pupil);
-
-    // Dual Specular Anime Sparkles
-    const shineMainGeo = new THREE.SphereGeometry(0.016, 6, 6);
-    const shineMain = new THREE.Mesh(shineMainGeo, eyeShineMat);
-    shineMain.position.set(xPos - 0.015, 1.73, -0.238);
-    group.add(shineMain);
-
-    const shineSubGeo = new THREE.SphereGeometry(0.008, 4, 4);
-    const shineSub = new THREE.Mesh(shineSubGeo, eyeShineMat);
-    shineSub.position.set(xPos + 0.010, 1.685, -0.238);
-    group.add(shineSub);
-
-    // Expressive Confident Eyebrows (Slanted determined slant)
-    const browGeo = new THREE.BoxGeometry(0.13, 0.038, 0.05);
-    browGeo.rotateZ(isRight ? -0.24 : 0.24);
-    const brow = new THREE.Mesh(browGeo, hairMat);
-    brow.position.set(xPos, 1.80, -0.205);
-    group.add(brow);
+  // Sculpted layered hair locks at the rear neckline / nape
+  [-0.14, -0.07, 0, 0.07, 0.14].forEach((xOff, i) => {
+    const lockGeo = new THREE.ConeGeometry(0.045, 0.18, 6);
+    lockGeo.rotateX(-0.32);
+    lockGeo.rotateZ((i - 2) * 0.12);
+    const lock = new THREE.Mesh(lockGeo, hairMat);
+    lock.position.set(xOff, 1.56, 0.15);
+    group.add(lock);
   });
 
-  // Chiseled Stylized Anime Nose
-  const noseBridgeGeo = new THREE.BoxGeometry(0.032, 0.08, 0.06);
-  noseBridgeGeo.rotateX(0.14);
-  const noseBridge = new THREE.Mesh(noseBridgeGeo, skinMat);
-  noseBridge.position.set(0, 1.66, -0.21);
-  group.add(noseBridge);
+  // Sideburns framing the cheeks in front of ears
+  [-0.27, 0.27].forEach((xSide) => {
+    const sideburnGeo = new THREE.BoxGeometry(0.04, 0.15, 0.08);
+    const sideburn = new THREE.Mesh(sideburnGeo, hairMat);
+    sideburn.position.set(xSide, 1.70, -0.08);
+    group.add(sideburn);
+  });
 
-  const noseTipGeo = new THREE.SphereGeometry(0.032, 8, 8);
-  noseTipGeo.scale(1.1, 0.85, 1.0);
-  const noseTip = new THREE.Mesh(noseTipGeo, skinMat);
-  noseTip.position.set(0, 1.625, -0.245);
-  group.add(noseTip);
-
-  // Confident One-Sided Brawler Grin / Smirk
-  const mouthGroup = new THREE.Group();
-  mouthGroup.position.set(0.01, 1.56, -0.205);
-  mouthGroup.rotation.z = 0.07; // Playful brawler smirk
-
-  const mouthBackGeo = new THREE.BoxGeometry(0.11, 0.038, 0.025);
-  const mouthBack = new THREE.Mesh(mouthBackGeo, mouthMat);
-  mouthGroup.add(mouthBack);
-
-  const teethGeo = new THREE.BoxGeometry(0.09, 0.018, 0.02);
-  const teeth = new THREE.Mesh(teethGeo, teethMat);
-  teeth.position.set(0, 0.010, -0.010);
-  mouthGroup.add(teeth);
-
-  const lowerLipGeo = new THREE.BoxGeometry(0.08, 0.014, 0.015);
-  const lowerLip = new THREE.Mesh(lowerLipGeo, skinMat);
-  lowerLip.position.set(0, -0.018, -0.008);
-  mouthGroup.add(lowerLip);
-
-  group.add(mouthGroup);
-
-  // ====================================================================
-  // 6. VOLUMINOUS HAIR & BACKWARDS SNAPBACK CAP
-  // ====================================================================
-  // Spiky bangs spilling naturally out over forehead under the cap rim
+  // Natural spiky bangs sweeping across the forehead
   const hairBangs = [
-    { x: -0.16, y: 1.83, z: -0.21, rz: 0.38, len: 0.16, r: 0.045 },
-    { x: -0.08, y: 1.84, z: -0.22, rz: 0.18, len: 0.18, r: 0.050 },
-    { x: 0.02, y: 1.84, z: -0.22, rz: -0.12, len: 0.17, r: 0.048 },
-    { x: 0.12, y: 1.83, z: -0.21, rz: -0.32, len: 0.15, r: 0.042 },
-    { x: 0.18, y: 1.81, z: -0.19, rz: -0.50, len: 0.13, r: 0.038 },
+    { x: -0.14, y: 1.83, z: -0.26, rz: 0.35, len: 0.14, r: 0.040 },
+    { x: -0.06, y: 1.84, z: -0.27, rz: 0.15, len: 0.16, r: 0.044 },
+    { x: 0.03, y: 1.84, z: -0.27, rz: -0.15, len: 0.15, r: 0.042 },
+    { x: 0.12, y: 1.83, z: -0.26, rz: -0.32, len: 0.14, r: 0.038 },
   ];
   hairBangs.forEach((b) => {
     const bangGeo = new THREE.ConeGeometry(b.r, b.len, 5);
@@ -624,80 +535,146 @@ function createLeoMesh(): CreatedChampion {
     group.add(bang);
   });
 
-  // Tapered Sideburns framing cheeks in front of ears
-  [-0.26, 0.26].forEach((xSide) => {
-    const sideburnGeo = new THREE.BoxGeometry(0.045, 0.15, 0.10);
-    const sideburn = new THREE.Mesh(sideburnGeo, hairMat);
-    sideburn.position.set(xSide, 1.70, -0.10);
-    group.add(sideburn);
-  });
-
-  // Back of neck hair locks curling out under the backwards cap brim
-  const napeHairGeo = new THREE.BoxGeometry(0.28, 0.12, 0.10);
-  const napeHair = new THREE.Mesh(napeHairGeo, hairMat);
-  napeHair.position.set(0, 1.58, 0.12);
-  group.add(napeHair);
-
-  // Dedicated Backwards Snapback Cap (Tilted back at a stylish angle)
+  // ====================================================================
+  // 6. BACKWARDS SNAPBACK CAP WITH SLEEK FLAT EMBROIDERY
+  // ====================================================================
   const capGroup = new THREE.Group();
-  capGroup.position.set(0, 1.82, 0.03);
-  capGroup.rotation.x = -0.32; // Tilted backwards to reveal face & spiky bangs
+  capGroup.position.set(0, 1.84, 0.03);
+  capGroup.rotation.x = -0.20; // Tilted backward naturally
   group.add(capGroup);
 
-  // Cap Crown Dome (half sphere fitted over crown)
-  const capDomeGeo = new THREE.SphereGeometry(0.31, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.50);
+  // Cap Crown Dome (covers top of skull down to forehead band)
+  const capDomeGeo = new THREE.SphereGeometry(0.298, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.44);
   const capDome = new THREE.Mesh(capDomeGeo, vestMat);
   capDome.castShadow = true;
   capGroup.add(capDome);
 
-  // Cap Sweatband Rim Ring
-  const capRimGeo = new THREE.TorusGeometry(0.305, 0.022, 8, 28);
+  // Sweatband Rim Ring
+  const capRimGeo = new THREE.TorusGeometry(0.295, 0.020, 10, 28);
   capRimGeo.rotateX(Math.PI / 2);
   const capRim = new THREE.Mesh(capRimGeo, vestDarkMat);
-  capRim.position.set(0, 0, 0);
   capGroup.add(capRim);
 
-  // Seam ridges
-  [0, Math.PI / 3, (Math.PI * 2) / 3].forEach((angle) => {
-    const seamGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.31, 4);
-    seamGeo.rotateZ(Math.PI / 2);
-    seamGeo.rotateY(angle);
-    const seam = new THREE.Mesh(seamGeo, vestDarkMat);
-    seam.position.set(0, 0.16, 0);
-    capGroup.add(seam);
-  });
-
-  // Top Golden Button
-  const capButtonGeo = new THREE.SphereGeometry(0.038, 8, 8);
-  const capButton = new THREE.Mesh(capButtonGeo, goldMat);
-  capButton.position.set(0, 0.315, 0);
-  capGroup.add(capButton);
-
-  // Front Embroidered Twill Patch (facing front above forehead)
-  const patchGeo = new THREE.BoxGeometry(0.18, 0.11, 0.035);
-  patchGeo.rotateX(-0.12);
-  const patch = new THREE.Mesh(patchGeo, whiteClothMat);
-  patch.position.set(0, 0.14, -0.285);
-  capGroup.add(patch);
-
-  // Golden Island Compass Star Emblem
-  const emblemGeo = new THREE.SphereGeometry(0.030, 8, 8);
-  const emblem = new THREE.Mesh(emblemGeo, goldMat);
-  emblem.position.set(0, 0.14, -0.305);
-  capGroup.add(emblem);
-
-  // Backwards Visor Brim (pointing backward with snapback bill curve)
-  const visorGeo = new THREE.BoxGeometry(0.30, 0.028, 0.24);
+  // Backwards Visor Brim (extending backward over the rear hair)
+  const visorGeo = new THREE.BoxGeometry(0.28, 0.024, 0.22);
   visorGeo.rotateX(0.12);
   const visor = new THREE.Mesh(visorGeo, vestDarkMat);
-  visor.position.set(0, 0.02, 0.30);
+  visor.position.set(0, 0.02, 0.28);
   capGroup.add(visor);
 
-  // Plastic Snapback Adjuster Strap
-  const strapGeo = new THREE.BoxGeometry(0.16, 0.035, 0.02);
+  // Top Golden Button
+  const capButtonGeo = new THREE.SphereGeometry(0.034, 8, 8);
+  const capButton = new THREE.Mesh(capButtonGeo, goldMat);
+  capButton.position.set(0, 0.305, 0);
+  capGroup.add(capButton);
+
+  // Sleek Flat Embroidered Patch (circular, sits flush on cap)
+  const patchGeo = new THREE.CylinderGeometry(0.060, 0.060, 0.008, 16);
+  patchGeo.rotateX(-Math.PI / 2 + 0.20);
+  const patch = new THREE.Mesh(patchGeo, whiteClothMat);
+  patch.position.set(0, 0.14, -0.275);
+  capGroup.add(patch);
+
+  // Golden Island Compass Star Emblem on patch
+  const emblemGeo = new THREE.RingGeometry(0.012, 0.038, 4);
+  emblemGeo.rotateX(-0.20);
+  const emblem = new THREE.Mesh(emblemGeo, goldGlowMat);
+  emblem.position.set(0, 0.14, -0.282);
+  capGroup.add(emblem);
+
+  // Plastic Snapback Adjuster Strap at front
+  const strapGeo = new THREE.BoxGeometry(0.14, 0.030, 0.018);
   const strap = new THREE.Mesh(strapGeo, vestDarkMat);
-  strap.position.set(0, 0.03, 0.17);
+  strap.position.set(0, 0.03, 0.16);
   capGroup.add(strap);
+
+  // ====================================================================
+  // 7. CLEAN EXPRESSIVE FACE (Almond Anime Eyes, Nose, Smile)
+  // ====================================================================
+  // Left & Right Almond-Shaped Eyes (Placed cleanly on front of face)
+  [-0.110, 0.110].forEach((xPos) => {
+    const isRight = xPos > 0;
+
+    // Sclera (White eye background)
+    const scleraGeo = new THREE.SphereGeometry(0.062, 16, 16);
+    scleraGeo.scale(1.15, 0.90, 0.28);
+    const sclera = new THREE.Mesh(scleraGeo, eyeWhiteMat);
+    sclera.position.set(xPos, 1.71, -0.265);
+    group.add(sclera);
+
+    // Bold Dark Upper Eyelash Contour (Sharp hero gaze)
+    const upperLidGeo = new THREE.BoxGeometry(0.120, 0.026, 0.04);
+    upperLidGeo.rotateZ(isRight ? -0.16 : 0.16);
+    const upperLid = new THREE.Mesh(upperLidGeo, hairMat);
+    upperLid.position.set(xPos, 1.77, -0.274);
+    group.add(upperLid);
+
+    // Radiant Ocean Azure Iris
+    const irisGeo = new THREE.SphereGeometry(0.042, 14, 14);
+    irisGeo.scale(1.0, 1.08, 0.25);
+    const iris = new THREE.Mesh(irisGeo, eyeIrisMat);
+    iris.position.set(xPos + (isRight ? -0.005 : 0.005), 1.705, -0.272);
+    group.add(iris);
+
+    // Deep Dark Pupil
+    const pupilGeo = new THREE.SphereGeometry(0.024, 10, 10);
+    pupilGeo.scale(1.0, 1.08, 0.22);
+    const pupil = new THREE.Mesh(pupilGeo, eyePupilMat);
+    pupil.position.set(xPos + (isRight ? -0.005 : 0.005), 1.705, -0.280);
+    group.add(pupil);
+
+    // Specular Anime Highlights
+    const shineMainGeo = new THREE.SphereGeometry(0.014, 6, 6);
+    const shineMain = new THREE.Mesh(shineMainGeo, eyeShineMat);
+    shineMain.position.set(xPos - 0.013, 1.73, -0.285);
+    group.add(shineMain);
+
+    const shineSubGeo = new THREE.SphereGeometry(0.007, 4, 4);
+    const shineSub = new THREE.Mesh(shineSubGeo, eyeShineMat);
+    shineSub.position.set(xPos + 0.009, 1.685, -0.285);
+    group.add(shineSub);
+
+    // Expressive Confident Eyebrows
+    const browGeo = new THREE.BoxGeometry(0.120, 0.034, 0.045);
+    browGeo.rotateZ(isRight ? -0.22 : 0.22);
+    const brow = new THREE.Mesh(browGeo, hairMat);
+    brow.position.set(xPos, 1.795, -0.258);
+    group.add(brow);
+  });
+
+  // Smooth Stylized Anime Nose
+  const noseBridgeGeo = new THREE.BoxGeometry(0.028, 0.070, 0.05);
+  noseBridgeGeo.rotateX(0.14);
+  const noseBridge = new THREE.Mesh(noseBridgeGeo, skinMat);
+  noseBridge.position.set(0, 1.66, -0.270);
+  group.add(noseBridge);
+
+  const noseTipGeo = new THREE.SphereGeometry(0.028, 10, 10);
+  noseTipGeo.scale(1.1, 0.85, 1.0);
+  const noseTip = new THREE.Mesh(noseTipGeo, skinMat);
+  noseTip.position.set(0, 1.625, -0.295);
+  group.add(noseTip);
+
+  // Confident Brawler Smile / Smirk
+  const mouthGroup = new THREE.Group();
+  mouthGroup.position.set(0.01, 1.56, -0.225);
+  mouthGroup.rotation.z = 0.06;
+
+  const mouthBackGeo = new THREE.BoxGeometry(0.10, 0.034, 0.025);
+  const mouthBack = new THREE.Mesh(mouthBackGeo, mouthMat);
+  mouthGroup.add(mouthBack);
+
+  const teethGeo = new THREE.BoxGeometry(0.085, 0.016, 0.02);
+  const teeth = new THREE.Mesh(teethGeo, teethMat);
+  teeth.position.set(0, 0.009, -0.010);
+  mouthGroup.add(teeth);
+
+  const lowerLipGeo = new THREE.BoxGeometry(0.075, 0.012, 0.015);
+  const lowerLip = new THREE.Mesh(lowerLipGeo, skinMat);
+  lowerLip.position.set(0, -0.015, -0.008);
+  mouthGroup.add(lowerLip);
+
+  group.add(mouthGroup);
 
   // ====================================================================
   // 7. DYNAMIC ARMS & CLENCHED BRAWLER GUARD (Heroic Stance)

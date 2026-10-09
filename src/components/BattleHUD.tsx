@@ -18,7 +18,7 @@ interface BattleHUDProps {
 
 export const BattleHUD: React.FC<BattleHUDProps> = ({
   state,
-  selectedChampion = 'kai',
+  selectedChampion = 'leo',
   onOpenShowcase,
   onDash,
   onAimChange,

@@ -1,98 +1,85 @@
 import * as THREE from 'three';
 
-export type ChampionId = 'kai' | 'nova' | 'titan' | 'kage' | 'bolt';
+export type ChampionId = 'leo' | 'kai' | 'nova' | 'titan' | 'kage' | 'bolt';
 
 export interface ChampionInfo {
   id: ChampionId;
   name: string;
   title: string;
-  archetype: 'Striker' | 'Agile Duelist' | 'Juggernaut' | 'Shadow Assassin' | 'Beast Scout';
+  archetype: string;
+  chapter: string;
   color: string;
   glowColor: number;
   tagline: string;
   description: string;
-  stats: {
-    impactForce: string; // purely visual flavor
-    balanceRating: string;
-    dashOverdrive: string;
-  };
 }
 
 export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
+  leo: {
+    id: 'leo',
+    name: 'Leo',
+    title: 'Island Scout',
+    archetype: 'Human Brawler',
+    chapter: 'Chapter 1: Emerald Isles',
+    color: '#10b981',
+    glowColor: 0x10b981,
+    tagline: 'Backwards cap, island scout vest, confident smile.',
+    description: 'An adventurous human brawler from the coastal shores. Armed with quick reflexes, a golden compass medallion, and punchy skate kicks.',
+  },
   kai: {
     id: 'kai',
     name: 'Kai',
     title: 'Neon Vanguard',
-    archetype: 'Striker',
+    archetype: 'Cyber Striker',
+    chapter: 'Original Fighter',
     color: '#00f5ff',
     glowColor: 0x00f5ff,
     tagline: 'Precision timing, street style, unstoppable momentum.',
     description: 'Armed with high-frequency kinetic headphones and a reactive cyber-jacket, Kai commands the center ring with sharp reflexes.',
-    stats: {
-      impactForce: '★★★★☆',
-      balanceRating: '★★★★☆',
-      dashOverdrive: '★★★★★',
-    },
   },
   nova: {
     id: 'nova',
     name: 'Nova',
     title: 'Plasma Valkyrie',
     archetype: 'Agile Duelist',
+    chapter: 'Orbital Arena',
     color: '#f43f5e',
     glowColor: 0xf43f5e,
     tagline: 'Twin plasma antennae. Razor-sharp ring recovery.',
     description: 'A champion from the neon orbital circuit. Her high-voltage magenta conduits and lightweight alloy suit make her dashes lethal.',
-    stats: {
-      impactForce: '★★★☆☆',
-      balanceRating: '★★★★★',
-      dashOverdrive: '★★★★★',
-    },
   },
   titan: {
     id: 'titan',
     name: 'Titan (Gorr)',
     title: 'Heavy Juggernaut',
-    archetype: 'Juggernaut',
+    archetype: 'Iron Juggernaut',
+    chapter: 'Industrial Works',
     color: '#f59e0b',
     glowColor: 0xf59e0b,
     tagline: 'Heavy hydraulic pistons. Shakes the floor on impact.',
     description: 'Reinforced industrial mech built for pure ring dominance. Broad hazard-striped pauldrons and giant iron knuckles blast foes off the perimeter.',
-    stats: {
-      impactForce: '★★★★★',
-      balanceRating: '★★★★★',
-      dashOverdrive: '★★★☆☆',
-    },
   },
   kage: {
     id: 'kage',
     name: 'Kage',
     title: 'Shadow Shinobi',
-    archetype: 'Shadow Assassin',
+    archetype: 'Void Assassin',
+    chapter: 'Night Shallows',
     color: '#10b981',
     glowColor: 0x10b981,
-    tagline: 'Obsidian stealth hood with a glowing emerald slash optic.',
+    tagline: 'Obsidian stealth hood with glowing emerald optics.',
     description: 'Silent fighter cloaked in carbon-fiber scale armor and trailing cyber-scarf ribbons. Moves like a phantom across the boundary.',
-    stats: {
-      impactForce: '★★★★☆',
-      balanceRating: '★★★★☆',
-      dashOverdrive: '★★★★★',
-    },
   },
   bolt: {
     id: 'bolt',
     name: 'Bolt',
     title: 'Cyber Robo-Fox',
     archetype: 'Beast Scout',
+    chapter: 'Solar Outpost',
     color: '#eab308',
     glowColor: 0xeab308,
     tagline: 'Pointed radar ears, digital LED eyes, blazing tail core.',
     description: 'A fierce mechanical animal brawler equipped with high-torque claw thrusters and an expressive holographic visor.',
-    stats: {
-      impactForce: '★★★★☆',
-      balanceRating: '★★★★☆',
-      dashOverdrive: '★★★★★',
-    },
   },
 };
 
@@ -112,6 +99,8 @@ export interface CreatedChampion {
  */
 export function createChampionMesh(id: ChampionId): CreatedChampion {
   switch (id) {
+    case 'leo':
+      return createLeoMesh();
     case 'nova':
       return createNovaMesh();
     case 'titan':
@@ -124,6 +113,374 @@ export function createChampionMesh(id: ChampionId): CreatedChampion {
     default:
       return createKaiMesh();
   }
+}
+
+// ----------------------------------------------------------------------
+// 0. LEO (Stylized Human Brawler - Island Scout, Chapter 1)
+// ----------------------------------------------------------------------
+function createLeoMesh(): CreatedChampion {
+  const group = new THREE.Group();
+  const accentMeshes: THREE.Mesh[] = [];
+
+  // PBR Stylized Materials
+  // Warm natural cartoon skin tone
+  const skinMat = new THREE.MeshStandardMaterial({
+    color: 0xf5cba7,
+    roughness: 0.55,
+    metalness: 0.05,
+  });
+
+  // Chestnut / caramel hair tone
+  const hairMat = new THREE.MeshStandardMaterial({
+    color: 0x5c3a21,
+    roughness: 0.7,
+    metalness: 0.0,
+  });
+
+  // Emerald Island Scout Vest & Cap fabric
+  const emeraldMat = new THREE.MeshStandardMaterial({
+    color: 0x10b981,
+    roughness: 0.4,
+    metalness: 0.1,
+  });
+
+  // Deep forest green accent trim
+  const forestMat = new THREE.MeshStandardMaterial({
+    color: 0x064e3b,
+    roughness: 0.45,
+    metalness: 0.1,
+  });
+
+  // Clean white tee & sneaker rubber
+  const whiteClothMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    roughness: 0.6,
+    metalness: 0.05,
+  });
+
+  // Indigo denim jeans
+  const denimMat = new THREE.MeshStandardMaterial({
+    color: 0x1e3a8a,
+    roughness: 0.75,
+    metalness: 0.05,
+  });
+
+  // Warm leather brown (belt & utility pouches)
+  const leatherMat = new THREE.MeshStandardMaterial({
+    color: 0x78350f,
+    roughness: 0.6,
+    metalness: 0.1,
+  });
+
+  // Polished golden brass (belt buckle, compass medallion, cap pin)
+  const goldBrassMat = new THREE.MeshStandardMaterial({
+    color: 0xfbbf24,
+    metalness: 0.85,
+    roughness: 0.2,
+  });
+
+  // Emissive compass core & sneaker glow trims
+  const goldGlowMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+  const emeraldGlowMat = new THREE.MeshBasicMaterial({ color: 0x34d399 });
+
+  // Cartoon Eye Materials
+  const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const eyeIrisMat = new THREE.MeshBasicMaterial({ color: 0x0f172a }); // Dark anime iris
+  const eyeShineMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // Specular catchlight
+  const mouthMat = new THREE.MeshBasicMaterial({ color: 0x881337 }); // Deep rose mouth
+
+  // 1. Pelvis, Belt, and Rolled Denim Jeans
+  const pelvisGeo = new THREE.BoxGeometry(0.72, 0.32, 0.52);
+  const pelvis = new THREE.Mesh(pelvisGeo, denimMat);
+  pelvis.position.set(0, 0.72, 0);
+  pelvis.castShadow = true;
+  group.add(pelvis);
+
+  // Leather belt around waist
+  const beltGeo = new THREE.BoxGeometry(0.76, 0.09, 0.55);
+  const belt = new THREE.Mesh(beltGeo, leatherMat);
+  belt.position.set(0, 0.86, 0);
+  group.add(belt);
+
+  // Big cartoon golden belt buckle
+  const buckleGeo = new THREE.BoxGeometry(0.18, 0.12, 0.06);
+  const buckle = new THREE.Mesh(buckleGeo, goldBrassMat);
+  buckle.position.set(0, 0.86, -0.28);
+  group.add(buckle);
+
+  // Hip utility pouches (left & right)
+  [-0.4, 0.4].forEach((xSide) => {
+    const pouchGeo = new THREE.BoxGeometry(0.12, 0.15, 0.18);
+    const pouch = new THREE.Mesh(pouchGeo, leatherMat);
+    pouch.position.set(xSide, 0.82, 0);
+    group.add(pouch);
+  });
+
+  // Twin denim legs
+  [-0.2, 0.2].forEach((xPos) => {
+    const legGeo = new THREE.CylinderGeometry(0.15, 0.13, 0.46, 14);
+    const leg = new THREE.Mesh(legGeo, denimMat);
+    leg.position.set(xPos, 0.48, 0);
+    leg.castShadow = true;
+    group.add(leg);
+
+    // Light rolled-up denim jean cuffs
+    const cuffGeo = new THREE.TorusGeometry(0.14, 0.035, 8, 16);
+    cuffGeo.rotateX(Math.PI / 2);
+    const cuff = new THREE.Mesh(cuffGeo, whiteClothMat);
+    cuff.position.set(xPos, 0.28, 0);
+    group.add(cuff);
+
+    // Bare ankles
+    const ankleGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.1, 12);
+    const ankle = new THREE.Mesh(ankleGeo, skinMat);
+    ankle.position.set(xPos, 0.22, 0);
+    group.add(ankle);
+
+    // Chunky Cartoon Skate Sneakers (Brawl Stars style)
+    const shoeUpperGeo = new THREE.BoxGeometry(0.24, 0.18, 0.42);
+    const shoeUpper = new THREE.Mesh(shoeUpperGeo, emeraldMat);
+    shoeUpper.position.set(xPos, 0.14, -0.06);
+    group.add(shoeUpper);
+
+    // White rubber toe cap
+    const toeCapGeo = new THREE.SphereGeometry(0.13, 10, 10);
+    toeCapGeo.scale(1.0, 0.7, 0.9);
+    const toeCap = new THREE.Mesh(toeCapGeo, whiteClothMat);
+    toeCap.position.set(xPos, 0.1, -0.23);
+    group.add(toeCap);
+
+    // Thick white rubber skate sole
+    const soleGeo = new THREE.BoxGeometry(0.26, 0.08, 0.48);
+    const sole = new THREE.Mesh(soleGeo, whiteClothMat);
+    sole.position.set(xPos, 0.04, -0.06);
+    group.add(sole);
+
+    // Glowing green heel stripe
+    const heelStripeGeo = new THREE.BoxGeometry(0.18, 0.04, 0.05);
+    const heelStripe = new THREE.Mesh(heelStripeGeo, emeraldGlowMat);
+    heelStripe.position.set(xPos, 0.12, 0.16);
+    group.add(heelStripe);
+    accentMeshes.push(heelStripe);
+  });
+
+  // 2. Torso: White Athletic Tee & Open Island Scout Vest
+  const innerShirtGeo = new THREE.CapsuleGeometry(0.38, 0.48, 8, 16);
+  const innerShirt = new THREE.Mesh(innerShirtGeo, whiteClothMat);
+  innerShirt.position.set(0, 1.15, 0);
+  innerShirt.castShadow = true;
+  group.add(innerShirt);
+
+  // Left & right open vest panels
+  [-0.22, 0.22].forEach((xSide) => {
+    const vestPanelGeo = new THREE.BoxGeometry(0.26, 0.62, 0.36);
+    const vestPanel = new THREE.Mesh(vestPanelGeo, emeraldMat);
+    vestPanel.position.set(xSide, 1.16, -0.16);
+    group.add(vestPanel);
+
+    // Forest green vest pocket trim
+    const pocketGeo = new THREE.BoxGeometry(0.16, 0.12, 0.05);
+    const pocket = new THREE.Mesh(pocketGeo, forestMat);
+    pocket.position.set(xSide, 1.05, -0.34);
+    group.add(pocket);
+  });
+
+  // Vest high back and collar
+  const vestBackGeo = new THREE.BoxGeometry(0.72, 0.62, 0.2);
+  const vestBack = new THREE.Mesh(vestBackGeo, emeraldMat);
+  vestBack.position.set(0, 1.16, 0.22);
+  group.add(vestBack);
+
+  const collarGeo = new THREE.CylinderGeometry(0.26, 0.28, 0.14, 16, 1, true);
+  const collar = new THREE.Mesh(collarGeo, forestMat);
+  collar.position.set(0, 1.48, -0.02);
+  group.add(collar);
+
+  // Chest Island Compass Medallion Core
+  const coreGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.06, 16);
+  coreGeo.rotateX(Math.PI / 2);
+  const core = new THREE.Mesh(coreGeo, goldBrassMat);
+  core.position.set(0, 1.25, -0.4);
+  group.add(core);
+
+  // Glowing center star of the compass
+  const starGeo = new THREE.RingGeometry(0.03, 0.08, 4);
+  const star = new THREE.Mesh(starGeo, goldGlowMat);
+  star.position.set(0, 1.25, -0.44);
+  group.add(star);
+  accentMeshes.push(star);
+
+  // 3. Human Neck & Stylized Head
+  const neckGeo = new THREE.CylinderGeometry(0.14, 0.15, 0.16, 12);
+  const neck = new THREE.Mesh(neckGeo, skinMat);
+  neck.position.set(0, 1.52, 0);
+  group.add(neck);
+
+  const headGeo = new THREE.SphereGeometry(0.38, 20, 20);
+  headGeo.scale(1.0, 1.04, 0.96);
+  const head = new THREE.Mesh(headGeo, skinMat);
+  head.position.set(0, 1.84, -0.02);
+  head.castShadow = true;
+  group.add(head);
+
+  // Cute cartoon ears
+  [-0.38, 0.38].forEach((xSide) => {
+    const earGeo = new THREE.SphereGeometry(0.08, 8, 8);
+    earGeo.scale(0.5, 1.0, 0.8);
+    const ear = new THREE.Mesh(earGeo, skinMat);
+    ear.position.set(xSide, 1.82, -0.02);
+    group.add(ear);
+  });
+
+  // 4. Stylized Cartoon Face Features (Brawl Stars Style)
+  // Eyes (Left & Right)
+  [-0.14, 0.14].forEach((xPos) => {
+    // Sclera (White eye background)
+    const scleraGeo = new THREE.SphereGeometry(0.09, 12, 12);
+    scleraGeo.scale(1.0, 1.25, 0.3);
+    const sclera = new THREE.Mesh(scleraGeo, eyeWhiteMat);
+    sclera.position.set(xPos, 1.85, -0.38);
+    group.add(sclera);
+
+    // Dark Cartoon Pupil / Iris
+    const irisGeo = new THREE.SphereGeometry(0.065, 10, 10);
+    irisGeo.scale(0.9, 1.1, 0.25);
+    const iris = new THREE.Mesh(irisGeo, eyeIrisMat);
+    iris.position.set(xPos + (xPos > 0 ? -0.015 : 0.015), 1.84, -0.4);
+    group.add(iris);
+
+    // Sparkly Specular Catchlight Highlight
+    const shineGeo = new THREE.SphereGeometry(0.022, 6, 6);
+    const shine = new THREE.Mesh(shineGeo, eyeShineMat);
+    shine.position.set(xPos - 0.02, 1.88, -0.41);
+    group.add(shine);
+
+    // Expressive Eyebrows
+    const browGeo = new THREE.BoxGeometry(0.14, 0.045, 0.06);
+    browGeo.rotateZ(xPos > 0 ? -0.15 : 0.15);
+    const brow = new THREE.Mesh(browGeo, hairMat);
+    brow.position.set(xPos, 1.97, -0.36);
+    group.add(brow);
+  });
+
+  // Cute Cartoon Nose
+  const noseGeo = new THREE.SphereGeometry(0.045, 8, 8);
+  noseGeo.scale(1.0, 0.7, 0.9);
+  const nose = new THREE.Mesh(noseGeo, skinMat);
+  nose.position.set(0, 1.77, -0.4);
+  group.add(nose);
+
+  // Confident Smirk / Smile
+  const smileGeo = new THREE.TorusGeometry(0.08, 0.02, 6, 12, Math.PI * 0.75);
+  smileGeo.rotateX(0.2);
+  smileGeo.rotateZ(-Math.PI * 0.85);
+  const smile = new THREE.Mesh(smileGeo, mouthMat);
+  smile.position.set(0.02, 1.70, -0.38);
+  group.add(smile);
+
+  // 5. Hair & Backwards Snapback Cap
+  // Spiky bangs sticking out from under the cap
+  [-0.18, -0.05, 0.1, 0.22].forEach((xPos, idx) => {
+    const bangGeo = new THREE.ConeGeometry(0.07, 0.22, 5);
+    bangGeo.rotateX(0.4);
+    bangGeo.rotateZ((idx - 1.5) * 0.2);
+    const bang = new THREE.Mesh(bangGeo, hairMat);
+    bang.position.set(xPos, 2.0, -0.34);
+    group.add(bang);
+  });
+
+  // Sideburns
+  [-0.34, 0.34].forEach((xSide) => {
+    const sideburnGeo = new THREE.BoxGeometry(0.06, 0.18, 0.12);
+    const sideburn = new THREE.Mesh(sideburnGeo, hairMat);
+    sideburn.position.set(xSide, 1.82, -0.15);
+    group.add(sideburn);
+  });
+
+  // Backwards Snapback Cap Dome
+  const capDomeGeo = new THREE.SphereGeometry(0.41, 18, 16, 0, Math.PI * 2, 0, Math.PI * 0.6);
+  const capDome = new THREE.Mesh(capDomeGeo, emeraldMat);
+  capDome.position.set(0, 1.89, -0.01);
+  group.add(capDome);
+
+  // Golden button on top of cap
+  const capButtonGeo = new THREE.SphereGeometry(0.05, 8, 8);
+  const capButton = new THREE.Mesh(capButtonGeo, goldBrassMat);
+  capButton.position.set(0, 2.19, -0.01);
+  group.add(capButton);
+
+  // White front panel patch with golden island compass badge
+  const patchGeo = new THREE.BoxGeometry(0.26, 0.16, 0.05);
+  patchGeo.rotateX(-0.2);
+  const patch = new THREE.Mesh(patchGeo, whiteClothMat);
+  patch.position.set(0, 2.06, -0.33);
+  group.add(patch);
+
+  const emblemGeo = new THREE.SphereGeometry(0.04, 8, 8);
+  const emblem = new THREE.Mesh(emblemGeo, goldBrassMat);
+  emblem.position.set(0, 2.06, -0.36);
+  group.add(emblem);
+
+  // Backwards Snapback Visor / Brim sticking out backward
+  const brimGeo = new THREE.BoxGeometry(0.38, 0.04, 0.28);
+  brimGeo.rotateX(0.15);
+  const brim = new THREE.Mesh(brimGeo, forestMat);
+  brim.position.set(0, 1.95, 0.38);
+  group.add(brim);
+
+  // 6. Arms & Chunky Brawler Hands / Gloves
+  [-0.62, 0.62].forEach((xSide) => {
+    // Shoulder (vest sleeve)
+    const shoulderGeo = new THREE.SphereGeometry(0.16, 10, 10);
+    const shoulder = new THREE.Mesh(shoulderGeo, emeraldMat);
+    shoulder.position.set(xSide, 1.28, -0.05);
+    group.add(shoulder);
+
+    // Bare Arm
+    const armGeo = new THREE.CylinderGeometry(0.11, 0.1, 0.32, 10);
+    const arm = new THREE.Mesh(armGeo, skinMat);
+    arm.position.set(xSide, 1.08, -0.1);
+    group.add(arm);
+
+    // Athletic wrist sweatband
+    const sweatbandGeo = new THREE.TorusGeometry(0.11, 0.03, 8, 14);
+    sweatbandGeo.rotateX(Math.PI / 2);
+    const sweatband = new THREE.Mesh(sweatbandGeo, forestMat);
+    sweatband.position.set(xSide, 0.94, -0.14);
+    group.add(sweatband);
+  });
+
+  // Stylized Brawler Fists with Fingerless Gloves
+  const fistGeo = new THREE.SphereGeometry(0.22, 14, 14);
+  const gloveMat = new THREE.MeshStandardMaterial({
+    color: 0x334155,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  const leftFist = new THREE.Mesh(fistGeo, gloveMat);
+  const rightFist = new THREE.Mesh(fistGeo, gloveMat);
+  leftFist.position.set(-0.72, 0.88, -0.26);
+  rightFist.position.set(0.72, 0.88, -0.26);
+  leftFist.castShadow = true;
+  rightFist.castShadow = true;
+  group.add(leftFist);
+  group.add(rightFist);
+
+  // Knuckle accent plates
+  [-0.72, 0.72].forEach((xPos) => {
+    const knuckleGeo = new THREE.BoxGeometry(0.18, 0.08, 0.1);
+    const knuckle = new THREE.Mesh(knuckleGeo, goldBrassMat);
+    knuckle.position.set(xPos, 0.92, -0.34);
+    group.add(knuckle);
+  });
+
+  return {
+    group,
+    bodyMesh: innerShirt,
+    coreMesh: core,
+    fists: [leftFist, rightFist],
+    accentMeshes,
+  };
 }
 
 // ----------------------------------------------------------------------

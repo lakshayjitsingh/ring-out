@@ -381,25 +381,25 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
             {activeChampion.description}
           </p>
 
-          {/* Stat Specs */}
-          <div className="space-y-1.5 bg-slate-950/60 border border-slate-800 rounded-2xl p-3 mb-4 text-xs font-mono">
+          {/* Fair Play & Chapter Specs */}
+          <div className="space-y-2 bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 mb-4 text-xs font-mono">
             <div className="flex justify-between items-center">
               <span className="text-slate-400 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-cyan-400" /> Impact Force
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Chapter
               </span>
-              <span className="text-cyan-300">{activeChampion.stats.impactForce}</span>
+              <span className="text-emerald-300 font-bold">{activeChampion.chapter}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-amber-400" /> Balance Rating
+                <Shield className="w-3.5 h-3.5 text-cyan-400" /> Match Physics
               </span>
-              <span className="text-amber-300">{activeChampion.stats.balanceRating}</span>
+              <span className="text-cyan-300 font-bold">100% Balanced</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-400 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-rose-400" /> Dash Overdrive
+                <Zap className="w-3.5 h-3.5 text-amber-400" /> Fair Play Rule
               </span>
-              <span className="text-rose-300">{activeChampion.stats.dashOverdrive}</span>
+              <span className="text-amber-300 font-bold">Zero Stat Advantage</span>
             </div>
           </div>
 

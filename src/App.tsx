@@ -9,7 +9,7 @@ export function App() {
   const engineRef = useRef<GameEngine | null>(null);
 
   const [activeScreen, setActiveScreen] = useState<'showcase' | 'battle'>('showcase');
-  const [selectedChampion, setSelectedChampion] = useState<ChampionId>('kai');
+  const [selectedChampion, setSelectedChampion] = useState<ChampionId>('leo');
 
   const [gameState, setGameState] = useState<GameState>({
     timeRemaining: 60,

@@ -78,7 +78,7 @@ export class GameEngine {
   // Characters
   public player!: Brawler;
   public bot!: Brawler;
-  public playerChampionId: ChampionId = 'kai';
+  public playerChampionId: ChampionId = 'leo';
   public botChampionId: ChampionId = 'kage';
   private particles: { mesh: THREE.Mesh; life: number; maxLife: number; vel: THREE.Vector3 }[] = [];
 

@@ -91,6 +91,8 @@ export interface CreatedChampion {
   coreMesh: THREE.Mesh;
   fists: THREE.Mesh[];
   accentMeshes: THREE.Mesh[];
+  legs?: THREE.Group[];
+  arms?: THREE.Group[];
 }
 
 /**
@@ -247,50 +249,59 @@ function createLeoMesh(): CreatedChampion {
   });
 
   // ====================================================================
-  // 2. DENIM LEGS & SKATE HIGH-TOPS (Straight, Perfectly Vertical Stance)
+  // 2. DENIM LEGS & SKATE HIGH-TOPS (Articulated Hip Socket Pivot at y = 0.70)
   // ====================================================================
-  [-0.18, 0.18].forEach((xPos) => {
-    const legGroup = new THREE.Group();
-    legGroup.position.set(xPos, 0, 0);
+  const legGroupL = new THREE.Group();
+  const legGroupR = new THREE.Group();
+
+  [-0.18, 0.18].forEach((xPos, idx) => {
+    const legGroup = idx === 0 ? legGroupL : legGroupR;
+    legGroup.position.set(xPos, 0.70, 0);
     // 100% straight vertical alignment
     group.add(legGroup);
 
-    // Thigh with clean vertical taper
+    // Rounded hip socket joint (seamless denim pivot)
+    const hipGeo = new THREE.SphereGeometry(0.128, 12, 12);
+    const hip = new THREE.Mesh(hipGeo, denimMat);
+    hip.position.set(0, 0, 0);
+    legGroup.add(hip);
+
+    // Thigh with clean vertical taper (hip pivot at 0.70, relative center -0.14)
     const thighGeo = new THREE.CylinderGeometry(0.13, 0.12, 0.32, 16);
     const thigh = new THREE.Mesh(thighGeo, denimMat);
-    thigh.position.set(0, 0.56, 0);
+    thigh.position.set(0, -0.14, 0);
     thigh.castShadow = true;
     legGroup.add(thigh);
 
-    // Knee articulation
+    // Knee articulation (relative center -0.30)
     const kneeGeo = new THREE.BoxGeometry(0.20, 0.08, 0.22);
     const knee = new THREE.Mesh(kneeGeo, denimMat);
-    knee.position.set(0, 0.40, 0);
+    knee.position.set(0, -0.30, 0);
     legGroup.add(knee);
 
-    // Straight calf
+    // Straight calf (relative center -0.42)
     const calfGeo = new THREE.CylinderGeometry(0.12, 0.11, 0.22, 16);
     const calf = new THREE.Mesh(calfGeo, denimMat);
-    calf.position.set(0, 0.28, 0);
+    calf.position.set(0, -0.42, 0);
     calf.castShadow = true;
     legGroup.add(calf);
 
-    // Rolled-up cream denim cuffs
+    // Rolled-up cream denim cuffs (relative center -0.52)
     const cuffGeo = new THREE.TorusGeometry(0.115, 0.03, 8, 16);
     cuffGeo.rotateX(Math.PI / 2);
     const cuff = new THREE.Mesh(cuffGeo, whiteClothMat);
-    cuff.position.set(0, 0.18, 0);
+    cuff.position.set(0, -0.52, 0);
     legGroup.add(cuff);
 
-    // Bare athletic ankles
+    // Bare athletic ankles (relative center -0.56)
     const ankleGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.08, 12);
     const ankle = new THREE.Mesh(ankleGeo, skinMat);
-    ankle.position.set(0, 0.14, 0);
+    ankle.position.set(0, -0.56, 0);
     legGroup.add(ankle);
 
-    // High-Top Skate Sneakers (Straight forward)
+    // High-Top Skate Sneakers (Straight forward, foot pivot at -0.70)
     const footGroup = new THREE.Group();
-    footGroup.position.set(0, 0, 0);
+    footGroup.position.set(0, -0.70, 0);
     legGroup.add(footGroup);
 
     // Sneaker collar
@@ -678,45 +689,52 @@ function createLeoMesh(): CreatedChampion {
   group.add(mouthGroup);
 
   // ====================================================================
-  // 7. DYNAMIC ARMS & CLENCHED BRAWLER GUARD (Heroic Stance)
+  // 7. DYNAMIC ARMS & CLENCHED BRAWLER GUARD (Articulated Shoulder Pivots)
   // ====================================================================
+  const armGroupL = new THREE.Group();
+  const armGroupR = new THREE.Group();
   const fistGroupL = new THREE.Group();
   const fistGroupR = new THREE.Group();
 
-  [-0.42, 0.42].forEach((xSide) => {
+  [-0.42, 0.42].forEach((xSide, idx) => {
     const isRight = xSide > 0;
+    const armGroup = idx === 0 ? armGroupL : armGroupR;
     const fistGroup = isRight ? fistGroupR : fistGroupL;
 
-    // Shoulder / Deltoid (vest armhole sleeve cap)
-    const shoulderGeo = new THREE.SphereGeometry(0.13, 12, 12);
-    const shoulder = new THREE.Mesh(shoulderGeo, vestMat);
-    shoulder.position.set(xSide, 1.28, -0.02);
-    group.add(shoulder);
-
-    // Upper Arm (Biceps / Triceps) angled slightly out & back
-    const armGroup = new THREE.Group();
+    // Shoulder socket pivot at shoulder joint (xSide, 1.28, -0.02)
     armGroup.position.set(xSide, 1.28, -0.02);
-    armGroup.rotation.z = isRight ? -0.16 : 0.16;
-    armGroup.rotation.x = -0.10;
     group.add(armGroup);
 
+    // Shoulder / Deltoid (vest armhole sleeve cap) attached at shoulder pivot
+    const shoulderGeo = new THREE.SphereGeometry(0.13, 12, 12);
+    const shoulder = new THREE.Mesh(shoulderGeo, vestMat);
+    shoulder.position.set(0, 0, 0);
+    armGroup.add(shoulder);
+
+    // Inner arm group holding the rest combat guard stance
+    const armInner = new THREE.Group();
+    armInner.rotation.z = isRight ? -0.16 : 0.16;
+    armInner.rotation.x = -0.10;
+    armGroup.add(armInner);
+
+    // Upper Arm (Biceps / Triceps)
     const upperArmGeo = new THREE.CylinderGeometry(0.095, 0.09, 0.24, 12);
     const upperArm = new THREE.Mesh(upperArmGeo, skinMat);
     upperArm.position.set(0, -0.12, 0);
-    armGroup.add(upperArm);
+    armInner.add(upperArm);
 
     // Elbow Joint
     const elbowGeo = new THREE.SphereGeometry(0.088, 10, 10);
     const elbow = new THREE.Mesh(elbowGeo, skinMat);
     elbow.position.set(0, -0.24, 0);
-    armGroup.add(elbow);
+    armInner.add(elbow);
 
     // Forearm angled forward & inward in a ready combat guard!
     const forearmGroup = new THREE.Group();
     forearmGroup.position.set(0, -0.24, 0);
     forearmGroup.rotation.x = 0.48; // Bend elbow forward
     forearmGroup.rotation.z = isRight ? 0.22 : -0.22; // Angle forearm inward
-    armGroup.add(forearmGroup);
+    armInner.add(forearmGroup);
 
     const forearmGeo = new THREE.CylinderGeometry(0.09, 0.082, 0.22, 12);
     const forearm = new THREE.Mesh(forearmGeo, skinMat);
@@ -780,6 +798,8 @@ function createLeoMesh(): CreatedChampion {
     coreMesh: core,
     fists: [leftFistMesh, rightFistMesh],
     accentMeshes,
+    legs: [legGroupL, legGroupR],
+    arms: [armGroupL, armGroupR],
   };
 }
 

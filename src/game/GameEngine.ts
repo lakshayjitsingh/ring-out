@@ -32,6 +32,8 @@ interface Brawler {
   bodyMesh: THREE.Mesh;
   coreMesh: THREE.Mesh;
   fists: THREE.Mesh[];
+  legs?: THREE.Group[];
+  arms?: THREE.Group[];
   pos: THREE.Vector3;
   vel: THREE.Vector3;
   targetAngle: number;
@@ -287,6 +289,8 @@ export class GameEngine {
       bodyMesh: pMesh.bodyMesh,
       coreMesh: pMesh.coreMesh,
       fists: pMesh.fists,
+      legs: pMesh.legs,
+      arms: pMesh.arms,
       pos: pMesh.group.position,
       vel: new THREE.Vector3(0, 0, 0),
       targetAngle: 0,
@@ -313,6 +317,8 @@ export class GameEngine {
       bodyMesh: bMesh.bodyMesh,
       coreMesh: bMesh.coreMesh,
       fists: bMesh.fists,
+      legs: bMesh.legs,
+      arms: bMesh.arms,
       pos: bMesh.group.position,
       vel: new THREE.Vector3(0, 0, 0),
       targetAngle: Math.PI,
@@ -347,6 +353,8 @@ export class GameEngine {
       this.player.bodyMesh = pMesh.bodyMesh;
       this.player.coreMesh = pMesh.coreMesh;
       this.player.fists = pMesh.fists;
+      this.player.legs = pMesh.legs;
+      this.player.arms = pMesh.arms;
       this.player.pos = pMesh.group.position;
     }
   }
@@ -558,6 +566,11 @@ export class GameEngine {
     this.bot.targetAngle = Math.PI;
     this.bot.chargePercent = 100;
     this.bot.mesh.rotation.set(0, Math.PI, 0);
+
+    if (this.player.legs) this.player.legs.forEach((l) => l.rotation.set(0, 0, 0));
+    if (this.player.arms) this.player.arms.forEach((a) => a.rotation.set(0, 0, 0));
+    if (this.bot.legs) this.bot.legs.forEach((l) => l.rotation.set(0, 0, 0));
+    if (this.bot.arms) this.bot.arms.forEach((a) => a.rotation.set(0, 0, 0));
 
     this.state = {
       ...this.state,
@@ -790,17 +803,54 @@ export class GameEngine {
     b.pos.x += b.vel.x * dt;
     b.pos.z += b.vel.z * dt;
 
-    // Running bounce animation
+    // Running & Dash Animation (Articulated limbs vs legacy fallback)
     const speed = Math.hypot(b.vel.x, b.vel.z);
-    if (speed > 0.8 && b.isGrounded) {
-      b.walkCycle += dt * 14;
-      b.bodyMesh.position.y = 1.0 + Math.abs(Math.sin(b.walkCycle)) * 0.18;
-      b.fists[0].position.z = 0.3 + Math.sin(b.walkCycle) * 0.28;
-      b.fists[1].position.z = 0.3 - Math.sin(b.walkCycle) * 0.28;
-    } else if (b.isGrounded) {
-      b.bodyMesh.position.y = 1.0;
-      b.fists[0].position.z = 0.3;
-      b.fists[1].position.z = 0.3;
+    const hasLimbs = b.legs && b.arms && b.legs.length >= 2 && b.arms.length >= 2;
+
+    if (hasLimbs) {
+      if (b.isDashing && b.isGrounded) {
+        // High-energy power dash pose (Lead punch & athletic forward stride)
+        const punchAmt = 0.95;
+        b.arms![1].rotation.x = THREE.MathUtils.lerp(b.arms![1].rotation.x, punchAmt, dt * 18);
+        b.arms![0].rotation.x = THREE.MathUtils.lerp(b.arms![0].rotation.x, -0.40, dt * 18);
+        b.legs![0].rotation.x = THREE.MathUtils.lerp(b.legs![0].rotation.x, 0.40, dt * 18);
+        b.legs![1].rotation.x = THREE.MathUtils.lerp(b.legs![1].rotation.x, -0.40, dt * 18);
+        b.mesh.rotation.x = THREE.MathUtils.lerp(b.mesh.rotation.x, 0.20, dt * 18);
+        b.mesh.position.y = THREE.MathUtils.lerp(b.mesh.position.y, 0.02, dt * 18);
+      } else if (speed > 0.8 && b.isGrounded) {
+        b.walkCycle += dt * 14;
+        const legSwing = Math.sin(b.walkCycle) * 0.65;
+        const armSwing = Math.sin(b.walkCycle) * 0.52;
+
+        // Counter-opposed limb swing (natural brawler sprint gait)
+        b.legs![0].rotation.x = legSwing;
+        b.legs![1].rotation.x = -legSwing;
+        b.arms![0].rotation.x = -armSwing;
+        b.arms![1].rotation.x = armSwing;
+
+        // Energetic brawler running bob & subtle forward sprint lean
+        b.mesh.position.y = Math.abs(Math.sin(b.walkCycle)) * 0.08;
+        b.mesh.rotation.x = THREE.MathUtils.lerp(b.mesh.rotation.x, 0.08, dt * 10);
+      } else if (b.isGrounded) {
+        // Smooth return to idle heroic stance
+        b.legs![0].rotation.x = THREE.MathUtils.lerp(b.legs![0].rotation.x, 0, dt * 14);
+        b.legs![1].rotation.x = THREE.MathUtils.lerp(b.legs![1].rotation.x, 0, dt * 14);
+        b.arms![0].rotation.x = THREE.MathUtils.lerp(b.arms![0].rotation.x, 0, dt * 14);
+        b.arms![1].rotation.x = THREE.MathUtils.lerp(b.arms![1].rotation.x, 0, dt * 14);
+        b.mesh.position.y = THREE.MathUtils.lerp(b.mesh.position.y, 0, dt * 14);
+        b.mesh.rotation.x = THREE.MathUtils.lerp(b.mesh.rotation.x, 0, dt * 14);
+      }
+    } else {
+      if (speed > 0.8 && b.isGrounded) {
+        b.walkCycle += dt * 14;
+        b.bodyMesh.position.y = 1.0 + Math.abs(Math.sin(b.walkCycle)) * 0.18;
+        b.fists[0].position.z = 0.3 + Math.sin(b.walkCycle) * 0.28;
+        b.fists[1].position.z = 0.3 - Math.sin(b.walkCycle) * 0.28;
+      } else if (b.isGrounded) {
+        b.bodyMesh.position.y = 1.0;
+        b.fists[0].position.z = 0.3;
+        b.fists[1].position.z = 0.3;
+      }
     }
   }
 
@@ -923,6 +973,13 @@ export class GameEngine {
       b.mesh.rotation.x += dt * 8;
       b.mesh.rotation.z += dt * 6;
 
+      if (b.legs && b.arms) {
+        b.legs[0].rotation.x = Math.sin(this.elapsedTime * 18) * 0.6;
+        b.legs[1].rotation.x = -Math.sin(this.elapsedTime * 18) * 0.6;
+        b.arms[0].rotation.x = Math.sin(this.elapsedTime * 22) * 0.7;
+        b.arms[1].rotation.x = -Math.sin(this.elapsedTime * 22) * 0.7;
+      }
+
       if (b.pos.y < -0.5 && !b.isKnockedOut) {
         sounds.playFall();
       }
@@ -1035,6 +1092,11 @@ export class GameEngine {
     this.bot.targetAngle = Math.PI;
     this.bot.chargePercent = 100;
     this.bot.mesh.rotation.set(0, Math.PI, 0);
+
+    if (this.player.legs) this.player.legs.forEach((l) => l.rotation.set(0, 0, 0));
+    if (this.player.arms) this.player.arms.forEach((a) => a.rotation.set(0, 0, 0));
+    if (this.bot.legs) this.bot.legs.forEach((l) => l.rotation.set(0, 0, 0));
+    if (this.bot.arms) this.bot.arms.forEach((a) => a.rotation.set(0, 0, 0));
 
     this.state = {
       ...this.state,

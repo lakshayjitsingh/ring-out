@@ -387,6 +387,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
+          onLostPointerCapture={handlePointerUp}
           className="relative w-32 h-32 rounded-full bg-slate-900/60 backdrop-blur-md border-2 border-cyan-500/40 shadow-2xl flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
         >
           <div
@@ -435,6 +436,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
               onPointerMove={handleDashPointerMove}
               onPointerUp={handleDashPointerUp}
               onPointerCancel={handleDashPointerUp}
+              onLostPointerCapture={handleDashPointerUp}
               disabled={!isReady}
               className={`w-20 h-20 rounded-full border-2 border-white/80 shadow-2xl flex flex-col items-center justify-center transition-all active:scale-90 ${
                 isReady

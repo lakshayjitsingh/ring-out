@@ -88,7 +88,12 @@ export class GameEngine {
   private clouds: { group: THREE.Group; speed: number }[] = [];
   private breezeParticles: { mesh: THREE.Mesh; seed: number; speed: number }[] = [];
   private oceanWaveRings: THREE.Mesh[] = [];
-  private sunCompassEmblem: THREE.Group | null = null;
+  private centerFirePit: THREE.Group | null = null;
+  private fireFlames: THREE.Mesh[] = [];
+  private fireLight: THREE.PointLight | null = null;
+  private fireEmbers: { mesh: THREE.Mesh; seed: number; speed: number; life: number; maxLife: number }[] = [];
+  private dangerZoneMesh: THREE.Mesh | null = null;
+  private lastDangerRadius = 13.0;
   private splashTriggered: { player: boolean; bot: boolean } = { player: false, bot: false };
 
   // Inputs
@@ -285,57 +290,61 @@ export class GameEngine {
   }
 
   private createGrassTexture(): THREE.CanvasTexture {
-    const size = 512;
+    const size = 1024;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.CanvasTexture(canvas);
 
-    // 1. Base vibrant lawn gradient (Emerald, Lime, Forest)
+    // 1. Rich Emerald & Forest Green Base Gradient
     const center = size / 2;
-    const grad = ctx.createRadialGradient(center, center, 20, center, center, center);
-    grad.addColorStop(0, '#4ade80');    // Vibrant sunny lime-green core
-    grad.addColorStop(0.35, '#22c55e'); // Lush island emerald green
-    grad.addColorStop(0.85, '#16a34a'); // Rich deep grass
-    grad.addColorStop(1.0, '#15803d');  // Edge border turf
+    const grad = ctx.createRadialGradient(center, center, 40, center, center, center);
+    grad.addColorStop(0, '#22c55e');    // Lush sunny emerald center
+    grad.addColorStop(0.5, '#16a34a');  // Rich vibrant meadow green
+    grad.addColorStop(0.88, '#15803d'); // Deep turf green
+    grad.addColorStop(1.0, '#166534');  // Outer perimeter shade
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
 
-    // 2. Concentric tournament mowing rings (Championship Lawn)
-    for (let r = 28; r < center; r += 26) {
+    // 2. Clean Straight Directional Lawnmower Stripes (Tournament Pitch Style)
+    // Horizontal alternating lanes of crisp mowed turf
+    const stripeWidth = 56;
+    for (let y = 0; y < size; y += stripeWidth) {
+      const isEven = Math.floor(y / stripeWidth) % 2 === 0;
+      ctx.fillStyle = isEven ? 'rgba(74, 222, 128, 0.16)' : 'rgba(21, 128, 61, 0.20)';
+      ctx.fillRect(0, y, size, stripeWidth);
+    }
+
+    // 3. Subtle Cross-Hatch Lawn Texture (gives it a luxurious stadium turf depth)
+    const crossWidth = 112;
+    for (let x = 0; x < size; x += crossWidth) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.035)';
+      ctx.fillRect(x, 0, crossWidth / 2, size);
+    }
+
+    // 4. Stylized Grass Blade Tufts (organic hand-painted feel)
+    for (let i = 0; i < 900; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * (center - 24);
+      const px = center + Math.cos(angle) * dist;
+      const py = center + Math.sin(angle) * dist;
+
+      // Small stylized blade cluster
+      ctx.strokeStyle = Math.random() > 0.4 ? 'rgba(134, 239, 172, 0.35)' : 'rgba(254, 240, 138, 0.45)';
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
-      ctx.arc(center, center, r, 0, Math.PI * 2);
-      ctx.lineWidth = 13;
-      ctx.strokeStyle = (r / 26) % 2 === 0 ? 'rgba(74, 222, 128, 0.18)' : 'rgba(21, 128, 61, 0.22)';
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + (Math.random() - 0.5) * 6, py - 4 - Math.random() * 4);
       ctx.stroke();
     }
 
-    // 3. Radial tournament lawn stripes (alternating mower passes)
-    for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
-      ctx.beginPath();
-      ctx.moveTo(center, center);
-      ctx.arc(center, center, center, a, a + Math.PI / 16);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-      ctx.fill();
-    }
-
-    // 4. Subtle grass blade flecks & golden island pollen
-    for (let i = 0; i < 400; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = Math.random() * (center - 15);
-      const px = center + Math.cos(angle) * dist;
-      const py = center + Math.sin(angle) * dist;
-      ctx.fillStyle = Math.random() > 0.3 ? 'rgba(134, 239, 172, 0.45)' : 'rgba(254, 240, 138, 0.6)';
-      ctx.fillRect(px, py, 2, 3);
-    }
-
-    // 5. Outer sandy border ring trim
+    // 5. Center Hearth Border Ring (Smooth cobblestone border around the fire pit)
+    const fireRadiusPx = (2.2 / 13.0) * center;
     ctx.beginPath();
-    ctx.arc(center, center, center - 6, 0, Math.PI * 2);
-    ctx.lineWidth = 10;
-    ctx.strokeStyle = 'rgba(253, 224, 71, 0.35)';
+    ctx.arc(center, center, fireRadiusPx + 10, 0, Math.PI * 2);
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = 'rgba(51, 65, 85, 0.65)'; // Dark stone rim blend
     ctx.stroke();
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -484,74 +493,129 @@ export class GameEngine {
     }
   }
 
-  private createSunCompassEmblem(): THREE.Group {
+  private createCenterBonfireAltar(): THREE.Group {
     const group = new THREE.Group();
-    group.position.set(0, 0.02, 0);
+    group.position.set(0, 0, 0);
 
-    // Weathered ancient limestone center platform
-    const stoneGeo = new THREE.CylinderGeometry(3.5, 3.6, 0.04, 32);
-    const stoneMat = new THREE.MeshStandardMaterial({
-      color: 0x94a3b8,
-      roughness: 0.85,
+    // 1. Weathered Basalt Stone Hearth / Brazier Rim
+    const stoneHearthGeo = new THREE.CylinderGeometry(2.1, 2.25, 0.28, 24);
+    const stoneHearthMat = new THREE.MeshStandardMaterial({
+      color: 0x334155, // Dark slate / basalt stone
+      roughness: 0.9,
       metalness: 0.1,
     });
-    const stone = new THREE.Mesh(stoneGeo, stoneMat);
-    stone.receiveShadow = true;
-    group.add(stone);
+    const stoneHearth = new THREE.Mesh(stoneHearthGeo, stoneHearthMat);
+    stoneHearth.position.y = 0.14;
+    stoneHearth.receiveShadow = true;
+    group.add(stoneHearth);
 
-    // Outer engraved golden compass ring
-    const ringGeo = new THREE.TorusGeometry(3.2, 0.05, 8, 32);
-    ringGeo.rotateX(Math.PI / 2);
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: 0xf59e0b,
-      metalness: 0.8,
-      roughness: 0.25,
-      emissive: 0xd97706,
-      emissiveIntensity: 0.3,
+    // Inner glowing coal bed / volcanic ember ash
+    const coalGeo = new THREE.CylinderGeometry(1.85, 1.85, 0.1, 24);
+    const coalMat = new THREE.MeshStandardMaterial({
+      color: 0x1e1b4b,
+      emissive: 0xc2410c, // Glowing ember red-orange
+      emissiveIntensity: 0.9,
+      roughness: 0.95,
     });
-    const ring = new THREE.Mesh(ringGeo, goldMat);
-    ring.position.y = 0.025;
-    group.add(ring);
+    const coal = new THREE.Mesh(coalGeo, coalMat);
+    coal.position.y = 0.24;
+    group.add(coal);
 
-    // 4 Cardinal Star Points (North, East, South, West)
-    [0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2].forEach((rot) => {
-      const starPointGeo = new THREE.ConeGeometry(0.42, 2.8, 4);
-      starPointGeo.rotateX(Math.PI / 2);
-      starPointGeo.rotateY(Math.PI / 4);
-      const starPoint = new THREE.Mesh(starPointGeo, goldMat);
-      starPoint.rotation.y = rot;
-      starPoint.position.set(0, 0.025, 0);
-      group.add(starPoint);
+    // 8 Carved Sacred Hearth Stones around the outer rim
+    const hearthRimMat = new THREE.MeshStandardMaterial({
+      color: 0x475569,
+      roughness: 0.85,
+    });
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const rx = Math.cos(angle) * 1.95;
+      const rz = Math.sin(angle) * 1.95;
+      const stoneGeo = new THREE.BoxGeometry(0.55, 0.22, 0.35);
+      const stone = new THREE.Mesh(stoneGeo, hearthRimMat);
+      stone.position.set(rx, 0.26, rz);
+      stone.rotation.y = -angle;
+      group.add(stone);
+    }
+
+    // 2. Charred Campfire Timber Logs (Criss-crossed)
+    const logMat = new THREE.MeshStandardMaterial({
+      color: 0x3e2723, // Dark charred timber
+      roughness: 0.9,
+    });
+    [0, Math.PI / 2, Math.PI / 4, (Math.PI * 3) / 4].forEach((angle, idx) => {
+      const logGeo = new THREE.CylinderGeometry(0.12, 0.15, 2.0, 6);
+      logGeo.rotateX(Math.PI / 2);
+      logGeo.rotateZ(0.15 * (idx % 2 === 0 ? 1 : -1));
+      const log = new THREE.Mesh(logGeo, logMat);
+      log.rotation.y = angle;
+      log.position.set(0, 0.28, 0);
+      group.add(log);
     });
 
-    // 4 Diagonal Minor Compass Pointers (Turquoise Jade stone)
-    const jadeMat = new THREE.MeshStandardMaterial({
-      color: 0x059669,
-      roughness: 0.4,
-      metalness: 0.3,
-      emissive: 0x059669,
-      emissiveIntensity: 0.2,
-    });
-    [Math.PI / 4, (Math.PI * 3) / 4, (Math.PI * 5) / 4, (Math.PI * 7) / 4].forEach((rot) => {
-      const diagPointGeo = new THREE.ConeGeometry(0.28, 1.8, 4);
-      diagPointGeo.rotateX(Math.PI / 2);
-      diagPointGeo.rotateY(Math.PI / 4);
-      const diagPoint = new THREE.Mesh(diagPointGeo, jadeMat);
-      diagPoint.rotation.y = rot;
-      diagPoint.position.set(0, 0.023, 0);
-      group.add(diagPoint);
-    });
+    // 3. Stylized 3D Animated Flames (Multi-tiered low-poly flame cluster)
+    this.fireFlames = [];
 
-    // Center Golden Sun Core Medallion
-    const coreGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.05, 16);
-    const core = new THREE.Mesh(coreGeo, goldMat);
-    core.position.set(0, 0.03, 0);
-    group.add(core);
+    // Core blazing white-gold flame
+    const coreFlameGeo = new THREE.ConeGeometry(0.50, 2.0, 7);
+    const coreFlameMat = new THREE.MeshBasicMaterial({
+      color: 0xffedd5,
+    });
+    const coreFlame = new THREE.Mesh(coreFlameGeo, coreFlameMat);
+    coreFlame.position.set(0, 1.15, 0);
+    coreFlame.userData = { baseScaleX: 1.0, baseScaleY: 1.0, baseScaleZ: 1.0 };
+    group.add(coreFlame);
+    this.fireFlames.push(coreFlame);
 
-    // Center radiant point glow
-    const coreGlow = new THREE.PointLight(0xfef08a, 0.8, 8);
-    coreGlow.position.set(0, 0.4, 0);
-    group.add(coreGlow);
+    // 4 Mid vibrant fiery orange flames
+    const midFlameGeo = new THREE.ConeGeometry(0.38, 1.55, 6);
+    const midFlameMat = new THREE.MeshBasicMaterial({
+      color: 0xf97316,
+    });
+    for (let i = 0; i < 4; i++) {
+      const ang = (i / 4) * Math.PI * 2;
+      const mf = new THREE.Mesh(midFlameGeo, midFlameMat);
+      mf.position.set(Math.cos(ang) * 0.42, 0.90, Math.sin(ang) * 0.42);
+      mf.rotation.z = (Math.random() - 0.5) * 0.2;
+      mf.userData = { baseScaleX: 0.9, baseScaleY: 0.9, baseScaleZ: 0.9 };
+      group.add(mf);
+      this.fireFlames.push(mf);
+    }
+
+    // 4 Outer licking crimson flames
+    const outerFlameGeo = new THREE.ConeGeometry(0.28, 1.15, 5);
+    const outerFlameMat = new THREE.MeshBasicMaterial({
+      color: 0xef4444,
+    });
+    for (let i = 0; i < 4; i++) {
+      const ang = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const of = new THREE.Mesh(outerFlameGeo, outerFlameMat);
+      of.position.set(Math.cos(ang) * 0.72, 0.70, Math.sin(ang) * 0.72);
+      of.userData = { baseScaleX: 0.8, baseScaleY: 0.8, baseScaleZ: 0.8 };
+      group.add(of);
+      this.fireFlames.push(of);
+    }
+
+    // 4. Warm Dynamic Flickering Firelight PointLight
+    this.fireLight = new THREE.PointLight(0xf97316, 2.4, 20);
+    this.fireLight.position.set(0, 1.4, 0);
+    group.add(this.fireLight);
+
+    // 5. Initialize 18 Floating Fire Embers
+    this.fireEmbers = [];
+    const emberMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+    const emberGeo = new THREE.SphereGeometry(0.05, 5, 5);
+    for (let i = 0; i < 18; i++) {
+      const ember = new THREE.Mesh(emberGeo, emberMat);
+      ember.position.set((Math.random() - 0.5) * 0.8, 0.3 + Math.random() * 3.5, (Math.random() - 0.5) * 0.8);
+      group.add(ember);
+      this.fireEmbers.push({
+        mesh: ember,
+        seed: Math.random() * 10,
+        speed: 1.2 + Math.random() * 1.6,
+        life: Math.random() * 3,
+        maxLife: 3.0,
+      });
+    }
 
     return group;
   }
@@ -657,9 +721,9 @@ export class GameEngine {
     arena.position.y = -0.18;
     arena.receiveShadow = true;
 
-    // 3. Ancient Sun-Compass Center Emblem (Inlaid Gold & Jade Star)
-    this.sunCompassEmblem = this.createSunCompassEmblem();
-    this.arenaGroup.add(this.sunCompassEmblem);
+    // 3. Ancient Sacred Bonfire Altar (Central Ceremonial Fire Pit)
+    this.centerFirePit = this.createCenterBonfireAltar();
+    this.arenaGroup.add(this.centerFirePit);
 
     // 4. Carved Ancient Limestone Perimeter Rim & Runes
     const blockCount = 32;
@@ -680,7 +744,7 @@ export class GameEngine {
       this.arenaGroup.add(block);
     }
 
-    // 5. Glowing Outer Perimeter Ring (Contracts & Warns when collapsing)
+    // 5. Glowing Safe Perimeter Ring (Contracts & Warns when collapsing)
     const ringGeo = new THREE.TorusGeometry(this.initialRadius, 0.22, 16, 64);
     ringGeo.rotateX(Math.PI / 2);
     const ringMat = new THREE.MeshStandardMaterial({
@@ -691,7 +755,21 @@ export class GameEngine {
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.position.y = 0.06;
 
-    // 6. Sculpted 3D Grass Tufts & Wildflowers around the Outer Lawn
+    // 6. Danger / Out-of-Bounds Hazard Ring (Revealed when safe perimeter contracts)
+    const dangerGeo = new THREE.RingGeometry(this.initialRadius, this.initialRadius + 0.1, 48);
+    dangerGeo.rotateX(-Math.PI / 2);
+    const dangerMat = new THREE.MeshBasicMaterial({
+      color: 0xef4444,
+      transparent: true,
+      opacity: 0.0,
+      side: THREE.DoubleSide,
+    });
+    this.dangerZoneMesh = new THREE.Mesh(dangerGeo, dangerMat);
+    this.dangerZoneMesh.position.y = 0.03;
+    this.dangerZoneMesh.visible = false;
+    this.arenaGroup.add(this.dangerZoneMesh);
+
+    // 7. Sculpted 3D Grass Tufts & Wildflowers around the Outer Lawn
     this.createWildflowersAndGrassTufts(this.arenaGroup);
 
     return { arena, ring };
@@ -992,6 +1070,9 @@ export class GameEngine {
     this.warningSoundCooldown = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
+    if (this.ringMesh) this.ringMesh.scale.set(1, 1, 1);
+    if (this.dangerZoneMesh) this.dangerZoneMesh.visible = false;
+    this.lastDangerRadius = this.initialRadius;
 
     if (this.ringMesh && this.ringMesh.material) {
       (this.ringMesh.material as THREE.MeshStandardMaterial).color.setHex(0x10b981);
@@ -1109,11 +1190,33 @@ export class GameEngine {
       if (leaf.mesh.position.x > 18) leaf.mesh.position.x = -18;
     });
 
-    // 4. Subtle Sun Compass Center Medallion Sunlight Pulse
-    if (this.sunCompassEmblem) {
-      const sunPulse = 0.75 + Math.sin(this.elapsedTime * 2.2) * 0.25;
-      const light = this.sunCompassEmblem.children.find((c) => c instanceof THREE.PointLight) as THREE.PointLight | undefined;
-      if (light) light.intensity = sunPulse;
+    // 4. Center Sacred Bonfire Flame Animation & Flickering Firelight
+    this.fireFlames.forEach((flame, idx) => {
+      const flickerY = Math.sin(this.elapsedTime * 12 + idx * 1.8) * 0.22;
+      const flickerXZ = Math.cos(this.elapsedTime * 9 + idx * 2.2) * 0.14;
+      const baseSY = flame.userData.baseScaleY || 1.0;
+      const baseSX = flame.userData.baseScaleX || 1.0;
+      const baseSZ = flame.userData.baseScaleZ || 1.0;
+      flame.scale.y = baseSY * (1.0 + flickerY);
+      flame.scale.x = baseSX * (1.0 + flickerXZ);
+      flame.scale.z = baseSZ * (1.0 + flickerXZ);
+      flame.rotation.y += dt * (1.2 + idx * 0.3);
+    });
+
+    // 5. Center Bonfire Rising Embers
+    this.fireEmbers.forEach((ember) => {
+      ember.mesh.position.y += dt * ember.speed;
+      const heightFrac = Math.min(1.0, (ember.mesh.position.y - 0.3) / 3.5);
+      ember.mesh.position.x = Math.sin(this.elapsedTime * 2.8 + ember.seed) * (0.25 + heightFrac * 0.65);
+      ember.mesh.position.z = Math.cos(this.elapsedTime * 2.8 + ember.seed) * (0.25 + heightFrac * 0.65);
+      if (ember.mesh.position.y > 3.8) {
+        ember.mesh.position.set((Math.random() - 0.5) * 0.6, 0.3, (Math.random() - 0.5) * 0.6);
+      }
+    });
+
+    // 6. Flickering Warm Firelight PointLight
+    if (this.fireLight) {
+      this.fireLight.intensity = 2.0 + Math.sin(this.elapsedTime * 14) * 0.45 + (Math.random() - 0.5) * 0.25;
     }
   }
 
@@ -1213,8 +1316,29 @@ export class GameEngine {
       }
 
       this.state.arenaRadius = this.currentRadius;
-      const scale = this.currentRadius / this.initialRadius;
-      this.arenaGroup.scale.set(scale, 1, scale);
+      const ringScale = this.currentRadius / this.initialRadius;
+      this.ringMesh.scale.set(ringScale, 1, ringScale);
+      this.arenaGroup.scale.set(1, 1, 1);
+
+      // Danger / Out-of-Bounds Hazard Zone visualization outside shrinking safe ring
+      if (this.currentRadius < this.initialRadius - 0.05) {
+        if (this.dangerZoneMesh) {
+          this.dangerZoneMesh.visible = true;
+          const dangerMat = this.dangerZoneMesh.material as THREE.MeshBasicMaterial;
+          dangerMat.opacity = 0.35 + Math.sin(this.elapsedTime * 6) * 0.12;
+          if (Math.abs(this.currentRadius - this.lastDangerRadius) > 0.12) {
+            this.lastDangerRadius = this.currentRadius;
+            this.dangerZoneMesh.geometry.dispose();
+            const newGeo = new THREE.RingGeometry(this.currentRadius, this.initialRadius + 0.15, 48);
+            newGeo.rotateX(-Math.PI / 2);
+            this.dangerZoneMesh.geometry = newGeo;
+          }
+        }
+      } else {
+        if (this.dangerZoneMesh) {
+          this.dangerZoneMesh.visible = false;
+        }
+      }
 
       // If timer hits 0 and both fighters survived: ROUND DRAW!
       if (remaining <= 0 && !this.state.isGameOver) {
@@ -1333,8 +1457,9 @@ export class GameEngine {
     b.pos.x += b.vel.x * dt;
     b.pos.z += b.vel.z * dt;
 
-    // Running & Dash Animation (Articulated limbs vs legacy fallback)
     const speed = Math.hypot(b.vel.x, b.vel.z);
+    const inputMagnitude = Math.hypot(inputX, inputZ);
+    const isWalking = (inputMagnitude > 0.05 || speed > 0.25) && b.isGrounded;
     const hasLimbs = b.legs && b.arms && b.legs.length >= 2 && b.arms.length >= 2;
 
     if (hasLimbs) {
@@ -1347,10 +1472,13 @@ export class GameEngine {
         b.legs![1].rotation.x = THREE.MathUtils.lerp(b.legs![1].rotation.x, -0.40, dt * 18);
         b.mesh.rotation.x = THREE.MathUtils.lerp(b.mesh.rotation.x, 0.20, dt * 18);
         b.mesh.position.y = THREE.MathUtils.lerp(b.mesh.position.y, 0.02, dt * 18);
-      } else if (speed > 0.8 && b.isGrounded) {
-        b.walkCycle += dt * 14;
-        const legSwing = Math.sin(b.walkCycle) * 0.65;
-        const armSwing = Math.sin(b.walkCycle) * 0.52;
+      } else if (isWalking) {
+        const movePower = Math.max(speed, inputMagnitude * 6.5);
+        const strideSpeed = Math.max(7.5, Math.min(18, 6.0 + movePower * 1.3));
+        b.walkCycle += dt * strideSpeed;
+        const swingIntensity = Math.min(1.0, Math.max(0.35, movePower / 4.5));
+        const legSwing = Math.sin(b.walkCycle) * 0.65 * swingIntensity;
+        const armSwing = Math.sin(b.walkCycle) * 0.52 * swingIntensity;
 
         // Counter-opposed limb swing (natural brawler sprint gait)
         b.legs![0].rotation.x = legSwing;
@@ -1359,8 +1487,8 @@ export class GameEngine {
         b.arms![1].rotation.x = armSwing;
 
         // Energetic brawler running bob & subtle forward sprint lean
-        b.mesh.position.y = Math.abs(Math.sin(b.walkCycle)) * 0.08;
-        b.mesh.rotation.x = THREE.MathUtils.lerp(b.mesh.rotation.x, 0.08, dt * 10);
+        b.mesh.position.y = Math.abs(Math.sin(b.walkCycle)) * 0.08 * swingIntensity;
+        b.mesh.rotation.x = THREE.MathUtils.lerp(b.mesh.rotation.x, 0.08 * swingIntensity, dt * 10);
       } else if (b.isGrounded) {
         // Smooth return to idle heroic stance
         b.legs![0].rotation.x = THREE.MathUtils.lerp(b.legs![0].rotation.x, 0, dt * 14);
@@ -1371,7 +1499,7 @@ export class GameEngine {
         b.mesh.rotation.x = THREE.MathUtils.lerp(b.mesh.rotation.x, 0, dt * 14);
       }
     } else {
-      if (speed > 0.8 && b.isGrounded) {
+      if (isWalking) {
         b.walkCycle += dt * 14;
         b.bodyMesh.position.y = 1.0 + Math.abs(Math.sin(b.walkCycle)) * 0.18;
         b.fists[0].position.z = 0.3 + Math.sin(b.walkCycle) * 0.28;
@@ -1602,6 +1730,9 @@ export class GameEngine {
     this.warningSoundCooldown = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
+    if (this.ringMesh) this.ringMesh.scale.set(1, 1, 1);
+    if (this.dangerZoneMesh) this.dangerZoneMesh.visible = false;
+    this.lastDangerRadius = this.initialRadius;
 
     if (this.ringMesh && this.ringMesh.material) {
       const mat = this.ringMesh.material as THREE.MeshStandardMaterial;

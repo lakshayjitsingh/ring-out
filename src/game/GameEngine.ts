@@ -187,12 +187,12 @@ export class GameEngine {
   }
 
   private setupLighting() {
-    // Tropical Hemisphere Light (Azure sky bounce down, rich emerald grass bounce up)
-    const hemi = new THREE.HemisphereLight(0x7dd3fc, 0x16a34a, 1.15);
+    // Warm Sunlit Atmosphere: warm ivory sunlight down, rich emerald grass bounce up (prevents pale cyan washout)
+    const hemi = new THREE.HemisphereLight(0xfffbeb, 0x15803d, 0.85);
     this.scene.add(hemi);
 
-    // Radiant Sun Directional Light (Warm golden sunlight casting crisp soft shadows)
-    const sunLight = new THREE.DirectionalLight(0xfffaea, 1.65);
+    // Radiant Sun Directional Light (Warm golden tropical sunlight)
+    const sunLight = new THREE.DirectionalLight(0xfffaea, 1.30);
     sunLight.position.set(35, 52, 22);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 1024;
@@ -206,13 +206,13 @@ export class GameEngine {
     sunLight.shadow.bias = -0.0005;
     this.scene.add(sunLight);
 
-    // Turquoise Ocean Ambient Fill Light
-    const oceanFill = new THREE.DirectionalLight(0x0284c7, 0.45);
+    // Subtle Ocean Fill Light (gentle soft sky bounce)
+    const oceanFill = new THREE.DirectionalLight(0x38bdf8, 0.20);
     oceanFill.position.set(-25, 12, -25);
     this.scene.add(oceanFill);
 
     // Center Sunlight Warmth Point
-    const centerWarmth = new THREE.PointLight(0xfef08a, 0.8, 18);
+    const centerWarmth = new THREE.PointLight(0xfef08a, 0.5, 18);
     centerWarmth.position.set(0, 3, 0);
     this.scene.add(centerWarmth);
   }
@@ -336,13 +336,13 @@ export class GameEngine {
 
     const center = size / 2;
 
-    // 1. Rich Sunny Tropical Emerald Gradient (Radiant, vibrant & lush)
+    // 1. Rich Botanical Meadow Emerald Gradient (Deep, vibrant & natural)
     const baseGrad = ctx.createRadialGradient(center, center, 40, center, center, center);
-    baseGrad.addColorStop(0.0, '#15803d');  // Warm deep emerald
-    baseGrad.addColorStop(0.25, '#16a34a'); // Vibrant sunny lawn
-    baseGrad.addColorStop(0.65, '#22c55e'); // Radiant tropical green
-    baseGrad.addColorStop(0.92, '#15803d'); // Emerald perimeter
-    baseGrad.addColorStop(1.0, '#166534');  // Rich earthy edge
+    baseGrad.addColorStop(0.0, '#14532d');  // Deep moist soil emerald
+    baseGrad.addColorStop(0.20, '#16a34a'); // Lush emerald lawn
+    baseGrad.addColorStop(0.60, '#15803d'); // Rich meadow green
+    baseGrad.addColorStop(0.88, '#166534'); // Forest perimeter
+    baseGrad.addColorStop(1.0, '#14532d');  // Deep earthy edge
     ctx.fillStyle = baseGrad;
     ctx.fillRect(0, 0, size, size);
 
@@ -426,13 +426,121 @@ export class GameEngine {
       }
     }
 
-    // 6. Seamless Central Basalt Stone Hearth Blend Ring
-    const fireRadiusPx = (2.25 / 13.0) * center;
+    // 6. Seamless Central Basalt Stone Hearth Blend Ring (Snug at altar rim)
+    const fireRadiusPx = (2.15 / 13.0) * center;
     ctx.beginPath();
-    ctx.arc(center, center, fireRadiusPx + 10, 0, Math.PI * 2);
-    ctx.lineWidth = 18;
+    ctx.arc(center, center, fireRadiusPx + 4, 0, Math.PI * 2);
+    ctx.lineWidth = 10;
     ctx.strokeStyle = 'rgba(30, 41, 59, 0.85)'; // Clean dark basalt transition
     ctx.stroke();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    return texture;
+  }
+
+  private createBotanicalGrassTexture(withFlowers: boolean): THREE.CanvasTexture {
+    const w = 512;
+    const h = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    // Completely transparent background
+    ctx.clearRect(0, 0, w, h);
+
+    const cx = w / 2;
+    const baseLine = h - 4;
+
+    // 42 fine, organically curved, slender botanical grass blades across the quad
+    const bladeCount = 42;
+    for (let i = 0; i < bladeCount; i++) {
+      // Clustered root distribution across the base
+      const rootX = cx + (Math.random() - 0.5) * 260;
+      const rootW = 10 + Math.random() * 12; // Slender base width (10-22px)
+      const height = 310 + Math.random() * 190; // Natural varied height
+      const tipY = baseLine - height;
+
+      // Natural arching curve: left blades arch left, right blades arch right
+      const side = (rootX - cx) / 120; // -1 to 1 approx
+      const archForce = (side * 60) + (Math.random() - 0.5) * 50;
+      const tipX = rootX + archForce;
+      const ctrlX = rootX + archForce * 0.65;
+      const ctrlY = baseLine - height * 0.55;
+
+      // Botanical color gradient: deep forest green root -> rich emerald body -> bright lime sunlit tip
+      const grad = ctx.createLinearGradient(rootX, baseLine, tipX, tipY);
+      grad.addColorStop(0.0, '#064e3b');  // Deep moist soil root
+      grad.addColorStop(0.25, '#15803d'); // Rich dark forest turf
+      grad.addColorStop(0.55, '#16a34a'); // Vibrant emerald blade
+      grad.addColorStop(0.85, '#4ade80'); // Sunlit spring lime
+      grad.addColorStop(1.0, '#86efac');  // Bright sunlit dewdrop tip
+
+      // Draw tapered curved blade
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(rootX - rootW * 0.5, baseLine);
+      ctx.quadraticCurveTo(ctrlX - rootW * 0.25, ctrlY, tipX, tipY);
+      ctx.quadraticCurveTo(ctrlX + rootW * 0.25, ctrlY, rootX + rootW * 0.5, baseLine);
+      ctx.closePath();
+      ctx.fill();
+
+      // Subtle blade spine vein highlight
+      ctx.strokeStyle = 'rgba(190, 242, 100, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(rootX, baseLine);
+      ctx.quadraticCurveTo(ctrlX, ctrlY, tipX, tipY);
+      ctx.stroke();
+    }
+
+    // Add charming botanical wildflowers if requested
+    if (withFlowers) {
+      const flowerTypes = [
+        { petals: '#ffffff', center: '#f59e0b', count: 6 }, // Island Daisy
+        { petals: '#ef4444', center: '#1c1917', count: 5 }, // Ruby Poppy
+        { petals: '#facc15', center: '#b45309', count: 5 }, // Gold Buttercup
+        { petals: '#38bdf8', center: '#ffffff', count: 5 }, // Blue Forget-me-not
+        { petals: '#a855f7', center: '#fde047', count: 5 }, // Orchid Violet
+      ];
+
+      const flowerCount = 3 + Math.floor(Math.random() * 2);
+      for (let f = 0; f < flowerCount; f++) {
+        const ft = flowerTypes[f % flowerTypes.length];
+        const fx = cx + (Math.random() - 0.5) * 190;
+        const fy = baseLine - 220 - Math.random() * 160;
+
+        // Slender botanical stem
+        ctx.strokeStyle = '#15803d';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(cx + (fx - cx) * 0.35, baseLine);
+        ctx.quadraticCurveTo(fx + (Math.random() - 0.5) * 20, (baseLine + fy) * 0.5, fx, fy);
+        ctx.stroke();
+
+        // Petals
+        ctx.fillStyle = ft.petals;
+        const petalCount = ft.count;
+        const petalRadius = 13;
+        for (let p = 0; p < petalCount; p++) {
+          const ang = (p / petalCount) * Math.PI * 2;
+          const px = fx + Math.cos(ang) * petalRadius;
+          const py = fy + Math.sin(ang) * petalRadius;
+          ctx.beginPath();
+          ctx.arc(px, py, 7.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Flower central core
+        ctx.fillStyle = ft.center;
+        ctx.beginPath();
+        ctx.arc(fx, fy, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -726,69 +834,42 @@ export class GameEngine {
   private createWindGrassAndWildflowers(parent: THREE.Scene) {
     this.windGrassTufts = [];
 
-    // Shared high-quality stylized grass materials
-    const matEmerald = new THREE.MeshStandardMaterial({
-      color: 0x16a34a,
-      roughness: 0.45,
+    // 1. High-Resolution Botanical Grass Clump Textures (Curved slender blades + wildflowers)
+    const grassTex = this.createBotanicalGrassTexture(false);
+    const flowerGrassTex = this.createBotanicalGrassTexture(true);
+
+    const grassMat = new THREE.MeshStandardMaterial({
+      map: grassTex,
+      transparent: true,
+      alphaTest: 0.35,
+      roughness: 0.55,
+      metalness: 0.02,
       side: THREE.DoubleSide,
-    });
-    const matSpringLime = new THREE.MeshStandardMaterial({
-      color: 0x4ade80,
-      roughness: 0.40,
-      side: THREE.DoubleSide,
-    });
-    const matGoldenMeadow = new THREE.MeshStandardMaterial({
-      color: 0x84cc16,
-      roughness: 0.40,
-      side: THREE.DoubleSide,
-    });
-    const matForestDeep = new THREE.MeshStandardMaterial({
-      color: 0x15803d,
-      roughness: 0.50,
-      side: THREE.DoubleSide,
+      shadowSide: THREE.DoubleSide,
     });
 
-    // Vibrant wildflower materials
-    const flowerGoldMat = new THREE.MeshStandardMaterial({
-      color: 0xfacc15,
-      roughness: 0.35,
-      emissive: 0xf59e0b,
-      emissiveIntensity: 0.35,
-    });
-    const flowerWhiteMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.4,
-    });
-    const flowerPinkMat = new THREE.MeshStandardMaterial({
-      color: 0xf43f5e,
-      roughness: 0.35,
-      emissive: 0xe11d48,
-      emissiveIntensity: 0.3,
-    });
-    const flowerBlueMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      roughness: 0.35,
-      emissive: 0x0284c7,
-      emissiveIntensity: 0.25,
-    });
-    const flowerPurpleMat = new THREE.MeshStandardMaterial({
-      color: 0xa855f7,
-      roughness: 0.35,
-      emissive: 0x9333ea,
-      emissiveIntensity: 0.25,
+    const flowerGrassMat = new THREE.MeshStandardMaterial({
+      map: flowerGrassTex,
+      transparent: true,
+      alphaTest: 0.35,
+      roughness: 0.55,
+      metalness: 0.02,
+      side: THREE.DoubleSide,
+      shadowSide: THREE.DoubleSide,
     });
 
-    const stemMat = new THREE.MeshStandardMaterial({
-      color: 0x166534,
-      roughness: 0.6,
-    });
+    // 2. Continuous Blanket Coverage Across the WHOLE BASE
+    // From right outside the basalt hearth stone (2.05m) all the way to the outer perimeter blocks (12.85m)
+    const tuftCount = 1600; // Dense velvety meadow carpet covering entire base with zero bald spots!
+    const rMin = 2.05;      // Snug directly against the center bonfire hearth rim
+    const rMax = this.initialRadius - 0.15; // 12.85m (full perimeter reach)
 
-    const tuftCount = 480; // Dense meadow coverage!
-    const rMin = 2.45;     // Outside the central bonfire altar (2.25m)
-    const rMax = this.initialRadius - 0.45; // 12.55m
+    // Base Quad Geometry: 0.72m wide, 0.48m tall with root pivot at y = 0
+    const quadGeo = new THREE.PlaneGeometry(0.72, 0.48);
+    quadGeo.translate(0, 0.24, 0); // Ground anchor at y = 0
 
     for (let i = 0; i < tuftCount; i++) {
-      // Uniform area density distribution (no bald center or sparse outer rim)
+      // Uniform area density distribution across the entire circular disc
       const u = Math.random();
       const r = Math.sqrt(rMin * rMin + u * (rMax * rMax - rMin * rMin));
       const angle = Math.random() * Math.PI * 2;
@@ -798,79 +879,20 @@ export class GameEngine {
       const cluster = new THREE.Group();
       cluster.position.set(x, 0, z);
 
-      // Random cluster scale for natural meadow organic variety
-      const clusterScale = 0.85 + Math.random() * 0.45;
+      // Random scale & rotation for natural organic variety
+      const clusterScale = 0.85 + Math.random() * 0.40;
       cluster.scale.set(clusterScale, clusterScale, clusterScale);
+      cluster.rotation.y = Math.random() * Math.PI * 2;
 
-      // 4 to 6 stylized 3D tapered blades per clump
-      const bladeCount = 4 + Math.floor(Math.random() * 3);
-      const bladeMats = [matEmerald, matSpringLime, matGoldenMeadow, matForestDeep];
+      // Every 3rd tuft contains colorful wildflowers, others are pure lush grass
+      const mat = (i % 3 === 0) ? flowerGrassMat : grassMat;
 
-      for (let b = 0; b < bladeCount; b++) {
-        const bladeHeight = 0.52 + Math.random() * 0.34; // 0.52m to 0.86m tall!
-        const baseRadius = 0.055 + Math.random() * 0.025; // 0.055m to 0.08m wide!
-        const tipRadius = 0.006;
-
-        // 3-sided tapered blade prism (lightweight, full 3D volume, catches sunlight)
-        const bladeGeo = new THREE.CylinderGeometry(tipRadius, baseRadius, bladeHeight, 3);
-        const bladeMat = bladeMats[(i + b) % bladeMats.length];
-        const bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
-
-        // Radial fan arrangement with natural arching tilt
-        const fanAngle = (b / bladeCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-        const tiltAmt = 0.15 + (b === 0 ? 0.05 : Math.random() * 0.28); // center blade stands tall, outer blades arch outward
-        const radOffset = 0.04 + Math.random() * 0.05;
-
-        bladeMesh.position.set(
-          Math.cos(fanAngle) * radOffset,
-          bladeHeight * 0.48,
-          Math.sin(fanAngle) * radOffset
-        );
-        bladeMesh.rotation.y = fanAngle;
-        bladeMesh.rotation.x = Math.sin(fanAngle) * tiltAmt;
-        bladeMesh.rotation.z = -Math.cos(fanAngle) * tiltAmt;
-
-        cluster.add(bladeMesh);
-      }
-
-      // Add lovely 3D Wildflower on every 3rd cluster (approx 160 flowers across the island)
-      if (i % 3 === 0) {
-        const flowerType = Math.floor(i / 3) % 5;
-        let petalMat = flowerWhiteMat;
-        if (flowerType === 0) petalMat = flowerGoldMat;
-        else if (flowerType === 1) petalMat = flowerPinkMat;
-        else if (flowerType === 2) petalMat = flowerWhiteMat;
-        else if (flowerType === 3) petalMat = flowerBlueMat;
-        else petalMat = flowerPurpleMat;
-
-        const stemHeight = 0.42 + Math.random() * 0.16;
-        const stemGeo = new THREE.CylinderGeometry(0.018, 0.024, stemHeight, 4);
-        const stem = new THREE.Mesh(stemGeo, stemMat);
-        stem.position.set(0.05, stemHeight * 0.48, 0.05);
-        cluster.add(stem);
-
-        // Flower Blossom (stylized multi-petal crown)
-        const blossomGroup = new THREE.Group();
-        blossomGroup.position.set(0.05, stemHeight * 0.95, 0.05);
-
-        // Central flower core
-        const coreGeo = new THREE.SphereGeometry(0.045, 6, 6);
-        const coreMat = (petalMat === flowerWhiteMat || petalMat === flowerPinkMat) ? flowerGoldMat : flowerWhiteMat;
-        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
-        blossomGroup.add(coreMesh);
-
-        // 4 Stylized Petals
-        for (let p = 0; p < 4; p++) {
-          const petalGeo = new THREE.SphereGeometry(0.05, 5, 5);
-          petalGeo.scale(1.4, 0.4, 0.8);
-          const petalMesh = new THREE.Mesh(petalGeo, petalMat);
-          const pAngle = (p / 4) * Math.PI * 2;
-          petalMesh.position.set(Math.cos(pAngle) * 0.06, 0, Math.sin(pAngle) * 0.06);
-          petalMesh.rotation.y = pAngle;
-          blossomGroup.add(petalMesh);
-        }
-
-        cluster.add(blossomGroup);
+      // 4-Plane Star Formation: completely omnidirectional fullness and thick coverage
+      const angles = [0, Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4];
+      for (let a = 0; a < 4; a++) {
+        const plane = new THREE.Mesh(quadGeo, mat);
+        plane.rotation.y = angles[a];
+        cluster.add(plane);
       }
 
       parent.add(cluster);
@@ -1420,12 +1442,12 @@ export class GameEngine {
       this.fireLight.intensity = 2.5 + Math.sin(this.elapsedTime * 17) * 0.45 + Math.sin(this.elapsedTime * 29) * 0.25 + (Math.random() - 0.5) * 0.2;
     }
 
-    // 8. Dynamic 3D Grass Wind Waves (Physically sways in ocean trade winds)
+    // 8. Dynamic Botanical Grass Wind Waves (Harmonic ocean breeze waves)
     this.windGrassTufts.forEach((tuft) => {
-      const wave = this.elapsedTime * 3.4 + tuft.posX * 0.35 + tuft.posZ * 0.28 + tuft.seed;
-      tuft.group.rotation.z = Math.sin(wave) * 0.24 + Math.sin(wave * 2.2) * 0.07;
-      tuft.group.rotation.x = Math.cos(wave * 0.85) * 0.12;
-      tuft.group.visible = Math.hypot(tuft.posX, tuft.posZ) <= this.currentRadius - 0.35;
+      const wave = this.elapsedTime * 3.2 + tuft.posX * 0.36 + tuft.posZ * 0.3 + tuft.seed;
+      tuft.group.rotation.z = Math.sin(wave) * 0.16 + Math.sin(wave * 2.1) * 0.05;
+      tuft.group.rotation.x = Math.cos(wave * 0.85) * 0.09;
+      tuft.group.visible = Math.hypot(tuft.posX, tuft.posZ) <= this.currentRadius - 0.18;
     });
   }
 

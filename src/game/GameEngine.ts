@@ -101,6 +101,8 @@ export class GameEngine {
   private fireEmbers: { mesh: THREE.Mesh; seed: number; speed: number; life: number; maxLife: number }[] = [];
   private fireSmoke: { mesh: THREE.Mesh; seed: number; speed: number; life: number; maxLife: number }[] = [];
   private windGrassTufts: { group: THREE.Group; posX: number; posZ: number; seed: number }[] = [];
+  private grassMaterial: THREE.MeshStandardMaterial | null = null;
+  private flowerMaterial: THREE.MeshStandardMaterial | null = null;
   private splashTriggered: { player: boolean; bot: boolean } = { player: false, bot: false };
 
   // Inputs
@@ -831,6 +833,87 @@ export class GameEngine {
     return group;
   }
 
+  private createStarClumpGeometry(w: number, h: number): THREE.BufferGeometry {
+    const geo = new THREE.BufferGeometry();
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    // 3 crossed planes forming a symmetrical star (*) at 0, 60, and 120 degrees
+    const angles = [0, Math.PI / 3, (2 * Math.PI) / 3];
+
+    angles.forEach((ang, planeIdx) => {
+      const cos = Math.cos(ang) * (w / 2);
+      const sin = Math.sin(ang) * (w / 2);
+      const baseVertex = planeIdx * 4;
+
+      // 4 vertices per plane (standing upright with root pivot at y = 0)
+      // 0: bottom-left
+      positions.push(-cos, 0, -sin);
+      uvs.push(0, 0);
+
+      // 1: bottom-right
+      positions.push(cos, 0, sin);
+      uvs.push(1, 0);
+
+      // 2: top-right
+      positions.push(cos, h, sin);
+      uvs.push(1, 1);
+
+      // 3: top-left
+      positions.push(-cos, h, -sin);
+      uvs.push(0, 1);
+
+      // 2 triangles per quad (front and back visible with DoubleSide)
+      indices.push(
+        baseVertex, baseVertex + 1, baseVertex + 2,
+        baseVertex, baseVertex + 2, baseVertex + 3
+      );
+    });
+
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    return geo;
+  }
+
+  private setupGrassShader(material: THREE.MeshStandardMaterial) {
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = { value: 0 };
+      shader.uniforms.uCurrentRadius = { value: this.initialRadius };
+      material.userData.shader = shader;
+
+      shader.vertexShader = `
+        uniform float uTime;
+        uniform float uCurrentRadius;
+      ` + shader.vertexShader;
+
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `
+        #include <begin_vertex>
+        #ifdef USE_INSTANCING
+          vec4 instCenter = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+        #else
+          vec4 instCenter = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+        #endif
+
+        if (length(instCenter.xz) > uCurrentRadius - 0.20) {
+          transformed = vec3(0.0);
+        } else {
+          float heightFactor = clamp(position.y / 0.48, 0.0, 1.0);
+          float wave = uTime * 3.2 + instCenter.x * 0.35 + instCenter.z * 0.28;
+          float windOffset = (sin(wave) * 0.14 + sin(wave * 2.2) * 0.04) * heightFactor;
+          transformed.x += windOffset;
+          transformed.z += windOffset * 0.6;
+        }
+        `
+      );
+    };
+  }
+
   private createWindGrassAndWildflowers(parent: THREE.Scene) {
     this.windGrassTufts = [];
 
@@ -838,71 +921,76 @@ export class GameEngine {
     const grassTex = this.createBotanicalGrassTexture(false);
     const flowerGrassTex = this.createBotanicalGrassTexture(true);
 
-    const grassMat = new THREE.MeshStandardMaterial({
+    this.grassMaterial = new THREE.MeshStandardMaterial({
       map: grassTex,
       transparent: true,
       alphaTest: 0.35,
       roughness: 0.55,
       metalness: 0.02,
       side: THREE.DoubleSide,
-      shadowSide: THREE.DoubleSide,
     });
+    this.setupGrassShader(this.grassMaterial);
 
-    const flowerGrassMat = new THREE.MeshStandardMaterial({
+    this.flowerMaterial = new THREE.MeshStandardMaterial({
       map: flowerGrassTex,
       transparent: true,
       alphaTest: 0.35,
       roughness: 0.55,
       metalness: 0.02,
       side: THREE.DoubleSide,
-      shadowSide: THREE.DoubleSide,
     });
+    this.setupGrassShader(this.flowerMaterial);
 
-    // 2. Continuous Blanket Coverage Across the WHOLE BASE
-    // From right outside the basalt hearth stone (2.05m) all the way to the outer perimeter blocks (12.85m)
-    const tuftCount = 1600; // Dense velvety meadow carpet covering entire base with zero bald spots!
-    const rMin = 2.05;      // Snug directly against the center bonfire hearth rim
-    const rMax = this.initialRadius - 0.15; // 12.85m (full perimeter reach)
+    // 2. Pre-merged Star (*) Clump Geometry (3 crossed planes in a single buffer)
+    const clumpGeo = this.createStarClumpGeometry(0.72, 0.48);
 
-    // Base Quad Geometry: 0.72m wide, 0.48m tall with root pivot at y = 0
-    const quadGeo = new THREE.PlaneGeometry(0.72, 0.48);
-    quadGeo.translate(0, 0.24, 0); // Ground anchor at y = 0
+    // 3. Continuous Blanket Coverage Across the WHOLE BASE
+    const totalTufts = 1600;
+    const flowerCount = Math.floor(totalTufts * 0.25); // 400 flower tufts
+    const grassCount = totalTufts - flowerCount;       // 1200 pure grass tufts
 
-    for (let i = 0; i < tuftCount; i++) {
-      // Uniform area density distribution across the entire circular disc
+    const grassMesh = new THREE.InstancedMesh(clumpGeo, this.grassMaterial, grassCount);
+    grassMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    grassMesh.receiveShadow = true;
+
+    const flowerMesh = new THREE.InstancedMesh(clumpGeo, this.flowerMaterial, flowerCount);
+    flowerMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    flowerMesh.receiveShadow = true;
+
+    const rMin = 2.05; // Snug against the center bonfire hearth
+    const rMax = this.initialRadius - 0.15; // 12.85m
+
+    const dummy = new THREE.Object3D();
+    let grassIdx = 0;
+    let flowerIdx = 0;
+
+    for (let i = 0; i < totalTufts; i++) {
       const u = Math.random();
       const r = Math.sqrt(rMin * rMin + u * (rMax * rMax - rMin * rMin));
       const angle = Math.random() * Math.PI * 2;
       const x = Math.cos(angle) * r;
       const z = Math.sin(angle) * r;
 
-      const cluster = new THREE.Group();
-      cluster.position.set(x, 0, z);
+      const scale = 0.85 + Math.random() * 0.40;
+      const rotY = Math.random() * Math.PI * 2;
 
-      // Random scale & rotation for natural organic variety
-      const clusterScale = 0.85 + Math.random() * 0.40;
-      cluster.scale.set(clusterScale, clusterScale, clusterScale);
-      cluster.rotation.y = Math.random() * Math.PI * 2;
+      dummy.position.set(x, 0, z);
+      dummy.rotation.set(0, rotY, 0);
+      dummy.scale.set(scale, scale, scale);
+      dummy.updateMatrix();
 
-      // Every 3rd tuft contains colorful wildflowers, others are pure lush grass
-      const mat = (i % 3 === 0) ? flowerGrassMat : grassMat;
-
-      // 4-Plane Star Formation: completely omnidirectional fullness and thick coverage
-      const angles = [0, Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4];
-      for (let a = 0; a < 4; a++) {
-        const plane = new THREE.Mesh(quadGeo, mat);
-        plane.rotation.y = angles[a];
-        cluster.add(plane);
+      if (i % 4 === 0 && flowerIdx < flowerCount) {
+        flowerMesh.setMatrixAt(flowerIdx++, dummy.matrix);
+      } else if (grassIdx < grassCount) {
+        grassMesh.setMatrixAt(grassIdx++, dummy.matrix);
       }
-
-      parent.add(cluster);
-      this.windGrassTufts.push({
-        group: cluster,
-        posX: x,
-        posZ: z,
-        seed: Math.random() * 10,
-      });
     }
+
+    grassMesh.instanceMatrix.needsUpdate = true;
+    flowerMesh.instanceMatrix.needsUpdate = true;
+
+    parent.add(grassMesh);
+    parent.add(flowerMesh);
   }
 
   private createArena() {
@@ -1442,13 +1530,15 @@ export class GameEngine {
       this.fireLight.intensity = 2.5 + Math.sin(this.elapsedTime * 17) * 0.45 + Math.sin(this.elapsedTime * 29) * 0.25 + (Math.random() - 0.5) * 0.2;
     }
 
-    // 8. Dynamic Botanical Grass Wind Waves (Harmonic ocean breeze waves)
-    this.windGrassTufts.forEach((tuft) => {
-      const wave = this.elapsedTime * 3.2 + tuft.posX * 0.36 + tuft.posZ * 0.3 + tuft.seed;
-      tuft.group.rotation.z = Math.sin(wave) * 0.16 + Math.sin(wave * 2.1) * 0.05;
-      tuft.group.rotation.x = Math.cos(wave * 0.85) * 0.09;
-      tuft.group.visible = Math.hypot(tuft.posX, tuft.posZ) <= this.currentRadius - 0.18;
-    });
+    // 8. Dynamic Botanical Grass Wind Waves & Shrink Culling (GPU Uniform Updates - Zero CPU Math!)
+    if (this.grassMaterial?.userData?.shader) {
+      this.grassMaterial.userData.shader.uniforms.uTime.value = this.elapsedTime;
+      this.grassMaterial.userData.shader.uniforms.uCurrentRadius.value = this.currentRadius;
+    }
+    if (this.flowerMaterial?.userData?.shader) {
+      this.flowerMaterial.userData.shader.uniforms.uTime.value = this.elapsedTime;
+      this.flowerMaterial.userData.shader.uniforms.uCurrentRadius.value = this.currentRadius;
+    }
   }
 
   private spawnOceanSplash(x: number, z: number) {
@@ -1940,7 +2030,6 @@ export class GameEngine {
     this.warningSoundCooldown = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
-    this.windGrassTufts.forEach((tuft) => tuft.group.visible = true);
 
     if (this.ringMesh && this.ringMesh.material) {
       const mat = this.ringMesh.material as THREE.MeshStandardMaterial;

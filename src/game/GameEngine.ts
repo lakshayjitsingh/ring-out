@@ -87,6 +87,10 @@ export class GameEngine {
   private clouds: { group: THREE.Group; speed: number }[] = [];
   private breezeParticles: { mesh: THREE.Mesh; seed: number; speed: number }[] = [];
   private oceanWaveRings: THREE.Mesh[] = [];
+  private islandFoamRings: THREE.Mesh[] = [];
+  private oceanMaterial: THREE.ShaderMaterial | null = null;
+  private sunCoronaSprite: THREE.Sprite | null = null;
+  private sunRaysSprite: THREE.Sprite | null = null;
   private centerFirePit: THREE.Group | null = null;
   private flameParticles: {
     mesh: THREE.Mesh;
@@ -216,69 +220,36 @@ export class GameEngine {
   }
 
   private setupEnvironment() {
-    // 1. Panoramic Sky Dome (Azure to Warm Coastal Horizon)
+    // 1. Panoramic Sky Dome (Azure to Warm Coastal Horizon Gradient)
     const skyGeo = new THREE.SphereGeometry(380, 32, 24);
     const skyMat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
+      map: this.createSkyGradientTexture(),
       side: THREE.BackSide,
     });
     const skyDome = new THREE.Mesh(skyGeo, skyMat);
     this.scene.add(skyDome);
 
-    // 2. The Glowing Stylized Sun in the Sky
-    const sunGroup = new THREE.Group();
-    sunGroup.position.set(28, 6.2, -65);
-
-    const sunCoreGeo = new THREE.SphereGeometry(6.5, 16, 16);
-    const sunCoreMat = new THREE.MeshBasicMaterial({ color: 0xfffbeb });
-    const sunCore = new THREE.Mesh(sunCoreGeo, sunCoreMat);
-    sunGroup.add(sunCore);
-
-    const coronaGeo = new THREE.SphereGeometry(9.8, 16, 16);
-    const coronaMat = new THREE.MeshBasicMaterial({
-      color: 0xfef08a,
-      transparent: true,
-      opacity: 0.42,
-    });
-    const corona = new THREE.Mesh(coronaGeo, coronaMat);
-    sunGroup.add(corona);
-
-    const auraGeo = new THREE.SphereGeometry(15.5, 16, 16);
-    const auraMat = new THREE.MeshBasicMaterial({
-      color: 0xfef9c3,
-      transparent: true,
-      opacity: 0.16,
-    });
-    const aura = new THREE.Mesh(auraGeo, auraMat);
-    sunGroup.add(aura);
-
+    // 2. The Celestial Radiant Sun in the Sky
+    const sunGroup = this.createRealisticSun();
     this.scene.add(sunGroup);
 
-    // 3. Drifting Fluffy 3D Low-Poly Clouds
+    // 3. Multi-Layer Drifting Cumulus Clouds
     const cloudsGroup = this.createClouds();
     this.scene.add(cloudsGroup);
 
-    // 4. Sparkling Turquoise Tropical Ocean (surrounding below at y = -6.5)
-    const oceanGeo = new THREE.CircleGeometry(280, 64);
-    oceanGeo.rotateX(-Math.PI / 2);
-    const oceanMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7,
-      roughness: 0.12,
-      metalness: 0.32,
-    });
-    const ocean = new THREE.Mesh(oceanGeo, oceanMat);
-    ocean.position.y = -6.5;
+    // 4. Dynamic Masterpiece Ocean (Subdivided Plane with multi-frequency GPU waves, depth gradient, caustics, and surf)
+    const ocean = this.createDynamicOcean();
     this.scene.add(ocean);
 
-    // Concentric animated ocean wave foam rings around the island base
+    // Dynamic shoreline foam rings around arena cliff base
     this.oceanWaveRings = [];
-    [26, 46].forEach((radius) => {
-      const waveGeo = new THREE.TorusGeometry(radius, radius === 26 ? 0.9 : 1.3, 8, 48);
+    [14, 22].forEach((radius) => {
+      const waveGeo = new THREE.TorusGeometry(radius, radius === 14 ? 0.75 : 1.1, 8, 64);
       waveGeo.rotateX(Math.PI / 2);
       const waveMat = new THREE.MeshBasicMaterial({
-        color: 0xe0f2fe,
+        color: 0xffffff,
         transparent: true,
-        opacity: 0.42,
+        opacity: 0.55,
       });
       const wave = new THREE.Mesh(waveGeo, waveMat);
       wave.position.y = -6.42;
@@ -286,12 +257,307 @@ export class GameEngine {
       this.oceanWaveRings.push(wave);
     });
 
-    // 5. Distant Tropical Islands & Palm Groves on the Horizon
+    // 5. Majestic Distant Tropical Archipelago on the Horizon
     const distantIslands = this.createDistantIslands();
     this.scene.add(distantIslands);
 
     // 6. Island Breeze Leaf & Pollen Particles
     this.createBreezeParticles(this.scene);
+  }
+
+  private createSkyGradientTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 16;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0.0, '#0284c7');  // Deep tropical azure zenith
+    grad.addColorStop(0.40, '#38bdf8'); // Radiant cerulean sky
+    grad.addColorStop(0.75, '#7dd3fc'); // Coastal turquoise horizon mist
+    grad.addColorStop(0.92, '#bae6fd'); // Soft light sea foam
+    grad.addColorStop(1.0, '#fef3c7');  // Warm golden sunlit horizon kiss
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 16, 512);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  }
+
+  private createRealisticSun(): THREE.Group {
+    const sunGroup = new THREE.Group();
+    // Positioned in upper right sky frustum matching the golden sunlight: (26, 6.8, -75)
+    sunGroup.position.set(26, 6.8, -75);
+
+    // 1. Incandescent White-Hot Sun Disc (Core)
+    const coreTex = this.createSunDiscTexture();
+    const coreMat = new THREE.SpriteMaterial({
+      map: coreTex,
+      color: 0xffffff,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const coreSprite = new THREE.Sprite(coreMat);
+    coreSprite.scale.set(16, 16, 1);
+    sunGroup.add(coreSprite);
+
+    // 2. Wide Rayleigh Atmospheric Scattering Corona (Warm Golden Amber)
+    const coronaTex = this.createSunCoronaTexture();
+    const coronaMat = new THREE.SpriteMaterial({
+      map: coronaTex,
+      color: 0xfffbeb,
+      transparent: true,
+      opacity: 0.88,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.sunCoronaSprite = new THREE.Sprite(coronaMat);
+    this.sunCoronaSprite.scale.set(45, 45, 1);
+    sunGroup.add(this.sunCoronaSprite);
+
+    // 3. Diffraction Star Rays & Anamorphic Lens Flare
+    const raysTex = this.createSunRaysTexture();
+    const raysMat = new THREE.SpriteMaterial({
+      map: raysTex,
+      color: 0xfef08a,
+      transparent: true,
+      opacity: 0.70,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.sunRaysSprite = new THREE.Sprite(raysMat);
+    this.sunRaysSprite.scale.set(65, 65, 1);
+    sunGroup.add(this.sunRaysSprite);
+
+    return sunGroup;
+  }
+
+  private createSunDiscTexture(): THREE.CanvasTexture {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const cx = size / 2;
+    const cy = size / 2;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.45);
+    grad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');     // Pure white core
+    grad.addColorStop(0.2, 'rgba(255, 255, 245, 0.95)');    // Intense white-yellow
+    grad.addColorStop(0.45, 'rgba(254, 240, 138, 0.7)');    // Golden brilliance
+    grad.addColorStop(0.75, 'rgba(251, 191, 36, 0.25)');    // Warm golden falloff
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  private createSunCoronaTexture(): THREE.CanvasTexture {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const cx = size / 2;
+    const cy = size / 2;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.48);
+    grad.addColorStop(0.0, 'rgba(254, 243, 199, 0.75)');    // Warm ivory center
+    grad.addColorStop(0.25, 'rgba(253, 224, 71, 0.45)');   // Golden corona
+    grad.addColorStop(0.55, 'rgba(251, 146, 60, 0.20)');   // Amber atmospheric glow
+    grad.addColorStop(0.82, 'rgba(217, 119, 6, 0.05)');    // Warm twilight haze
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.48, 0, Math.PI * 2);
+    ctx.fill();
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  private createSunRaysTexture(): THREE.CanvasTexture {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const cx = size / 2;
+    const cy = size / 2;
+
+    // 1. Soft wide circular glow
+    const baseGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.45);
+    baseGrad.addColorStop(0.0, 'rgba(254, 249, 195, 0.45)');
+    baseGrad.addColorStop(0.4, 'rgba(253, 224, 71, 0.15)');
+    baseGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = baseGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. 8 subtle feathered diffraction star spikes
+    const rayCount = 8;
+    ctx.save();
+    ctx.translate(cx, cy);
+    for (let r = 0; r < rayCount; r++) {
+      const angle = (r * Math.PI) / (rayCount / 2);
+      ctx.rotate(angle);
+      const rayGrad = ctx.createLinearGradient(0, -size * 0.48, 0, size * 0.48);
+      rayGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0.0)');
+      rayGrad.addColorStop(0.45, 'rgba(254, 240, 138, 0.18)');
+      rayGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.45)');
+      rayGrad.addColorStop(0.55, 'rgba(254, 240, 138, 0.18)');
+      rayGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+      ctx.fillStyle = rayGrad;
+      const rayWidth = r % 2 === 0 ? 8 : 4;
+      ctx.fillRect(-rayWidth / 2, -size * 0.48, rayWidth, size * 0.96);
+      ctx.rotate(-angle);
+    }
+
+    // 3. Horizontal subtle anamorphic lens flare streak
+    const streakGrad = ctx.createLinearGradient(-size * 0.48, 0, size * 0.48, 0);
+    streakGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0.0)');
+    streakGrad.addColorStop(0.3, 'rgba(254, 240, 138, 0.12)');
+    streakGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.55)');
+    streakGrad.addColorStop(0.7, 'rgba(254, 240, 138, 0.12)');
+    streakGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = streakGrad;
+    ctx.fillRect(-size * 0.48, -4, size * 0.96, 8);
+    ctx.restore();
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  private createDynamicOcean(): THREE.Mesh {
+    const oceanGeo = new THREE.PlaneGeometry(620, 620, 128, 128);
+    oceanGeo.rotateX(-Math.PI / 2);
+
+    this.oceanMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uSunDir: { value: new THREE.Vector3(26, 6.8, -75).normalize() },
+        uSunColor: { value: new THREE.Color(0xfffaea) },
+        uArenaRadius: { value: this.initialRadius },
+        uCamPos: { value: new THREE.Vector3() },
+      },
+      vertexShader: `
+        uniform float uTime;
+        varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+        varying vec2 vUv;
+        varying float vWaveHeight;
+
+        void main() {
+          vUv = uv;
+          vec4 worldPos = modelMatrix * vec4(position, 1.0);
+          vec2 p = worldPos.xz;
+
+          // Multi-frequency sinusoidal ocean swell
+          float w1 = sin(p.x * 0.05 + p.y * 0.07 + uTime * 1.1) * 0.38;
+          float w2 = sin(-p.x * 0.08 + p.y * 0.06 + uTime * 1.5) * 0.22;
+          float w3 = sin(p.x * 0.16 + p.y * 0.12 + uTime * 2.2) * 0.12;
+          float w4 = sin(p.x * 0.35 - p.y * 0.25 + uTime * 3.0) * 0.05;
+
+          float waveHeight = w1 + w2 + w3 + w4;
+          vWaveHeight = waveHeight;
+          worldPos.y += waveHeight;
+
+          // Normal estimation via finite differences
+          float delta = 0.4;
+          float hL = sin((p.x - delta) * 0.05 + p.y * 0.07 + uTime * 1.1) * 0.38 + sin(-(p.x - delta) * 0.08 + p.y * 0.06 + uTime * 1.5) * 0.22;
+          float hR = sin((p.x + delta) * 0.05 + p.y * 0.07 + uTime * 1.1) * 0.38 + sin(-(p.x + delta) * 0.08 + p.y * 0.06 + uTime * 1.5) * 0.22;
+          float hD = sin(p.x * 0.05 + (p.y - delta) * 0.07 + uTime * 1.1) * 0.38 + sin(-p.x * 0.08 + (p.y - delta) * 0.06 + uTime * 1.5) * 0.22;
+          float hU = sin(p.x * 0.05 + (p.y + delta) * 0.07 + uTime * 1.1) * 0.38 + sin(-p.x * 0.08 + (p.y + delta) * 0.06 + uTime * 1.5) * 0.22;
+
+          vNormal = normalize(vec3((hL - hR) / (2.0 * delta), 1.0, (hD - hU) / (2.0 * delta)));
+          vWorldPosition = worldPos.xyz;
+
+          gl_Position = projectionMatrix * viewMatrix * worldPos;
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uSunDir;
+        uniform vec3 uSunColor;
+        uniform float uArenaRadius;
+        uniform vec3 uCamPos;
+        varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+        varying vec2 vUv;
+        varying float vWaveHeight;
+
+        void main() {
+          vec3 viewDir = normalize(uCamPos - vWorldPosition);
+          vec3 norm = normalize(vNormal);
+
+          // 1. Tropical Ocean Color Palette (Deep Sapphire to Translucent Lagoon Turquoise)
+          vec3 deepColor = vec3(0.015, 0.20, 0.46);    // Deep oceanic sapphire
+          vec3 midColor = vec3(0.035, 0.52, 0.70);     // Vibrant azure blue
+          vec3 shallowColor = vec3(0.08, 0.78, 0.75);  // Translucent lagoon turquoise
+
+          float distFromArena = length(vWorldPosition.xz);
+          float coastal = clamp((distFromArena - uArenaRadius) / 42.0, 0.0, 1.0);
+
+          vec3 waterColor = mix(shallowColor, midColor, smoothstep(0.0, 0.4, coastal));
+          waterColor = mix(waterColor, deepColor, smoothstep(0.4, 1.0, coastal));
+
+          // Wave crest tint
+          waterColor += vec3(0.04, 0.16, 0.14) * smoothstep(0.12, 0.55, vWaveHeight);
+
+          // 2. Animated Caustics Shimmer in coastal waters
+          vec2 cp1 = vWorldPosition.xz * 0.28 + vec2(uTime * 0.12, uTime * 0.08);
+          vec2 cp2 = vWorldPosition.xz * 0.36 - vec2(uTime * 0.10, uTime * 0.15);
+          float c1 = sin(cp1.x * 3.8 + sin(cp1.y * 3.8)) * 0.5 + 0.5;
+          float c2 = sin(cp2.x * 4.6 + sin(cp2.y * 4.6)) * 0.5 + 0.5;
+          float causticPattern = pow(c1 * c2, 1.8);
+          waterColor += vec3(0.12, 0.32, 0.28) * causticPattern * (1.0 - coastal * 0.75);
+
+          // 3. Fresnel Sky Reflection (grazing angles reflect vibrant sky)
+          float fresnel = pow(1.0 - max(dot(viewDir, norm), 0.0), 3.2);
+          vec3 skyColor = vec3(0.42, 0.76, 0.98);
+          waterColor = mix(waterColor, skyColor, fresnel * 0.68);
+
+          // 4. Radiant Sun Specular Highlight & Sparkle
+          vec3 sunDir = normalize(uSunDir);
+          vec3 halfDir = normalize(sunDir + viewDir);
+          float nDotH = max(dot(norm, halfDir), 0.0);
+          float spec = pow(nDotH, 52.0) * 1.9;
+          float sparkle = pow(nDotH, 140.0) * 3.2 * (sin(vWorldPosition.x * 7.0 + uTime * 5.0) * 0.5 + 0.5);
+          waterColor += uSunColor * (spec + sparkle);
+
+          // 5. Dynamic Arena Shoreline Foam Breakers
+          float surfWave = sin(uTime * 2.4 - distFromArena * 0.85) * 0.5 + 0.5;
+          float foamRing = smoothstep(uArenaRadius + 0.15, uArenaRadius + 1.1, distFromArena)
+                         * (1.0 - smoothstep(uArenaRadius + 1.8 + surfWave * 1.4, uArenaRadius + 3.6, distFromArena));
+
+          float crestFoam = smoothstep(0.46, 0.66, vWaveHeight) * (sin(uTime * 4.5 + vWorldPosition.x) * 0.35 + 0.65);
+          float foamFactor = clamp(foamRing * 0.85 + crestFoam * 0.4, 0.0, 1.0);
+          waterColor = mix(waterColor, vec3(0.96, 0.99, 1.0), foamFactor);
+
+          // 6. Horizon Atmospheric Haze Blend
+          float distFromCam = length(uCamPos - vWorldPosition);
+          float haze = smoothstep(110.0, 290.0, distFromCam);
+          vec3 hazeColor = vec3(0.48, 0.80, 0.98);
+          waterColor = mix(waterColor, hazeColor, haze * 0.85);
+
+          gl_FragColor = vec4(waterColor, 0.94);
+        }
+      `,
+      transparent: true,
+      depthWrite: true,
+    });
+
+    const ocean = new THREE.Mesh(oceanGeo, this.oceanMaterial);
+    ocean.position.y = -6.5;
+    return ocean;
   }
 
   private createRealisticFlameTexture(): THREE.CanvasTexture {
@@ -550,112 +816,337 @@ export class GameEngine {
     const group = new THREE.Group();
     const cloudMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      roughness: 0.95,
+      roughness: 0.82,
       metalness: 0.0,
+      emissive: 0xfffdf5,
+      emissiveIntensity: 0.22, // Warm sun transmission so clouds stay soft & bright
     });
 
     this.clouds = [];
 
-    // 16 Drifting procedural cloud formations across the sky
+    // Layer 1: Mid-Altitude Floating Cumulus Clouds (y = 4.0 to 7.0, framing the sky)
     for (let i = 0; i < 16; i++) {
       const cloudGroup = new THREE.Group();
-      const cx = (Math.random() - 0.5) * 220;
-      // Altitudes distributed between 4.5 and 10 so they frame the horizon and sky
-      const cy = 4.5 + (i % 4) * 1.8;
-      const cz = -55 - (i % 3) * 15;
+      const cx = (Math.random() - 0.5) * 260;
+      const cy = 4.2 + (i % 4) * 0.85 + (Math.random() - 0.5) * 0.6;
+      const cz = -62 - (i % 3) * 14;
       cloudGroup.position.set(cx, cy, cz);
 
-      // Clustered puffy low-poly spheres
-      const sphereCount = 5 + Math.floor(Math.random() * 3);
-      for (let s = 0; s < sphereCount; s++) {
-        const rad = 2.4 + Math.random() * 2.6;
-        const sphGeo = new THREE.SphereGeometry(rad, 7, 7);
-        const sph = new THREE.Mesh(sphGeo, cloudMat);
-        sph.position.set((s - sphereCount / 2) * 2.6 + (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.8);
-        cloudGroup.add(sph);
+      // Cumulus Anatomy: Flat base puffs + Billowing upper domes
+      const basePuffCount = 3 + Math.floor(Math.random() * 3);
+      for (let b = 0; b < basePuffCount; b++) {
+        const bRad = 2.6 + Math.random() * 1.8;
+        const bGeo = new THREE.SphereGeometry(bRad, 12, 10);
+        bGeo.scale(1.8, 0.55, 1.3);
+        const bMesh = new THREE.Mesh(bGeo, cloudMat);
+        bMesh.position.set((b - basePuffCount / 2) * 3.6, 0, (Math.random() - 0.5) * 1.8);
+        cloudGroup.add(bMesh);
+      }
+
+      const domeCount = 2 + Math.floor(Math.random() * 2);
+      for (let d = 0; d < domeCount; d++) {
+        const dRad = 3.2 + Math.random() * 2.2;
+        const dGeo = new THREE.SphereGeometry(dRad, 12, 10);
+        dGeo.scale(1.15, 1.25, 1.15);
+        const dMesh = new THREE.Mesh(dGeo, cloudMat);
+        dMesh.position.set((d - domeCount / 2) * 3.2 + (Math.random() - 0.5) * 1.2, 1.8 + Math.random() * 1.2, (Math.random() - 0.5) * 1.4);
+        cloudGroup.add(dMesh);
       }
 
       group.add(cloudGroup);
       this.clouds.push({
         group: cloudGroup,
-        speed: 2.5 + Math.random() * 3.8,
+        speed: 1.8 + Math.random() * 2.2,
+      });
+    }
+
+    // Layer 2: Distant Horizon Cumulus Banks (y = 1.2 to 3.2, z = -110 to -170)
+    for (let i = 0; i < 10; i++) {
+      const horizonCloud = new THREE.Group();
+      const hx = (Math.random() - 0.5) * 320;
+      const hy = 1.4 + (i % 3) * 0.65;
+      const hz = -120 - (i % 3) * 20;
+      horizonCloud.position.set(hx, hy, hz);
+
+      const puffCount = 5 + Math.floor(Math.random() * 3);
+      for (let p = 0; p < puffCount; p++) {
+        const pRad = 5.2 + Math.random() * 3.2;
+        const pGeo = new THREE.SphereGeometry(pRad, 10, 8);
+        pGeo.scale(2.2, 0.7, 1.4);
+        const pMesh = new THREE.Mesh(pGeo, cloudMat);
+        pMesh.position.set((p - puffCount / 2) * 7.2, (Math.random() - 0.5) * 1.4, (Math.random() - 0.5) * 3.0);
+        horizonCloud.add(pMesh);
+      }
+
+      group.add(horizonCloud);
+      this.clouds.push({
+        group: horizonCloud,
+        speed: 0.9 + Math.random() * 1.1,
       });
     }
 
     return group;
   }
 
-  private createDistantIslands(): THREE.Group {
-    const group = new THREE.Group();
+  private createPalmTree(height: number, leanAngle: number, leanDir: number): THREE.Group {
+    const palm = new THREE.Group();
 
-    const sandMat = new THREE.MeshStandardMaterial({
-      color: 0xfef08a,
-      roughness: 0.9,
-    });
-    const jungleMat = new THREE.MeshStandardMaterial({
-      color: 0x16a34a,
-      roughness: 0.7,
-    });
     const trunkMat = new THREE.MeshStandardMaterial({
       color: 0x78350f,
-      roughness: 0.8,
+      roughness: 0.85,
     });
     const frondMat = new THREE.MeshStandardMaterial({
-      color: 0x22c55e,
+      color: 0x16a34a,
+      roughness: 0.6,
+    });
+    const tipMat = new THREE.MeshStandardMaterial({
+      color: 0x4ade80,
       roughness: 0.5,
     });
 
-    // 6 Distant tropical atolls gracefully lining the ocean horizon
-    const islandAngles = [0.4, 1.4, 2.5, 3.7, 4.9, 5.8];
-    const distances = [130, 155, 140, 160, 135, 145];
+    // 3 curved trunk segments creating organic lean
+    const segHeight = height / 3;
+    let currY = 0;
+    let currX = 0;
+    let currZ = 0;
+    const dx = Math.sin(leanDir) * Math.sin(leanAngle) * segHeight * 0.7;
+    const dz = Math.cos(leanDir) * Math.sin(leanAngle) * segHeight * 0.7;
 
-    islandAngles.forEach((ang, idx) => {
-      const dist = distances[idx];
-      const ix = Math.cos(ang) * dist;
-      const iz = Math.sin(ang) * dist;
+    for (let s = 0; s < 3; s++) {
+      const bottomR = 0.44 - s * 0.06;
+      const topR = 0.36 - s * 0.06;
+      const trunkGeo = new THREE.CylinderGeometry(topR, bottomR, segHeight, 6);
+      trunkGeo.translate(0, segHeight / 2, 0);
+      const trunkMesh = new THREE.Mesh(trunkGeo, trunkMat);
+      trunkMesh.position.set(currX, currY, currZ);
+      trunkMesh.rotation.z = Math.sin(leanDir) * (leanAngle * (s + 1) * 0.35);
+      trunkMesh.rotation.x = Math.cos(leanDir) * (leanAngle * (s + 1) * 0.35);
+      palm.add(trunkMesh);
 
-      const island = new THREE.Group();
-      island.position.set(ix, -11.5, iz);
+      currY += segHeight * 0.92;
+      currX += dx;
+      currZ += dz;
+    }
 
-      // Sandy beach mound resting on the ocean waterline
-      const beachGeo = new THREE.SphereGeometry(22, 8, 8);
-      beachGeo.scale(1.8, 0.28, 1.4);
-      const beach = new THREE.Mesh(beachGeo, sandMat);
-      beach.position.set(0, 3.5, 0);
-      island.add(beach);
+    // Coconut cluster
+    const cocoMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
+    const cocoGeo = new THREE.SphereGeometry(0.3, 5, 5);
+    for (let c = 0; c < 3; c++) {
+      const coco = new THREE.Mesh(cocoGeo, cocoMat);
+      const cAng = (c / 3) * Math.PI * 2;
+      coco.position.set(currX + Math.cos(cAng) * 0.35, currY - 0.15, currZ + Math.sin(cAng) * 0.35);
+      palm.add(coco);
+    }
 
-      // Lush jungle hill (soft gently-sloping canopy)
-      const hillGeo = new THREE.SphereGeometry(16, 8, 8);
-      hillGeo.scale(1.4, 0.42, 1.2);
-      const hill = new THREE.Mesh(hillGeo, jungleMat);
-      hill.position.set(0, 6.0, 0);
-      island.add(hill);
+    // 7 arching palm fronds
+    for (let f = 0; f < 7; f++) {
+      const frondAngle = (f / 7) * Math.PI * 2;
+      const frondGroup = new THREE.Group();
+      frondGroup.position.set(currX, currY, currZ);
+      frondGroup.rotation.y = frondAngle;
 
-      // 2 Stylized Palm Trees
-      [-5, 5].forEach((px) => {
-        const palmGroup = new THREE.Group();
-        palmGroup.position.set(px, 9.5, px > 0 ? 2 : -2);
+      const bladeGeo = new THREE.ConeGeometry(1.4, 3.8, 4);
+      bladeGeo.scale(0.85, 1, 0.15); // Flattened palm frond
+      bladeGeo.rotateX(Math.PI / 2.3);
+      const blade = new THREE.Mesh(bladeGeo, f % 2 === 0 ? frondMat : tipMat);
+      blade.position.set(0, 0, 1.6);
+      frondGroup.add(blade);
 
-        const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 5.5, 6);
-        trunkGeo.rotateZ(px > 0 ? -0.15 : 0.15);
-        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-        palmGroup.add(trunk);
+      palm.add(frondGroup);
+    }
 
-        // 5 palm fronds
-        for (let f = 0; f < 5; f++) {
-          const frondGeo = new THREE.ConeGeometry(2.0, 3.5, 4);
-          frondGeo.rotateX(Math.PI / 2.6);
-          const frond = new THREE.Mesh(frondGeo, frondMat);
-          frond.rotation.y = (f / 5) * Math.PI * 2;
-          frond.position.set(0, 2.8, 0);
-          palmGroup.add(frond);
-        }
+    return palm;
+  }
 
-        island.add(palmGroup);
+  private createDistantIslands(): THREE.Group {
+    const group = new THREE.Group();
+    this.islandFoamRings = [];
+
+    const sandMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.85 });
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 });
+    const darkRockMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.92 });
+    const jungleMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.7 });
+    const deepJungleMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.75 });
+    const foamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
+
+    // Helper: Add shoreline foam ring around an island base
+    const addIslandFoam = (x: number, z: number, rX: number, rZ: number) => {
+      const foamGeo = new THREE.RingGeometry(rX * 0.92, rX * 1.08, 32);
+      foamGeo.scale(1, rZ / rX, 1);
+      foamGeo.rotateX(-Math.PI / 2);
+      const foam = new THREE.Mesh(foamGeo, foamMat);
+      foam.position.set(x, -6.38, z);
+      group.add(foam);
+      this.islandFoamRings.push(foam);
+    };
+
+    // Island 1: Twin Karst Sea Pinnacles & Sandbar (North-East, under the morning sun)
+    {
+      const isl = new THREE.Group();
+      isl.position.set(85, -6.5, -115);
+
+      // Warm coral sandspit resting on waterline
+      const sandGeo = new THREE.SphereGeometry(22, 10, 8);
+      sandGeo.scale(1.6, 0.16, 1.2);
+      const sand = new THREE.Mesh(sandGeo, sandMat);
+      sand.position.set(0, 1.8, 0);
+      isl.add(sand);
+
+      // Main Karst Pinnacle
+      const rock1Geo = new THREE.CylinderGeometry(2.8, 5.0, 8.5, 8);
+      const rock1 = new THREE.Mesh(rock1Geo, rockMat);
+      rock1.position.set(-3, 5.2, -1);
+      isl.add(rock1);
+
+      const cap1Geo = new THREE.SphereGeometry(4.2, 8, 8);
+      cap1Geo.scale(1.1, 0.5, 1.1);
+      const cap1 = new THREE.Mesh(cap1Geo, jungleMat);
+      cap1.position.set(-3, 9.8, -1);
+      isl.add(cap1);
+
+      // Secondary Sea Stack
+      const rock2Geo = new THREE.CylinderGeometry(2.0, 3.8, 6.0, 8);
+      const rock2 = new THREE.Mesh(rock2Geo, darkRockMat);
+      rock2.position.set(4, 3.8, 3);
+      isl.add(rock2);
+
+      const cap2Geo = new THREE.SphereGeometry(3.2, 8, 8);
+      cap2Geo.scale(1.0, 0.45, 1.0);
+      const cap2 = new THREE.Mesh(cap2Geo, deepJungleMat);
+      cap2.position.set(4, 7.2, 3);
+      isl.add(cap2);
+
+      // Leaning tropical palms along the sandbar
+      const palm1 = this.createPalmTree(4.6, 0.25, 0.8);
+      palm1.position.set(1, 2.5, -4);
+      isl.add(palm1);
+
+      const palm2 = this.createPalmTree(3.8, 0.28, -1.2);
+      palm2.position.set(-7, 2.5, 2);
+      isl.add(palm2);
+
+      group.add(isl);
+      addIslandFoam(85, -115, 30, 24);
+    }
+
+    // Island 2: Emerald Mountain Island (North-West)
+    {
+      const isl = new THREE.Group();
+      isl.position.set(-95, -6.5, -125);
+
+      // Wide sandy cove base
+      const sandGeo = new THREE.SphereGeometry(26, 10, 8);
+      sandGeo.scale(1.7, 0.18, 1.3);
+      const sand = new THREE.Mesh(sandGeo, sandMat);
+      sand.position.set(0, 2.0, 0);
+      isl.add(sand);
+
+      // Layered jungle mountain ridge
+      const hillGeo = new THREE.SphereGeometry(18, 8, 8);
+      hillGeo.scale(1.4, 0.35, 1.1);
+      const hill = new THREE.Mesh(hillGeo, deepJungleMat);
+      hill.position.set(0, 4.2, 0);
+      isl.add(hill);
+
+      const peakGeo = new THREE.ConeGeometry(9, 8.5, 8);
+      const peak = new THREE.Mesh(peakGeo, rockMat);
+      peak.position.set(0, 9.0, -1);
+      isl.add(peak);
+
+      const peakCapGeo = new THREE.SphereGeometry(5.5, 8, 8);
+      peakCapGeo.scale(1.1, 0.5, 1.1);
+      const peakCap = new THREE.Mesh(peakCapGeo, jungleMat);
+      peakCap.position.set(0, 13.5, -1);
+      isl.add(peakCap);
+
+      // Palm Grove
+      [-8, -2, 6].forEach((px, i) => {
+        const palm = this.createPalmTree(4.2 + i * 0.5, 0.22, (i - 1) * 0.9);
+        palm.position.set(px, 3.0, 6 - i * 3);
+        isl.add(palm);
       });
 
-      group.add(island);
-    });
+      group.add(isl);
+      addIslandFoam(-95, -125, 36, 28);
+    }
+
+    // Island 3: Distant Polynesian Atoll (Far horizon silhouette, leaving center ocean open)
+    {
+      const isl = new THREE.Group();
+      isl.position.set(12, -6.5, -210);
+
+      const sandGeo = new THREE.SphereGeometry(24, 8, 6);
+      sandGeo.scale(2.0, 0.15, 1.2);
+      const sand = new THREE.Mesh(sandGeo, sandMat);
+      sand.position.set(0, 1.5, 0);
+      isl.add(sand);
+
+      const vegGeo = new THREE.SphereGeometry(16, 6, 6);
+      vegGeo.scale(1.5, 0.28, 1.0);
+      const veg = new THREE.Mesh(vegGeo, jungleMat);
+      veg.position.set(0, 3.2, 0);
+      isl.add(veg);
+
+      // Subtle palms
+      [-6, 4].forEach((px, i) => {
+        const palm = this.createPalmTree(3.8, 0.2, i * 1.5);
+        palm.position.set(px, 2.5, 0);
+        isl.add(palm);
+      });
+
+      group.add(isl);
+      addIslandFoam(12, -210, 38, 22);
+    }
+
+    // Island 4: Western Archipelago Ridge
+    {
+      const isl = new THREE.Group();
+      isl.position.set(-140, -6.5, -65);
+
+      const sandGeo = new THREE.SphereGeometry(22, 8, 6);
+      sandGeo.scale(1.6, 0.16, 1.2);
+      const sand = new THREE.Mesh(sandGeo, sandMat);
+      sand.position.set(0, 1.8, 0);
+      isl.add(sand);
+
+      const ridgeGeo = new THREE.SphereGeometry(15, 6, 6);
+      ridgeGeo.scale(1.4, 0.32, 1.1);
+      const ridge = new THREE.Mesh(ridgeGeo, jungleMat);
+      ridge.position.set(0, 3.8, 0);
+      isl.add(ridge);
+
+      const palm = this.createPalmTree(4.2, 0.25, 0.5);
+      palm.position.set(0, 2.8, 0);
+      isl.add(palm);
+
+      group.add(isl);
+      addIslandFoam(-140, -65, 28, 22);
+    }
+
+    // Island 5: Eastern Coral Atoll
+    {
+      const isl = new THREE.Group();
+      isl.position.set(135, -6.5, -60);
+
+      const sandGeo = new THREE.SphereGeometry(20, 8, 6);
+      sandGeo.scale(1.6, 0.16, 1.2);
+      const sand = new THREE.Mesh(sandGeo, sandMat);
+      sand.position.set(0, 1.8, 0);
+      isl.add(sand);
+
+      const hillGeo = new THREE.SphereGeometry(14, 6, 6);
+      hillGeo.scale(1.3, 0.30, 1.0);
+      const hill = new THREE.Mesh(hillGeo, deepJungleMat);
+      hill.position.set(0, 3.6, 0);
+      isl.add(hill);
+
+      const palm = this.createPalmTree(4.0, 0.22, -0.6);
+      palm.position.set(2, 2.8, 1);
+      isl.add(palm);
+
+      group.add(isl);
+      addIslandFoam(135, -60, 26, 20);
+    }
 
     return group;
   }
@@ -1430,25 +1921,53 @@ export class GameEngine {
   };
 
   private updateEnvironment(dt: number) {
-    // 1. Drifting Procedural Clouds across the tropical sky
+    // 1. Drifting Procedural Cumulus Clouds across the tropical sky
     this.clouds.forEach((cloud) => {
       cloud.group.position.x += dt * cloud.speed;
-      if (cloud.group.position.x > 140) {
-        cloud.group.position.x = -140;
+      if (cloud.group.position.x > 180) {
+        cloud.group.position.x = -180;
       }
     });
 
-    // 2. Concentric Ocean Wave Foam Rings around the island cliff base
+    // 2. Dynamic Ocean Shader Uniforms (Wave synthesis, caustics, sun reflection & arena shoreline breakers)
+    if (this.oceanMaterial) {
+      this.oceanMaterial.uniforms.uTime.value = this.elapsedTime;
+      this.oceanMaterial.uniforms.uArenaRadius.value = this.currentRadius;
+      this.oceanMaterial.uniforms.uCamPos.value.copy(this.camera.position);
+    }
+
+    // 3. Concentric Ocean Wave Foam Rings around the shrinking island cliff base
     this.oceanWaveRings.forEach((wave, idx) => {
-      const cycle = Math.sin(this.elapsedTime * 1.4 + idx * Math.PI);
-      const s = 1.0 + cycle * 0.08;
+      const cycle = Math.sin(this.elapsedTime * 1.8 + idx * Math.PI);
+      const targetR = this.currentRadius + (idx === 0 ? 0.7 : 2.8);
+      const baseGeoR = idx === 0 ? 14 : 22;
+      const s = (targetR + cycle * 0.35) / baseGeoR;
       wave.scale.set(s, 1, s);
       if (wave.material) {
-        (wave.material as THREE.MeshBasicMaterial).opacity = 0.3 + (cycle + 1) * 0.12;
+        (wave.material as THREE.MeshBasicMaterial).opacity = 0.35 + (cycle + 1) * 0.15;
       }
     });
 
-    // 3. Island Breeze Leaf & Pollen Particles floating in the wind
+    // 4. Distant Island Shoreline Surf Breathing Cycle
+    this.islandFoamRings.forEach((foam, idx) => {
+      const cycle = Math.sin(this.elapsedTime * 1.5 + idx * 0.8);
+      const s = 1.0 + cycle * 0.05;
+      foam.scale.set(s, 1, s);
+      if (foam.material) {
+        (foam.material as THREE.MeshBasicMaterial).opacity = 0.32 + (cycle + 1) * 0.12;
+      }
+    });
+
+    // 5. Celestial Sun Atmospheric Shimmer & Diffraction
+    if (this.sunCoronaSprite) {
+      const coronaPuff = 1.0 + Math.sin(this.elapsedTime * 1.8) * 0.035;
+      this.sunCoronaSprite.scale.set(65 * coronaPuff, 65 * coronaPuff, 1);
+    }
+    if (this.sunRaysSprite) {
+      this.sunRaysSprite.material.rotation = this.elapsedTime * 0.012;
+    }
+
+    // 6. Island Breeze Leaf & Pollen Particles floating in the wind
     this.breezeParticles.forEach((leaf) => {
       leaf.mesh.position.x += dt * leaf.speed;
       leaf.mesh.position.y += Math.sin(this.elapsedTime * 2.4 + leaf.seed) * dt * 0.35;

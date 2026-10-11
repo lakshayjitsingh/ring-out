@@ -327,7 +327,7 @@ export class GameEngine {
   }
 
   private createGrassTexture(): THREE.CanvasTexture {
-    const size = 1024;
+    const size = 2048;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
@@ -336,23 +336,25 @@ export class GameEngine {
 
     const center = size / 2;
 
-    // 1. Rich Organic Grass Base Gradient
+    // 1. Rich Sunny Tropical Emerald Gradient (Radiant, vibrant & lush)
     const baseGrad = ctx.createRadialGradient(center, center, 40, center, center, center);
-    baseGrad.addColorStop(0, '#2d6a4f');    // Deep sunlit meadow green
-    baseGrad.addColorStop(0.45, '#1b4332'); // Rich deep forest grass
-    baseGrad.addColorStop(0.85, '#15803d'); // Vibrant emerald turf
-    baseGrad.addColorStop(1.0, '#0f291e');  // Dark earthy edge
+    baseGrad.addColorStop(0.0, '#15803d');  // Warm deep emerald
+    baseGrad.addColorStop(0.25, '#16a34a'); // Vibrant sunny lawn
+    baseGrad.addColorStop(0.65, '#22c55e'); // Radiant tropical green
+    baseGrad.addColorStop(0.92, '#15803d'); // Emerald perimeter
+    baseGrad.addColorStop(1.0, '#166534');  // Rich earthy edge
     ctx.fillStyle = baseGrad;
     ctx.fillRect(0, 0, size, size);
 
-    // 2. Natural Organic Lawn Patchiness (Clumps of light and shadow)
-    for (let p = 0; p < 80; p++) {
+    // 2. Natural Sun-Dappled Meadow Patches (Light & shade terrain depth)
+    for (let p = 0; p < 140; p++) {
       const px = Math.random() * size;
       const py = Math.random() * size;
-      const rad = 25 + Math.random() * 55;
-      const pGrad = ctx.createRadialGradient(px, py, 4, px, py, rad);
-      const isLighter = Math.random() > 0.4;
-      pGrad.addColorStop(0, isLighter ? 'rgba(82, 183, 136, 0.22)' : 'rgba(8, 28, 21, 0.25)');
+      const rad = 45 + Math.random() * 110;
+      const pGrad = ctx.createRadialGradient(px, py, 6, px, py, rad);
+      const isSunlit = Math.random() > 0.45;
+      pGrad.addColorStop(0, isSunlit ? 'rgba(74, 222, 128, 0.28)' : 'rgba(20, 83, 45, 0.25)');
+      pGrad.addColorStop(0.7, isSunlit ? 'rgba(134, 239, 172, 0.12)' : 'rgba(5, 46, 22, 0.15)');
       pGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = pGrad;
       ctx.beginPath();
@@ -360,56 +362,76 @@ export class GameEngine {
       ctx.fill();
     }
 
-    // 3. Multi-Layered Natural Grass Blades (2,400 delicate organic blade strokes)
-    const bladeColors = [
-      'rgba(8, 28, 21, 0.45)',    // Deep under-grass shadow
-      'rgba(27, 67, 50, 0.55)',   // Base rich turf
-      'rgba(45, 106, 79, 0.60)',  // Vibrant meadow blade
-      'rgba(82, 183, 136, 0.55)', // Sunlit grass leaf
-      'rgba(149, 213, 178, 0.45)',// Light green blade tip
-      'rgba(216, 243, 220, 0.35)',// Delicate morning dew tip
+    // 3. Dense Multi-Layered Natural Turf Blades (8,000 delicate organic blade strokes)
+    const bladePalettes = [
+      'rgba(5, 46, 22, 0.40)',    // Deep undergrowth root shadow
+      'rgba(21, 128, 61, 0.55)',  // Rich emerald turf body
+      'rgba(22, 163, 74, 0.60)',  // Vibrant meadow blade
+      'rgba(34, 197, 94, 0.55)',  // Sunlit grass leaf
+      'rgba(74, 222, 128, 0.50)', // Fresh spring blade highlight
+      'rgba(163, 230, 53, 0.42)', // Warm chartreuse sun kiss
+      'rgba(187, 247, 208, 0.35)',// Dewdrop tip sheen
     ];
 
-    for (let i = 0; i < 2400; i++) {
+    for (let i = 0; i < 8000; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const dist = Math.random() * (center - 16);
+      const dist = Math.random() * (center - 20);
       const px = center + Math.cos(angle) * dist;
       const py = center + Math.sin(angle) * dist;
 
-      const bladeLen = 5 + Math.random() * 9;
-      const bladeCurve = (Math.random() - 0.5) * 5;
-      const color = bladeColors[Math.floor(Math.random() * bladeColors.length)];
+      const bladeLen = 9 + Math.random() * 16;
+      const bladeCurve = (Math.random() - 0.5) * 9;
+      const color = bladePalettes[Math.floor(Math.random() * bladePalettes.length)];
 
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1.2 + Math.random() * 0.8;
+      ctx.lineWidth = 1.6 + Math.random() * 1.4;
       ctx.beginPath();
       ctx.moveTo(px, py);
       ctx.quadraticCurveTo(px + bladeCurve * 0.5, py - bladeLen * 0.6, px + bladeCurve, py - bladeLen);
       ctx.stroke();
     }
 
-    // 4. Subtle Clover Leaf Clusters
-    for (let c = 0; c < 90; c++) {
+    // 4. Wildflower Meadow Petal Specks (Scattered natural blossoms on turf)
+    const petalColors = [
+      'rgba(250, 204, 21, 0.75)',  // Gold buttercup petal
+      'rgba(255, 255, 255, 0.85)', // White daisy petal
+      'rgba(244, 63, 94, 0.70)',   // Pink poppy petal
+      'rgba(56, 189, 248, 0.75)',  // Blue forget-me-not petal
+      'rgba(192, 132, 252, 0.70)', // Lavender petal
+    ];
+    for (let f = 0; f < 350; f++) {
       const angle = Math.random() * Math.PI * 2;
-      const dist = Math.random() * (center - 30);
+      const dist = 30 + Math.random() * (center - 50);
+      const fx = center + Math.cos(angle) * dist;
+      const fy = center + Math.sin(angle) * dist;
+      ctx.fillStyle = petalColors[Math.floor(Math.random() * petalColors.length)];
+      ctx.beginPath();
+      ctx.arc(fx, fy, 2.0 + Math.random() * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 5. Rich Clover Leaf Clusters (Natural meadow ground cover)
+    for (let c = 0; c < 160; c++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 35 + Math.random() * (center - 50);
       const cx = center + Math.cos(angle) * dist;
       const cy = center + Math.sin(angle) * dist;
 
-      ctx.fillStyle = 'rgba(116, 198, 157, 0.45)';
+      ctx.fillStyle = 'rgba(74, 222, 128, 0.45)';
       for (let lobe = 0; lobe < 3; lobe++) {
         const la = (lobe / 3) * Math.PI * 2;
         ctx.beginPath();
-        ctx.arc(cx + Math.cos(la) * 2.5, cy + Math.sin(la) * 2.5, 2.2, 0, Math.PI * 2);
+        ctx.arc(cx + Math.cos(la) * 3.8, cy + Math.sin(la) * 3.8, 3.2, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
-    // 5. Center Hearth Border Ring (Smooth dark slate stone blend)
+    // 6. Seamless Central Basalt Stone Hearth Blend Ring
     const fireRadiusPx = (2.25 / 13.0) * center;
     ctx.beginPath();
-    ctx.arc(center, center, fireRadiusPx + 8, 0, Math.PI * 2);
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = 'rgba(30, 41, 59, 0.75)'; // Dark basalt stone rim blend
+    ctx.arc(center, center, fireRadiusPx + 10, 0, Math.PI * 2);
+    ctx.lineWidth = 18;
+    ctx.strokeStyle = 'rgba(30, 41, 59, 0.85)'; // Clean dark basalt transition
     ctx.stroke();
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -704,64 +726,151 @@ export class GameEngine {
   private createWindGrassAndWildflowers(parent: THREE.Scene) {
     this.windGrassTufts = [];
 
-    const tuftMat = new THREE.MeshStandardMaterial({
-      color: 0x2d6a4f,
-      roughness: 0.5,
+    // Shared high-quality stylized grass materials
+    const matEmerald = new THREE.MeshStandardMaterial({
+      color: 0x16a34a,
+      roughness: 0.45,
+      side: THREE.DoubleSide,
+    });
+    const matSpringLime = new THREE.MeshStandardMaterial({
+      color: 0x4ade80,
+      roughness: 0.40,
+      side: THREE.DoubleSide,
+    });
+    const matGoldenMeadow = new THREE.MeshStandardMaterial({
+      color: 0x84cc16,
+      roughness: 0.40,
+      side: THREE.DoubleSide,
+    });
+    const matForestDeep = new THREE.MeshStandardMaterial({
+      color: 0x15803d,
+      roughness: 0.50,
       side: THREE.DoubleSide,
     });
 
+    // Vibrant wildflower materials
     const flowerGoldMat = new THREE.MeshStandardMaterial({
       color: 0xfacc15,
-      roughness: 0.4,
+      roughness: 0.35,
       emissive: 0xf59e0b,
-      emissiveIntensity: 0.2,
+      emissiveIntensity: 0.35,
     });
-
     const flowerWhiteMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      roughness: 0.5,
+      roughness: 0.4,
     });
-
     const flowerPinkMat = new THREE.MeshStandardMaterial({
       color: 0xf43f5e,
-      roughness: 0.4,
+      roughness: 0.35,
       emissive: 0xe11d48,
-      emissiveIntensity: 0.2,
+      emissiveIntensity: 0.3,
+    });
+    const flowerBlueMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      roughness: 0.35,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.25,
+    });
+    const flowerPurpleMat = new THREE.MeshStandardMaterial({
+      color: 0xa855f7,
+      roughness: 0.35,
+      emissive: 0x9333ea,
+      emissiveIntensity: 0.25,
     });
 
-    // 96 3D Grass Tufts distributed across the entire lawn
-    for (let i = 0; i < 96; i++) {
+    const stemMat = new THREE.MeshStandardMaterial({
+      color: 0x166534,
+      roughness: 0.6,
+    });
+
+    const tuftCount = 480; // Dense meadow coverage!
+    const rMin = 2.45;     // Outside the central bonfire altar (2.25m)
+    const rMax = this.initialRadius - 0.45; // 12.55m
+
+    for (let i = 0; i < tuftCount; i++) {
+      // Uniform area density distribution (no bald center or sparse outer rim)
+      const u = Math.random();
+      const r = Math.sqrt(rMin * rMin + u * (rMax * rMax - rMin * rMin));
       const angle = Math.random() * Math.PI * 2;
-      const r = 2.4 + Math.random() * (this.initialRadius - 2.8);
       const x = Math.cos(angle) * r;
       const z = Math.sin(angle) * r;
 
       const cluster = new THREE.Group();
       cluster.position.set(x, 0, z);
 
-      // 3-4 Grass blades angled outward
-      const bladeCount = 3 + Math.floor(Math.random() * 2);
+      // Random cluster scale for natural meadow organic variety
+      const clusterScale = 0.85 + Math.random() * 0.45;
+      cluster.scale.set(clusterScale, clusterScale, clusterScale);
+
+      // 4 to 6 stylized 3D tapered blades per clump
+      const bladeCount = 4 + Math.floor(Math.random() * 3);
+      const bladeMats = [matEmerald, matSpringLime, matGoldenMeadow, matForestDeep];
+
       for (let b = 0; b < bladeCount; b++) {
-        const bladeGeo = new THREE.ConeGeometry(0.04, 0.38 + Math.random() * 0.16, 4);
-        bladeGeo.rotateZ((b - bladeCount / 2) * 0.22);
-        const blade = new THREE.Mesh(bladeGeo, tuftMat);
-        blade.position.set((b - bladeCount / 2) * 0.05, 0.18, 0);
-        cluster.add(blade);
+        const bladeHeight = 0.52 + Math.random() * 0.34; // 0.52m to 0.86m tall!
+        const baseRadius = 0.055 + Math.random() * 0.025; // 0.055m to 0.08m wide!
+        const tipRadius = 0.006;
+
+        // 3-sided tapered blade prism (lightweight, full 3D volume, catches sunlight)
+        const bladeGeo = new THREE.CylinderGeometry(tipRadius, baseRadius, bladeHeight, 3);
+        const bladeMat = bladeMats[(i + b) % bladeMats.length];
+        const bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
+
+        // Radial fan arrangement with natural arching tilt
+        const fanAngle = (b / bladeCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+        const tiltAmt = 0.15 + (b === 0 ? 0.05 : Math.random() * 0.28); // center blade stands tall, outer blades arch outward
+        const radOffset = 0.04 + Math.random() * 0.05;
+
+        bladeMesh.position.set(
+          Math.cos(fanAngle) * radOffset,
+          bladeHeight * 0.48,
+          Math.sin(fanAngle) * radOffset
+        );
+        bladeMesh.rotation.y = fanAngle;
+        bladeMesh.rotation.x = Math.sin(fanAngle) * tiltAmt;
+        bladeMesh.rotation.z = -Math.cos(fanAngle) * tiltAmt;
+
+        cluster.add(bladeMesh);
       }
 
-      // Add a flower blossom on every 3rd cluster
+      // Add lovely 3D Wildflower on every 3rd cluster (approx 160 flowers across the island)
       if (i % 3 === 0) {
-        const mat = i % 9 === 0 ? flowerPinkMat : i % 6 === 0 ? flowerGoldMat : flowerWhiteMat;
-        const stemGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.24, 4);
-        const stem = new THREE.Mesh(stemGeo, tuftMat);
-        stem.position.set(0.04, 0.12, 0.04);
+        const flowerType = Math.floor(i / 3) % 5;
+        let petalMat = flowerWhiteMat;
+        if (flowerType === 0) petalMat = flowerGoldMat;
+        else if (flowerType === 1) petalMat = flowerPinkMat;
+        else if (flowerType === 2) petalMat = flowerWhiteMat;
+        else if (flowerType === 3) petalMat = flowerBlueMat;
+        else petalMat = flowerPurpleMat;
+
+        const stemHeight = 0.42 + Math.random() * 0.16;
+        const stemGeo = new THREE.CylinderGeometry(0.018, 0.024, stemHeight, 4);
+        const stem = new THREE.Mesh(stemGeo, stemMat);
+        stem.position.set(0.05, stemHeight * 0.48, 0.05);
         cluster.add(stem);
 
-        const blossomGeo = new THREE.SphereGeometry(0.07, 6, 6);
-        blossomGeo.scale(1.2, 0.5, 1.2);
-        const blossom = new THREE.Mesh(blossomGeo, mat);
-        blossom.position.set(0.04, 0.24, 0.04);
-        cluster.add(blossom);
+        // Flower Blossom (stylized multi-petal crown)
+        const blossomGroup = new THREE.Group();
+        blossomGroup.position.set(0.05, stemHeight * 0.95, 0.05);
+
+        // Central flower core
+        const coreGeo = new THREE.SphereGeometry(0.045, 6, 6);
+        const coreMat = (petalMat === flowerWhiteMat || petalMat === flowerPinkMat) ? flowerGoldMat : flowerWhiteMat;
+        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        blossomGroup.add(coreMesh);
+
+        // 4 Stylized Petals
+        for (let p = 0; p < 4; p++) {
+          const petalGeo = new THREE.SphereGeometry(0.05, 5, 5);
+          petalGeo.scale(1.4, 0.4, 0.8);
+          const petalMesh = new THREE.Mesh(petalGeo, petalMat);
+          const pAngle = (p / 4) * Math.PI * 2;
+          petalMesh.position.set(Math.cos(pAngle) * 0.06, 0, Math.sin(pAngle) * 0.06);
+          petalMesh.rotation.y = pAngle;
+          blossomGroup.add(petalMesh);
+        }
+
+        cluster.add(blossomGroup);
       }
 
       parent.add(cluster);
@@ -1313,9 +1422,9 @@ export class GameEngine {
 
     // 8. Dynamic 3D Grass Wind Waves (Physically sways in ocean trade winds)
     this.windGrassTufts.forEach((tuft) => {
-      const wave = this.elapsedTime * 3.2 + tuft.posX * 0.4 + tuft.posZ * 0.3;
-      tuft.group.rotation.z = Math.sin(wave) * 0.28 + Math.sin(wave * 2.1) * 0.08;
-      tuft.group.rotation.x = Math.cos(wave * 0.8) * 0.12;
+      const wave = this.elapsedTime * 3.4 + tuft.posX * 0.35 + tuft.posZ * 0.28 + tuft.seed;
+      tuft.group.rotation.z = Math.sin(wave) * 0.24 + Math.sin(wave * 2.2) * 0.07;
+      tuft.group.rotation.x = Math.cos(wave * 0.85) * 0.12;
       tuft.group.visible = Math.hypot(tuft.posX, tuft.posZ) <= this.currentRadius - 0.35;
     });
   }

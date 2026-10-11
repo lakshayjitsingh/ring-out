@@ -89,11 +89,18 @@ export class GameEngine {
   private breezeParticles: { mesh: THREE.Mesh; seed: number; speed: number }[] = [];
   private oceanWaveRings: THREE.Mesh[] = [];
   private centerFirePit: THREE.Group | null = null;
-  private fireFlames: THREE.Mesh[] = [];
+  private flameParticles: {
+    mesh: THREE.Mesh;
+    baseX: number;
+    baseZ: number;
+    speedY: number;
+    phase: number;
+    scaleBase: number;
+  }[] = [];
   private fireLight: THREE.PointLight | null = null;
   private fireEmbers: { mesh: THREE.Mesh; seed: number; speed: number; life: number; maxLife: number }[] = [];
-  private dangerZoneMesh: THREE.Mesh | null = null;
-  private lastDangerRadius = 13.0;
+  private fireSmoke: { mesh: THREE.Mesh; seed: number; speed: number; life: number; maxLife: number }[] = [];
+  private windGrassTufts: { group: THREE.Group; posX: number; posZ: number; seed: number }[] = [];
   private splashTriggered: { player: boolean; bot: boolean } = { player: false, bot: false };
 
   // Inputs
@@ -289,6 +296,36 @@ export class GameEngine {
     this.createBreezeParticles(this.scene);
   }
 
+  private createRealisticFlameTexture(): THREE.CanvasTexture {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+
+    const cx = size / 2;
+    const cy = size / 2;
+
+    // Teardrop / flame plume gradient with intense white-hot core
+    const grad = ctx.createRadialGradient(cx, cy * 1.15, 6, cx, cy, size * 0.48);
+    grad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');    // Blinding white-hot core
+    grad.addColorStop(0.18, 'rgba(254, 240, 138, 0.95)');  // Incandescent yellow
+    grad.addColorStop(0.42, 'rgba(249, 115, 22, 0.85)');   // Fiery electric orange
+    grad.addColorStop(0.72, 'rgba(220, 38, 38, 0.45)');    // Glowing ruby flame lick
+    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');          // Dissipates to transparent
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy * 0.15);
+    ctx.bezierCurveTo(cx + size * 0.42, cy * 0.55, cx + size * 0.35, cy * 1.35, cx, cy * 1.35);
+    ctx.bezierCurveTo(cx - size * 0.35, cy * 1.35, cx - size * 0.42, cy * 0.55, cx, cy * 0.15);
+    ctx.fill();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
+  }
+
   private createGrassTexture(): THREE.CanvasTexture {
     const size = 1024;
     const canvas = document.createElement('canvas');
@@ -297,54 +334,82 @@ export class GameEngine {
     const ctx = canvas.getContext('2d');
     if (!ctx) return new THREE.CanvasTexture(canvas);
 
-    // 1. Rich Emerald & Forest Green Base Gradient
     const center = size / 2;
-    const grad = ctx.createRadialGradient(center, center, 40, center, center, center);
-    grad.addColorStop(0, '#22c55e');    // Lush sunny emerald center
-    grad.addColorStop(0.5, '#16a34a');  // Rich vibrant meadow green
-    grad.addColorStop(0.88, '#15803d'); // Deep turf green
-    grad.addColorStop(1.0, '#166534');  // Outer perimeter shade
-    ctx.fillStyle = grad;
+
+    // 1. Rich Organic Grass Base Gradient
+    const baseGrad = ctx.createRadialGradient(center, center, 40, center, center, center);
+    baseGrad.addColorStop(0, '#2d6a4f');    // Deep sunlit meadow green
+    baseGrad.addColorStop(0.45, '#1b4332'); // Rich deep forest grass
+    baseGrad.addColorStop(0.85, '#15803d'); // Vibrant emerald turf
+    baseGrad.addColorStop(1.0, '#0f291e');  // Dark earthy edge
+    ctx.fillStyle = baseGrad;
     ctx.fillRect(0, 0, size, size);
 
-    // 2. Clean Straight Directional Lawnmower Stripes (Tournament Pitch Style)
-    // Horizontal alternating lanes of crisp mowed turf
-    const stripeWidth = 56;
-    for (let y = 0; y < size; y += stripeWidth) {
-      const isEven = Math.floor(y / stripeWidth) % 2 === 0;
-      ctx.fillStyle = isEven ? 'rgba(74, 222, 128, 0.16)' : 'rgba(21, 128, 61, 0.20)';
-      ctx.fillRect(0, y, size, stripeWidth);
+    // 2. Natural Organic Lawn Patchiness (Clumps of light and shadow)
+    for (let p = 0; p < 80; p++) {
+      const px = Math.random() * size;
+      const py = Math.random() * size;
+      const rad = 25 + Math.random() * 55;
+      const pGrad = ctx.createRadialGradient(px, py, 4, px, py, rad);
+      const isLighter = Math.random() > 0.4;
+      pGrad.addColorStop(0, isLighter ? 'rgba(82, 183, 136, 0.22)' : 'rgba(8, 28, 21, 0.25)');
+      pGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = pGrad;
+      ctx.beginPath();
+      ctx.arc(px, py, rad, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // 3. Subtle Cross-Hatch Lawn Texture (gives it a luxurious stadium turf depth)
-    const crossWidth = 112;
-    for (let x = 0; x < size; x += crossWidth) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.035)';
-      ctx.fillRect(x, 0, crossWidth / 2, size);
-    }
+    // 3. Multi-Layered Natural Grass Blades (2,400 delicate organic blade strokes)
+    const bladeColors = [
+      'rgba(8, 28, 21, 0.45)',    // Deep under-grass shadow
+      'rgba(27, 67, 50, 0.55)',   // Base rich turf
+      'rgba(45, 106, 79, 0.60)',  // Vibrant meadow blade
+      'rgba(82, 183, 136, 0.55)', // Sunlit grass leaf
+      'rgba(149, 213, 178, 0.45)',// Light green blade tip
+      'rgba(216, 243, 220, 0.35)',// Delicate morning dew tip
+    ];
 
-    // 4. Stylized Grass Blade Tufts (organic hand-painted feel)
-    for (let i = 0; i < 900; i++) {
+    for (let i = 0; i < 2400; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const dist = Math.random() * (center - 24);
+      const dist = Math.random() * (center - 16);
       const px = center + Math.cos(angle) * dist;
       const py = center + Math.sin(angle) * dist;
 
-      // Small stylized blade cluster
-      ctx.strokeStyle = Math.random() > 0.4 ? 'rgba(134, 239, 172, 0.35)' : 'rgba(254, 240, 138, 0.45)';
-      ctx.lineWidth = 1.8;
+      const bladeLen = 5 + Math.random() * 9;
+      const bladeCurve = (Math.random() - 0.5) * 5;
+      const color = bladeColors[Math.floor(Math.random() * bladeColors.length)];
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.2 + Math.random() * 0.8;
       ctx.beginPath();
       ctx.moveTo(px, py);
-      ctx.lineTo(px + (Math.random() - 0.5) * 6, py - 4 - Math.random() * 4);
+      ctx.quadraticCurveTo(px + bladeCurve * 0.5, py - bladeLen * 0.6, px + bladeCurve, py - bladeLen);
       ctx.stroke();
     }
 
-    // 5. Center Hearth Border Ring (Smooth cobblestone border around the fire pit)
-    const fireRadiusPx = (2.2 / 13.0) * center;
+    // 4. Subtle Clover Leaf Clusters
+    for (let c = 0; c < 90; c++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * (center - 30);
+      const cx = center + Math.cos(angle) * dist;
+      const cy = center + Math.sin(angle) * dist;
+
+      ctx.fillStyle = 'rgba(116, 198, 157, 0.45)';
+      for (let lobe = 0; lobe < 3; lobe++) {
+        const la = (lobe / 3) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(la) * 2.5, cy + Math.sin(la) * 2.5, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 5. Center Hearth Border Ring (Smooth dark slate stone blend)
+    const fireRadiusPx = (2.25 / 13.0) * center;
     ctx.beginPath();
-    ctx.arc(center, center, fireRadiusPx + 10, 0, Math.PI * 2);
+    ctx.arc(center, center, fireRadiusPx + 8, 0, Math.PI * 2);
     ctx.lineWidth = 14;
-    ctx.strokeStyle = 'rgba(51, 65, 85, 0.65)'; // Dark stone rim blend
+    ctx.strokeStyle = 'rgba(30, 41, 59, 0.75)'; // Dark basalt stone rim blend
     ctx.stroke();
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -509,12 +574,12 @@ export class GameEngine {
     stoneHearth.receiveShadow = true;
     group.add(stoneHearth);
 
-    // Inner glowing coal bed / volcanic ember ash
+    // Inner glowing coal bed / volcanic ember ash with intense heat glow
     const coalGeo = new THREE.CylinderGeometry(1.85, 1.85, 0.1, 24);
     const coalMat = new THREE.MeshStandardMaterial({
-      color: 0x1e1b4b,
-      emissive: 0xc2410c, // Glowing ember red-orange
-      emissiveIntensity: 0.9,
+      color: 0x1c1917,
+      emissive: 0xea580c, // Deep incandescent heat
+      emissiveIntensity: 1.3,
       roughness: 0.95,
     });
     const coal = new THREE.Mesh(coalGeo, coalMat);
@@ -537,93 +602,111 @@ export class GameEngine {
       group.add(stone);
     }
 
-    // 2. Charred Campfire Timber Logs (Criss-crossed)
+    // 2. Realistic Charred Timber Logs with Glowing Ember Cracks
     const logMat = new THREE.MeshStandardMaterial({
-      color: 0x3e2723, // Dark charred timber
+      color: 0x271a0c,
+      emissive: 0x7c2d12,
+      emissiveIntensity: 0.5,
       roughness: 0.9,
     });
-    [0, Math.PI / 2, Math.PI / 4, (Math.PI * 3) / 4].forEach((angle, idx) => {
-      const logGeo = new THREE.CylinderGeometry(0.12, 0.15, 2.0, 6);
+    [0, Math.PI / 3, (Math.PI * 2) / 3, Math.PI / 6, Math.PI / 2, (Math.PI * 5) / 6].forEach((angle, idx) => {
+      const logGeo = new THREE.CylinderGeometry(0.11, 0.14, 2.1, 7);
       logGeo.rotateX(Math.PI / 2);
-      logGeo.rotateZ(0.15 * (idx % 2 === 0 ? 1 : -1));
+      logGeo.rotateZ(0.18 * (idx % 2 === 0 ? 1 : -1));
       const log = new THREE.Mesh(logGeo, logMat);
       log.rotation.y = angle;
       log.position.set(0, 0.28, 0);
       group.add(log);
     });
 
-    // 3. Stylized 3D Animated Flames (Multi-tiered low-poly flame cluster)
-    this.fireFlames = [];
-
-    // Core blazing white-gold flame
-    const coreFlameGeo = new THREE.ConeGeometry(0.50, 2.0, 7);
-    const coreFlameMat = new THREE.MeshBasicMaterial({
-      color: 0xffedd5,
+    // 3. Volumetric Additive Flame Billboards (Realistic incandescent fire column)
+    this.flameParticles = [];
+    const flameTexture = this.createRealisticFlameTexture();
+    const flameMat = new THREE.MeshBasicMaterial({
+      map: flameTexture,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
     });
-    const coreFlame = new THREE.Mesh(coreFlameGeo, coreFlameMat);
-    coreFlame.position.set(0, 1.15, 0);
-    coreFlame.userData = { baseScaleX: 1.0, baseScaleY: 1.0, baseScaleZ: 1.0 };
-    group.add(coreFlame);
-    this.fireFlames.push(coreFlame);
 
-    // 4 Mid vibrant fiery orange flames
-    const midFlameGeo = new THREE.ConeGeometry(0.38, 1.55, 6);
-    const midFlameMat = new THREE.MeshBasicMaterial({
-      color: 0xf97316,
-    });
-    for (let i = 0; i < 4; i++) {
-      const ang = (i / 4) * Math.PI * 2;
-      const mf = new THREE.Mesh(midFlameGeo, midFlameMat);
-      mf.position.set(Math.cos(ang) * 0.42, 0.90, Math.sin(ang) * 0.42);
-      mf.rotation.z = (Math.random() - 0.5) * 0.2;
-      mf.userData = { baseScaleX: 0.9, baseScaleY: 0.9, baseScaleZ: 0.9 };
-      group.add(mf);
-      this.fireFlames.push(mf);
+    const flameCount = 36;
+    for (let i = 0; i < flameCount; i++) {
+      const width = 0.75 + Math.random() * 0.45;
+      const height = 1.35 + Math.random() * 0.65;
+      const geo = new THREE.PlaneGeometry(width, height);
+      const mesh = new THREE.Mesh(geo, flameMat);
+
+      // Distribute in a cylinder around the center embers
+      const ang = Math.random() * Math.PI * 2;
+      const rad = Math.random() * 0.65;
+      const bx = Math.cos(ang) * rad;
+      const bz = Math.sin(ang) * rad;
+      mesh.position.set(bx, 0.35 + Math.random() * 1.8, bz);
+      group.add(mesh);
+
+      this.flameParticles.push({
+        mesh,
+        baseX: bx,
+        baseZ: bz,
+        speedY: 1.8 + Math.random() * 1.4,
+        phase: Math.random() * Math.PI * 2,
+        scaleBase: 0.85 + Math.random() * 0.35,
+      });
     }
 
-    // 4 Outer licking crimson flames
-    const outerFlameGeo = new THREE.ConeGeometry(0.28, 1.15, 5);
-    const outerFlameMat = new THREE.MeshBasicMaterial({
-      color: 0xef4444,
-    });
-    for (let i = 0; i < 4; i++) {
-      const ang = (i / 4) * Math.PI * 2 + Math.PI / 4;
-      const of = new THREE.Mesh(outerFlameGeo, outerFlameMat);
-      of.position.set(Math.cos(ang) * 0.72, 0.70, Math.sin(ang) * 0.72);
-      of.userData = { baseScaleX: 0.8, baseScaleY: 0.8, baseScaleZ: 0.8 };
-      group.add(of);
-      this.fireFlames.push(of);
-    }
-
-    // 4. Warm Dynamic Flickering Firelight PointLight
-    this.fireLight = new THREE.PointLight(0xf97316, 2.4, 20);
-    this.fireLight.position.set(0, 1.4, 0);
-    group.add(this.fireLight);
-
-    // 5. Initialize 18 Floating Fire Embers
+    // 4. Realistic Crackling Spark Embers (24 particles)
     this.fireEmbers = [];
+    const emberGeo = new THREE.SphereGeometry(0.045, 4, 4);
     const emberMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-    const emberGeo = new THREE.SphereGeometry(0.05, 5, 5);
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 24; i++) {
       const ember = new THREE.Mesh(emberGeo, emberMat);
-      ember.position.set((Math.random() - 0.5) * 0.8, 0.3 + Math.random() * 3.5, (Math.random() - 0.5) * 0.8);
+      ember.position.set((Math.random() - 0.5) * 0.9, 0.3 + Math.random() * 3.5, (Math.random() - 0.5) * 0.9);
       group.add(ember);
       this.fireEmbers.push({
         mesh: ember,
         seed: Math.random() * 10,
-        speed: 1.2 + Math.random() * 1.6,
-        life: Math.random() * 3,
+        speed: 2.2 + Math.random() * 2.8,
+        life: Math.random() * 2.5,
+        maxLife: 2.5,
+      });
+    }
+
+    // 5. Soft Dissipating Smoke Puffs (10 particles)
+    this.fireSmoke = [];
+    const smokeGeo = new THREE.SphereGeometry(0.25, 6, 6);
+    const smokeMat = new THREE.MeshBasicMaterial({
+      color: 0x475569,
+      transparent: true,
+      opacity: 0.16,
+    });
+    for (let i = 0; i < 10; i++) {
+      const smoke = new THREE.Mesh(smokeGeo, smokeMat);
+      smoke.position.set((Math.random() - 0.5) * 0.5, 2.0 + Math.random() * 3.2, (Math.random() - 0.5) * 0.5);
+      group.add(smoke);
+      this.fireSmoke.push({
+        mesh: smoke,
+        seed: Math.random() * 10,
+        speed: 1.0 + Math.random() * 0.8,
+        life: Math.random() * 3.0,
         maxLife: 3.0,
       });
     }
 
+    // 6. Dynamic Campfire PointLight
+    this.fireLight = new THREE.PointLight(0xf97316, 2.8, 22);
+    this.fireLight.position.set(0, 1.4, 0);
+    group.add(this.fireLight);
+
     return group;
   }
 
-  private createWildflowersAndGrassTufts(parent: THREE.Group) {
+  private createWindGrassAndWildflowers(parent: THREE.Scene) {
+    this.windGrassTufts = [];
+
     const tuftMat = new THREE.MeshStandardMaterial({
-      color: 0x16a34a,
-      roughness: 0.6,
+      color: 0x2d6a4f,
+      roughness: 0.5,
       side: THREE.DoubleSide,
     });
 
@@ -646,42 +729,48 @@ export class GameEngine {
       emissiveIntensity: 0.2,
     });
 
-    // Scatter 36 tufts and blossoms along perimeter radius (11.0m to 12.6m)
-    for (let i = 0; i < 36; i++) {
-      const angle = (i / 36) * Math.PI * 2 + Math.sin(i * 3) * 0.1;
-      const r = 11.2 + Math.abs(Math.sin(i * 7)) * 1.3;
+    // 96 3D Grass Tufts distributed across the entire lawn
+    for (let i = 0; i < 96; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = 2.4 + Math.random() * (this.initialRadius - 2.8);
       const x = Math.cos(angle) * r;
       const z = Math.sin(angle) * r;
 
       const cluster = new THREE.Group();
       cluster.position.set(x, 0, z);
-      cluster.rotation.y = Math.random() * Math.PI * 2;
 
-      // 3 Grass blades angled outward
-      for (let b = 0; b < 3; b++) {
-        const bladeGeo = new THREE.ConeGeometry(0.08, 0.38 + (b % 2) * 0.12, 4);
-        bladeGeo.rotateZ(0.25 - b * 0.25);
+      // 3-4 Grass blades angled outward
+      const bladeCount = 3 + Math.floor(Math.random() * 2);
+      for (let b = 0; b < bladeCount; b++) {
+        const bladeGeo = new THREE.ConeGeometry(0.04, 0.38 + Math.random() * 0.16, 4);
+        bladeGeo.rotateZ((b - bladeCount / 2) * 0.22);
         const blade = new THREE.Mesh(bladeGeo, tuftMat);
-        blade.position.set((b - 1) * 0.06, 0.18, 0);
+        blade.position.set((b - bladeCount / 2) * 0.05, 0.18, 0);
         cluster.add(blade);
       }
 
-      // Add a flower blossom on every second cluster
-      if (i % 2 === 0) {
-        const mat = i % 6 === 0 ? flowerPinkMat : i % 4 === 0 ? flowerGoldMat : flowerWhiteMat;
-        const stemGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.25, 4);
+      // Add a flower blossom on every 3rd cluster
+      if (i % 3 === 0) {
+        const mat = i % 9 === 0 ? flowerPinkMat : i % 6 === 0 ? flowerGoldMat : flowerWhiteMat;
+        const stemGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.24, 4);
         const stem = new THREE.Mesh(stemGeo, tuftMat);
-        stem.position.set(0.05, 0.12, 0.05);
+        stem.position.set(0.04, 0.12, 0.04);
         cluster.add(stem);
 
-        const blossomGeo = new THREE.SphereGeometry(0.08, 6, 6);
+        const blossomGeo = new THREE.SphereGeometry(0.07, 6, 6);
         blossomGeo.scale(1.2, 0.5, 1.2);
         const blossom = new THREE.Mesh(blossomGeo, mat);
-        blossom.position.set(0.05, 0.25, 0.05);
+        blossom.position.set(0.04, 0.24, 0.04);
         cluster.add(blossom);
       }
 
       parent.add(cluster);
+      this.windGrassTufts.push({
+        group: cluster,
+        posX: x,
+        posZ: z,
+        seed: Math.random() * 10,
+      });
     }
   }
 
@@ -721,9 +810,9 @@ export class GameEngine {
     arena.position.y = -0.18;
     arena.receiveShadow = true;
 
-    // 3. Ancient Sacred Bonfire Altar (Central Ceremonial Fire Pit)
+    // 3. Ancient Sacred Bonfire Altar (Directly added to scene so it never shrinks!)
     this.centerFirePit = this.createCenterBonfireAltar();
-    this.arenaGroup.add(this.centerFirePit);
+    this.scene.add(this.centerFirePit);
 
     // 4. Carved Ancient Limestone Perimeter Rim & Runes
     const blockCount = 32;
@@ -744,7 +833,7 @@ export class GameEngine {
       this.arenaGroup.add(block);
     }
 
-    // 5. Glowing Safe Perimeter Ring (Contracts & Warns when collapsing)
+    // 5. Glowing Safe Perimeter Ring (Contracts with the island edge)
     const ringGeo = new THREE.TorusGeometry(this.initialRadius, 0.22, 16, 64);
     ringGeo.rotateX(Math.PI / 2);
     const ringMat = new THREE.MeshStandardMaterial({
@@ -755,22 +844,8 @@ export class GameEngine {
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.position.y = 0.06;
 
-    // 6. Danger / Out-of-Bounds Hazard Ring (Revealed when safe perimeter contracts)
-    const dangerGeo = new THREE.RingGeometry(this.initialRadius, this.initialRadius + 0.1, 48);
-    dangerGeo.rotateX(-Math.PI / 2);
-    const dangerMat = new THREE.MeshBasicMaterial({
-      color: 0xef4444,
-      transparent: true,
-      opacity: 0.0,
-      side: THREE.DoubleSide,
-    });
-    this.dangerZoneMesh = new THREE.Mesh(dangerGeo, dangerMat);
-    this.dangerZoneMesh.position.y = 0.03;
-    this.dangerZoneMesh.visible = false;
-    this.arenaGroup.add(this.dangerZoneMesh);
-
-    // 7. Sculpted 3D Grass Tufts & Wildflowers around the Outer Lawn
-    this.createWildflowersAndGrassTufts(this.arenaGroup);
+    // 6. Populate 3D Wind-Swaying Grass Tufts & Wildflowers across the field
+    this.createWindGrassAndWildflowers(this.scene);
 
     return { arena, ring };
   }
@@ -1070,9 +1145,7 @@ export class GameEngine {
     this.warningSoundCooldown = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
-    if (this.ringMesh) this.ringMesh.scale.set(1, 1, 1);
-    if (this.dangerZoneMesh) this.dangerZoneMesh.visible = false;
-    this.lastDangerRadius = this.initialRadius;
+    this.windGrassTufts.forEach((tuft) => tuft.group.visible = true);
 
     if (this.ringMesh && this.ringMesh.material) {
       (this.ringMesh.material as THREE.MeshStandardMaterial).color.setHex(0x10b981);
@@ -1190,34 +1263,61 @@ export class GameEngine {
       if (leaf.mesh.position.x > 18) leaf.mesh.position.x = -18;
     });
 
-    // 4. Center Sacred Bonfire Flame Animation & Flickering Firelight
-    this.fireFlames.forEach((flame, idx) => {
-      const flickerY = Math.sin(this.elapsedTime * 12 + idx * 1.8) * 0.22;
-      const flickerXZ = Math.cos(this.elapsedTime * 9 + idx * 2.2) * 0.14;
-      const baseSY = flame.userData.baseScaleY || 1.0;
-      const baseSX = flame.userData.baseScaleX || 1.0;
-      const baseSZ = flame.userData.baseScaleZ || 1.0;
-      flame.scale.y = baseSY * (1.0 + flickerY);
-      flame.scale.x = baseSX * (1.0 + flickerXZ);
-      flame.scale.z = baseSZ * (1.0 + flickerXZ);
-      flame.rotation.y += dt * (1.2 + idx * 0.3);
-    });
+    // 4. Realistic Volumetric Flame Billboards (Rising, swirling, tapering, camera-facing)
+    const camRot = this.camera.quaternion;
+    this.flameParticles.forEach((p) => {
+      p.mesh.quaternion.copy(camRot);
+      p.mesh.position.y += dt * p.speedY;
 
-    // 5. Center Bonfire Rising Embers
-    this.fireEmbers.forEach((ember) => {
-      ember.mesh.position.y += dt * ember.speed;
-      const heightFrac = Math.min(1.0, (ember.mesh.position.y - 0.3) / 3.5);
-      ember.mesh.position.x = Math.sin(this.elapsedTime * 2.8 + ember.seed) * (0.25 + heightFrac * 0.65);
-      ember.mesh.position.z = Math.cos(this.elapsedTime * 2.8 + ember.seed) * (0.25 + heightFrac * 0.65);
-      if (ember.mesh.position.y > 3.8) {
-        ember.mesh.position.set((Math.random() - 0.5) * 0.6, 0.3, (Math.random() - 0.5) * 0.6);
+      // Swirling turbulent motion
+      const y = p.mesh.position.y;
+      const progress = Math.min(1.0, Math.max(0, (y - 0.35) / 2.0));
+      p.mesh.position.x = p.baseX + Math.sin(this.elapsedTime * 8 + p.phase) * (0.12 + progress * 0.35);
+      p.mesh.position.z = p.baseZ + Math.cos(this.elapsedTime * 7 + p.phase) * (0.12 + progress * 0.35);
+
+      // Natural flame taper (broad at base, slender and flickers at the tip)
+      const scale = p.scaleBase * (1.1 - progress * 0.55) * (1.0 + Math.sin(this.elapsedTime * 14 + p.phase) * 0.18);
+      p.mesh.scale.set(scale, scale * (1.0 + Math.sin(this.elapsedTime * 18 + p.phase) * 0.2), scale);
+
+      // Loop back to base of campfire when reaching top
+      if (p.mesh.position.y > 2.4) {
+        p.mesh.position.y = 0.35 + Math.random() * 0.25;
       }
     });
 
-    // 6. Flickering Warm Firelight PointLight
+    // 5. Realistic Rising Crackling Embers & Sparks
+    this.fireEmbers.forEach((ember) => {
+      ember.mesh.position.y += dt * ember.speed;
+      ember.mesh.position.x += Math.sin(this.elapsedTime * 3.5 + ember.seed) * dt * 0.8;
+      ember.mesh.position.z += Math.cos(this.elapsedTime * 3.2 + ember.seed) * dt * 0.8;
+      if (ember.mesh.position.y > 4.2) {
+        ember.mesh.position.set((Math.random() - 0.5) * 0.7, 0.35, (Math.random() - 0.5) * 0.7);
+      }
+    });
+
+    // 6. Soft Smoke Drifting with Island Wind
+    this.fireSmoke.forEach((smoke) => {
+      smoke.mesh.position.y += dt * smoke.speed;
+      smoke.mesh.position.x += dt * 0.45; // Drifts with island breeze
+      const s = 1.0 + ((smoke.mesh.position.y - 2.0) / 3.5) * 1.8;
+      smoke.mesh.scale.set(s, s, s);
+      if (smoke.mesh.position.y > 5.5) {
+        smoke.mesh.position.set((Math.random() - 0.5) * 0.4, 2.0, (Math.random() - 0.5) * 0.4);
+      }
+    });
+
+    // 7. Authentic Campfire Multi-frequency Flicker
     if (this.fireLight) {
-      this.fireLight.intensity = 2.0 + Math.sin(this.elapsedTime * 14) * 0.45 + (Math.random() - 0.5) * 0.25;
+      this.fireLight.intensity = 2.5 + Math.sin(this.elapsedTime * 17) * 0.45 + Math.sin(this.elapsedTime * 29) * 0.25 + (Math.random() - 0.5) * 0.2;
     }
+
+    // 8. Dynamic 3D Grass Wind Waves (Physically sways in ocean trade winds)
+    this.windGrassTufts.forEach((tuft) => {
+      const wave = this.elapsedTime * 3.2 + tuft.posX * 0.4 + tuft.posZ * 0.3;
+      tuft.group.rotation.z = Math.sin(wave) * 0.28 + Math.sin(wave * 2.1) * 0.08;
+      tuft.group.rotation.x = Math.cos(wave * 0.8) * 0.12;
+      tuft.group.visible = Math.hypot(tuft.posX, tuft.posZ) <= this.currentRadius - 0.35;
+    });
   }
 
   private spawnOceanSplash(x: number, z: number) {
@@ -1316,29 +1416,8 @@ export class GameEngine {
       }
 
       this.state.arenaRadius = this.currentRadius;
-      const ringScale = this.currentRadius / this.initialRadius;
-      this.ringMesh.scale.set(ringScale, 1, ringScale);
-      this.arenaGroup.scale.set(1, 1, 1);
-
-      // Danger / Out-of-Bounds Hazard Zone visualization outside shrinking safe ring
-      if (this.currentRadius < this.initialRadius - 0.05) {
-        if (this.dangerZoneMesh) {
-          this.dangerZoneMesh.visible = true;
-          const dangerMat = this.dangerZoneMesh.material as THREE.MeshBasicMaterial;
-          dangerMat.opacity = 0.35 + Math.sin(this.elapsedTime * 6) * 0.12;
-          if (Math.abs(this.currentRadius - this.lastDangerRadius) > 0.12) {
-            this.lastDangerRadius = this.currentRadius;
-            this.dangerZoneMesh.geometry.dispose();
-            const newGeo = new THREE.RingGeometry(this.currentRadius, this.initialRadius + 0.15, 48);
-            newGeo.rotateX(-Math.PI / 2);
-            this.dangerZoneMesh.geometry = newGeo;
-          }
-        }
-      } else {
-        if (this.dangerZoneMesh) {
-          this.dangerZoneMesh.visible = false;
-        }
-      }
+      const scale = this.currentRadius / this.initialRadius;
+      this.arenaGroup.scale.set(scale, 1, scale);
 
       // If timer hits 0 and both fighters survived: ROUND DRAW!
       if (remaining <= 0 && !this.state.isGameOver) {
@@ -1730,9 +1809,7 @@ export class GameEngine {
     this.warningSoundCooldown = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
-    if (this.ringMesh) this.ringMesh.scale.set(1, 1, 1);
-    if (this.dangerZoneMesh) this.dangerZoneMesh.visible = false;
-    this.lastDangerRadius = this.initialRadius;
+    this.windGrassTufts.forEach((tuft) => tuft.group.visible = true);
 
     if (this.ringMesh && this.ringMesh.material) {
       const mat = this.ringMesh.material as THREE.MeshStandardMaterial;

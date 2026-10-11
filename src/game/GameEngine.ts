@@ -71,7 +71,6 @@ export class GameEngine {
 
   // Arena
   private arenaGroup: THREE.Group;
-  private ringMesh: THREE.Mesh;
   private initialRadius = 13.0;
   private currentRadius = 13.0;
   private matchDuration = 60; // 60 seconds (1 minute per round)
@@ -100,7 +99,6 @@ export class GameEngine {
   private fireLight: THREE.PointLight | null = null;
   private fireEmbers: { mesh: THREE.Mesh; seed: number; speed: number; life: number; maxLife: number }[] = [];
   private fireSmoke: { mesh: THREE.Mesh; seed: number; speed: number; life: number; maxLife: number }[] = [];
-  private windGrassTufts: { group: THREE.Group; posX: number; posZ: number; seed: number }[] = [];
   private grassMaterial: THREE.MeshStandardMaterial | null = null;
   private flowerMaterial: THREE.MeshStandardMaterial | null = null;
   private splashTriggered: { player: boolean; bot: boolean } = { player: false, bot: false };
@@ -167,10 +165,8 @@ export class GameEngine {
 
     // 4. Arena & Characters (Grassy Island Plateau & Sun Compass)
     this.arenaGroup = new THREE.Group();
-    const { arena, ring } = this.createArena();
-    this.ringMesh = ring;
+    const arena = this.createArena();
     this.arenaGroup.add(arena);
-    this.arenaGroup.add(ring);
     this.scene.add(this.arenaGroup);
 
     this.setupCharacters();
@@ -915,8 +911,6 @@ export class GameEngine {
   }
 
   private createWindGrassAndWildflowers(parent: THREE.Scene) {
-    this.windGrassTufts = [];
-
     // 1. High-Resolution Botanical Grass Clump Textures (Curved slender blades + wildflowers)
     const grassTex = this.createBotanicalGrassTexture(false);
     const flowerGrassTex = this.createBotanicalGrassTexture(true);
@@ -1052,21 +1046,10 @@ export class GameEngine {
       this.arenaGroup.add(block);
     }
 
-    // 5. Glowing Safe Perimeter Ring (Contracts with the island edge)
-    const ringGeo = new THREE.TorusGeometry(this.initialRadius, 0.22, 16, 64);
-    ringGeo.rotateX(Math.PI / 2);
-    const ringMat = new THREE.MeshStandardMaterial({
-      color: 0x10b981, // Emerald green energy for Chapter 1
-      emissive: 0x059669,
-      emissiveIntensity: 1.4,
-    });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.position.y = 0.06;
-
-    // 6. Populate 3D Wind-Swaying Grass Tufts & Wildflowers across the field
+    // 5. Populate 3D Wind-Swaying Grass Tufts & Wildflowers across the field
     this.createWindGrassAndWildflowers(this.scene);
 
-    return { arena, ring };
+    return arena;
   }
 
   private createAimReticle(): THREE.Group {
@@ -1364,14 +1347,6 @@ export class GameEngine {
     this.warningSoundCooldown = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
-    this.windGrassTufts.forEach((tuft) => tuft.group.visible = true);
-
-    if (this.ringMesh && this.ringMesh.material) {
-      (this.ringMesh.material as THREE.MeshStandardMaterial).color.setHex(0x10b981);
-      (this.ringMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x059669);
-      (this.ringMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.4;
-    }
-
     this.splashTriggered = { player: false, bot: false };
 
     this.player.pos.set(0, 0, 6);
@@ -1596,38 +1571,18 @@ export class GameEngine {
       if (this.elapsedTime <= 20) {
         this.currentRadius = this.initialRadius;
         this.state.warningText = null;
-        if (this.ringMesh && this.ringMesh.material) {
-          const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
-          mat.color.setHex(0x10b981);
-          mat.emissive.setHex(0x059669);
-          mat.emissiveIntensity = 1.4;
-        }
       }
       // Phase 2 (40s to 15s): Active collapse from 13.0m down to 6.0m
       else if (this.elapsedTime <= 45) {
         const t = (this.elapsedTime - 20) / 25; // 0.0 to 1.0
         this.currentRadius = 13.0 - t * (13.0 - 6.0);
         this.state.warningText = '⚠️ ARENA COLLAPSING!';
-        if (this.ringMesh && this.ringMesh.material) {
-          const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
-          mat.color.setHex(0xf59e0b);
-          mat.emissive.setHex(0xd97706);
-          const pulse = 1.4 + Math.sin(this.elapsedTime * 6) * 0.6;
-          mat.emissiveIntensity = pulse;
-        }
       }
       // Phase 3 (15s to 0s): Sudden Death collapse from 6.0m down to 3.5m micro-ring
       else {
         const t = Math.min(1.0, (this.elapsedTime - 45) / 15); // 0.0 to 1.0
         this.currentRadius = 6.0 - t * (6.0 - 3.5);
         this.state.warningText = '🚨 SUDDEN DEATH: CRITICAL CORE!';
-        const blink = Math.sin(this.elapsedTime * 14) > 0;
-        if (this.ringMesh && this.ringMesh.material) {
-          const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
-          mat.color.setHex(blink ? 0xff0033 : 0x770011);
-          mat.emissive.setHex(0xff0033);
-          mat.emissiveIntensity = blink ? 2.8 : 0.8;
-        }
 
         this.warningSoundCooldown -= dt;
         if (this.warningSoundCooldown <= 0 && remaining > 0) {
@@ -1920,8 +1875,8 @@ export class GameEngine {
     if (b.isKnockedOut) return;
 
     const distFromCenter = Math.hypot(b.pos.x, b.pos.z);
-    // If center of brawler is beyond the current shrinking arena edge
-    if (distFromCenter > this.currentRadius + 0.15) {
+    // Exact physical boundary: falls off immediately when center of mass steps beyond the base edge
+    if (distFromCenter > this.currentRadius) {
       b.isGrounded = false;
       // Gravity pulls down
       b.vel.y = (b.vel.y || 0) - 38 * dt;
@@ -2030,14 +1985,6 @@ export class GameEngine {
     this.warningSoundCooldown = 0;
     this.currentRadius = this.initialRadius;
     this.arenaGroup.scale.set(1, 1, 1);
-
-    if (this.ringMesh && this.ringMesh.material) {
-      const mat = this.ringMesh.material as THREE.MeshStandardMaterial;
-      mat.color.setHex(0x10b981);
-      mat.emissive.setHex(0x059669);
-      mat.emissiveIntensity = 1.4;
-    }
-
     this.splashTriggered = { player: false, bot: false };
 
     this.player.pos.set(0, 0, 6);

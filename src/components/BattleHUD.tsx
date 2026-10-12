@@ -11,7 +11,6 @@ import {
   Trophy,
   Flame,
   Shield,
-  Sparkles,
   X,
   Eye,
   Camera,
@@ -39,8 +38,8 @@ const getDefaultLayout = (): ControlLayout => {
   const w = typeof window !== 'undefined' ? window.innerWidth : 1000;
   const h = typeof window !== 'undefined' ? window.innerHeight : 700;
   return {
-    joystick: { x: 24, y: Math.max(140, h - 160) },
-    dash: { x: Math.max(160, w - 144), y: Math.max(140, h - 160) },
+    joystick: { x: 24, y: Math.max(16, h - 160) },
+    dash: { x: Math.max(160, w - 144), y: Math.max(16, h - 160) },
   };
 };
 
@@ -112,9 +111,9 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         const w = window.innerWidth;
         const h = window.innerHeight;
         const joyX = Math.max(16, Math.min(w - 148, prev.joystick.x));
-        const joyY = Math.max(125, Math.min(h - 160, prev.joystick.y));
+        const joyY = Math.max(16, Math.min(h - 160, prev.joystick.y));
         const dashX = Math.max(16, Math.min(w - 140, prev.dash.x));
-        const dashY = Math.max(125, Math.min(h - 160, prev.dash.y));
+        const dashY = Math.max(16, Math.min(h - 160, prev.dash.y));
         return {
           joystick: { x: joyX, y: joyY },
           dash: { x: dashX, y: dashY },
@@ -175,16 +174,16 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     sounds.playBump(0.8);
   };
 
+  // Save & Apply: Return to Settings/Pause modal instead of resuming play immediately
   const handleSaveLayout = () => {
     setControlsLayout(tempLayout);
     try {
       localStorage.setItem('ringout_hud_controls_layout_v2', JSON.stringify(tempLayout));
     } catch {}
     setIsCustomizingHUD(false);
+    setIsSettingsOpen(true);
+    setPauseModalTab('menu');
     sounds.playBump(1.2);
-    if (state.isPaused) {
-      onTogglePause();
-    }
   };
 
   const handleResetLayout = () => {
@@ -193,12 +192,12 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     sounds.playBump(0.8);
   };
 
+  // Cancel: Return to Settings/Pause modal
   const handleCancelCustomizing = () => {
     setTempLayout(controlsLayout);
     setIsCustomizingHUD(false);
-    if (state.isPaused) {
-      onTogglePause();
-    }
+    setIsSettingsOpen(true);
+    setPauseModalTab('menu');
   };
 
   // Dragging handlers for Customization Mode
@@ -228,9 +227,9 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     const elemW = isJoy ? 128 : 112;
     const elemH = isJoy ? 128 : 112;
 
-    // Strict boundary enforcement: Y >= 125px so it NEVER overlaps top player/opponent names or timer!
+    // Full freedom to move controls anywhere across the screen (top, bottom, sides)
     const clampedX = Math.max(16, Math.min(w - elemW - 16, rawX));
-    const clampedY = Math.max(125, Math.min(h - elemH - 24, rawY));
+    const clampedY = Math.max(16, Math.min(h - elemH - 16, rawY));
 
     setTempLayout((prev) => ({
       ...prev,
@@ -344,20 +343,16 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
   // Tier color styling
   let ringColor = '#00f5ff';
-  let badgeColor = 'text-cyan-400';
   let buttonGradient = 'from-cyan-600 to-blue-500 shadow-cyan-500/40';
 
   if (charge >= 99) {
     ringColor = '#ff0055';
-    badgeColor = 'text-rose-400';
     buttonGradient = 'from-rose-500 via-amber-500 to-yellow-400 shadow-rose-500/60 animate-pulse';
   } else if (charge >= 70) {
     ringColor = '#f59e0b';
-    badgeColor = 'text-amber-400';
     buttonGradient = 'from-amber-600 to-orange-500 shadow-amber-500/40';
   } else if (charge >= 40) {
     ringColor = '#8b5cf6';
-    badgeColor = 'text-purple-400';
     buttonGradient = 'from-purple-600 to-indigo-500 shadow-purple-500/40';
   }
 
@@ -445,18 +440,9 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           );
         })()}
 
-        {/* Center: Clean Timer Number & Actions (No Box, Just Number - Shadow Fight 4 Style) */}
+        {/* Center: Clean Timer Number & Pause Button (User request: "only leave the pause button there should be no icon") */}
         <div className="flex flex-col items-center">
-          <div className="flex items-center gap-4">
-            {/* Locker Button */}
-            <button
-              onClick={onOpenShowcase}
-              className="p-1.5 hover:bg-white/10 rounded-xl transition-all cursor-pointer text-amber-300 active:scale-95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-              title="Open Champion Locker & 360 Showcase"
-            >
-              <Sparkles className="w-5 h-5 text-amber-400" />
-            </button>
-
+          <div className="flex items-center gap-3">
             {/* Timer Number: Pure number, no 00:, no box */}
             <div className="flex flex-col items-center min-w-[48px]">
               <span
@@ -518,58 +504,48 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         </div>
       </div>
 
-      {/* CUSTOMIZATION MODE OVERLAY & SAFE ZONE BOUNDARY */}
+      {/* CUSTOMIZATION MODE OVERLAY (NO LINE, ALLOWS PLACING CONTROLS FREELY UP TO TOP) */}
       {isCustomizingHUD && (
-        <>
-          {/* Top Safe Area Barrier (Prevents overlapping Player & Opponent names) */}
-          <div className="absolute top-[116px] left-4 right-4 pointer-events-none z-40 border-b-2 border-dashed border-rose-500/60 pb-1 flex items-center justify-center">
-            <span className="text-[10px] font-black uppercase tracking-widest text-rose-300 bg-rose-950/90 px-3 py-1 rounded-full border border-rose-500/50 shadow-lg">
-              🔒 Safe Boundary: Controls restricted below this line to protect Fighter Names
-            </span>
-          </div>
-
-          {/* Customization Action Bar */}
-          <div className="absolute top-28 left-1/2 -translate-x-1/2 z-50 pointer-events-auto animate-in slide-in-from-top-4 duration-200">
-            <div className="bg-slate-900/95 border-2 border-cyan-400 rounded-3xl p-3 sm:px-6 sm:py-3 shadow-[0_0_35px_rgba(0,245,255,0.4)] flex flex-wrap items-center justify-center gap-3">
-              <div className="flex items-center gap-2 mr-2">
-                <Gamepad2 className="w-5 h-5 text-cyan-400 animate-pulse" />
-                <div className="text-left">
-                  <div className="text-xs font-black uppercase tracking-wider text-cyan-300">
-                    Customization Mode
-                  </div>
-                  <div className="text-[10px] text-slate-300 font-semibold hidden sm:block">
-                    Drag controls anywhere below top banner
-                  </div>
+        <div className="absolute top-20 sm:top-24 left-1/2 -translate-x-1/2 z-50 pointer-events-auto animate-in slide-in-from-top-4 duration-200">
+          <div className="bg-slate-900/95 border-2 border-cyan-400 rounded-3xl p-3 sm:px-6 sm:py-3 shadow-[0_0_35px_rgba(0,245,255,0.4)] flex flex-wrap items-center justify-center gap-3">
+            <div className="flex items-center gap-2 mr-2">
+              <Gamepad2 className="w-5 h-5 text-cyan-400 animate-pulse" />
+              <div className="text-left">
+                <div className="text-xs font-black uppercase tracking-wider text-cyan-300">
+                  Customization Mode
+                </div>
+                <div className="text-[10px] text-slate-300 font-semibold hidden sm:block">
+                  Drag controls anywhere across the screen
                 </div>
               </div>
+            </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleResetLayout}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-all"
-                >
-                  Reset Default
-                </button>
-                <button
-                  onClick={handleSaveLayout}
-                  className="px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/30 cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  Save & Apply
-                </button>
-                <button
-                  onClick={handleCancelCustomizing}
-                  className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/50 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleResetLayout}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-all"
+              >
+                Reset Default
+              </button>
+              <button
+                onClick={handleSaveLayout}
+                className="px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/30 cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                Save & Apply
+              </button>
+              <button
+                onClick={handleCancelCustomizing}
+                className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/50 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-all"
+              >
+                Cancel
+              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
 
-      {/* 2. REPOSITIONABLE TOUCH CONTROLS (JOYSTICK & DASH) */}
+      {/* 2. REPOSITIONABLE TOUCH CONTROLS (JOYSTICK & DASH) - CRISP HIGH-CONTRAST GRAPHICS */}
       {/* 2A. FLOATING VIRTUAL JOYSTICK */}
       <div
         style={{
@@ -580,14 +556,14 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         onPointerDown={(e) => isCustomizingHUD && handleCustomPointerDown('joystick', e)}
         onPointerMove={(e) => isCustomizingHUD && handleCustomPointerMove(e)}
         onPointerUp={(e) => isCustomizingHUD && handleCustomPointerUp(e)}
-        className={`pointer-events-auto touch-none select-none transition-shadow ${
+        className={`pointer-events-auto touch-none select-none transition-shadow z-45 ${
           isCustomizingHUD
-            ? 'cursor-grab active:cursor-grabbing p-1 rounded-full border-2 border-dashed border-cyan-400 bg-cyan-500/15 shadow-[0_0_20px_rgba(0,245,255,0.4)]'
+            ? 'z-50 cursor-grab active:cursor-grabbing p-1.5 rounded-full border-2 border-dashed border-cyan-400 bg-cyan-500/20 shadow-[0_0_25px_rgba(0,245,255,0.6)]'
             : ''
         }`}
       >
         {isCustomizingHUD && (
-          <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-black uppercase tracking-widest text-cyan-300 bg-slate-900/90 px-2 py-0.5 rounded-full border border-cyan-400/50">
+          <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-cyan-200 bg-slate-900 border border-cyan-400 px-2.5 py-0.5 rounded-full shadow-lg">
             ✥ Drag Joystick
           </span>
         )}
@@ -599,20 +575,30 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           onLostPointerCapture={handlePointerUp}
-          className={`relative w-32 h-32 rounded-full bg-slate-900/70 backdrop-blur-md border-2 border-cyan-500/50 shadow-2xl flex items-center justify-center touch-none ${
+          className={`relative w-32 h-32 rounded-full bg-slate-950/80 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.5),inset_0_0_15px_rgba(6,182,212,0.25)] flex items-center justify-center touch-none ${
             isCustomizingHUD ? 'pointer-events-none' : 'cursor-grab active:cursor-grabbing'
           }`}
         >
+          {/* 4 Directional Arrows */}
+          <span className="absolute top-1 text-[11px] font-black text-cyan-400/90 leading-none select-none">▲</span>
+          <span className="absolute bottom-1 text-[11px] font-black text-cyan-400/90 leading-none select-none">▼</span>
+          <span className="absolute left-1.5 text-[11px] font-black text-cyan-400/90 leading-none select-none">◀</span>
+          <span className="absolute right-1.5 text-[11px] font-black text-cyan-400/90 leading-none select-none">▶</span>
+
+          {/* Inner concentric guide ring */}
+          <div className="absolute w-20 h-20 rounded-full border border-cyan-400/30 pointer-events-none" />
+
+          {/* High-Visibility 3D Metallic Thumbstick Knob */}
           <div
-            className="w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-400 border border-white/60 shadow-lg flex items-center justify-center transition-transform duration-75"
+            className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#0284c7] via-[#38bdf8] to-[#e0f2fe] border-2 border-white shadow-[0_4px_16px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.9)] flex items-center justify-center transition-transform duration-75"
             style={{
               transform: `translate(${stickOffset.x}px, ${stickOffset.y}px)`,
             }}
           >
-            <div className="w-4 h-4 rounded-full bg-white/80" />
+            <Move className="w-6 h-6 text-slate-950 stroke-[3]" />
           </div>
-          <span className="absolute -bottom-5 text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-            WASD / Move
+          <span className="absolute -bottom-6 px-2.5 py-0.5 rounded-full bg-black/80 border border-cyan-500/50 text-[10px] text-cyan-300 uppercase tracking-widest font-black drop-shadow">
+            MOVE
           </span>
         </div>
       </div>
@@ -627,14 +613,14 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         onPointerDown={(e) => isCustomizingHUD && handleCustomPointerDown('dash', e)}
         onPointerMove={(e) => isCustomizingHUD && handleCustomPointerMove(e)}
         onPointerUp={(e) => isCustomizingHUD && handleCustomPointerUp(e)}
-        className={`pointer-events-auto touch-none select-none transition-shadow ${
+        className={`pointer-events-auto touch-none select-none transition-shadow z-45 ${
           isCustomizingHUD
-            ? 'cursor-grab active:cursor-grabbing p-1 rounded-3xl border-2 border-dashed border-amber-400 bg-amber-500/15 shadow-[0_0_20px_rgba(245,158,11,0.4)]'
+            ? 'z-50 cursor-grab active:cursor-grabbing p-1.5 rounded-3xl border-2 border-dashed border-amber-400 bg-amber-500/20 shadow-[0_0_25px_rgba(245,158,11,0.6)]'
             : ''
         }`}
       >
         {isCustomizingHUD && (
-          <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-black uppercase tracking-widest text-amber-300 bg-slate-900/90 px-2 py-0.5 rounded-full border border-amber-400/50">
+          <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-amber-200 bg-slate-900 border border-amber-400 px-2.5 py-0.5 rounded-full shadow-lg">
             ✥ Drag Dash
           </span>
         )}
@@ -647,8 +633,8 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                 cx="56"
                 cy="56"
                 r={radius}
-                className="stroke-slate-800"
-                strokeWidth="6"
+                className="stroke-slate-950/80"
+                strokeWidth="7"
                 fill="none"
               />
               <circle
@@ -656,7 +642,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                 cy="56"
                 r={radius}
                 stroke={ringColor}
-                strokeWidth="6"
+                strokeWidth="7"
                 fill="none"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
@@ -665,7 +651,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
               />
             </svg>
 
-            {/* Inner Interactive Button */}
+            {/* Inner Interactive Button - High-Visibility Crisp Colors */}
             <button
               onPointerDown={handleDashPointerDown}
               onPointerMove={handleDashPointerMove}
@@ -673,27 +659,24 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
               onPointerCancel={handleDashPointerUp}
               onLostPointerCapture={handleDashPointerUp}
               disabled={!isReady || isCustomizingHUD}
-              className={`w-20 h-20 rounded-full border-2 border-white/80 shadow-2xl flex flex-col items-center justify-center transition-all ${
+              className={`w-20 h-20 rounded-full border-2 border-white shadow-[0_4px_20px_rgba(0,0,0,0.8),inset_0_2px_4px_rgba(255,255,255,0.6)] flex flex-col items-center justify-center transition-all ${
                 isCustomizingHUD
-                  ? 'pointer-events-none opacity-80'
+                  ? 'bg-gradient-to-tr from-amber-500 via-orange-500 to-red-500 pointer-events-none'
                   : isReady
                   ? `bg-gradient-to-tr ${buttonGradient} cursor-pointer active:scale-90`
-                  : 'bg-slate-800/80 border-slate-600 cursor-not-allowed opacity-60'
+                  : 'bg-slate-800 border-amber-400/60 cursor-not-allowed opacity-75'
               }`}
             >
-              <Flame className="w-6 h-6 text-white drop-shadow-md" />
-              <span className="text-[11px] font-mono font-black text-white tracking-wider">
+              <Flame className="w-8 h-8 text-white fill-white/80 filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] stroke-[2]" />
+              <span className="text-[11px] font-mono font-black text-white tracking-wider drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
                 {isMax ? 'MAX' : `${Math.floor(charge)}%`}
               </span>
             </button>
           </div>
 
           <div className="flex flex-col items-center mt-1 text-center">
-            <span className={`text-[10px] font-black uppercase tracking-wider ${badgeColor}`}>
-              {charge < 10 ? 'Recharging...' : state.isAiming ? 'Aiming...' : 'Tap or Drag Aim'}
-            </span>
-            <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">
-              Spacebar / Dash
+            <span className="px-2.5 py-0.5 rounded-full bg-black/80 border border-amber-500/50 text-[10px] text-amber-300 uppercase tracking-widest font-black drop-shadow mt-1">
+              DASH
             </span>
           </div>
         </div>

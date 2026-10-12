@@ -24,22 +24,24 @@ import {
 
 
 
-interface ControlPos {
+interface ControlSettings {
   x: number;
   y: number;
+  scale?: number;     // 0.7 to 1.5 (70% - 150%)
+  opacity?: number;   // 0.3 to 1.0 (30% - 100%)
 }
 
 interface ControlLayout {
-  joystick: ControlPos;
-  dash: ControlPos;
+  joystick: ControlSettings;
+  dash: ControlSettings;
 }
 
 const getDefaultLayout = (): ControlLayout => {
   const w = typeof window !== 'undefined' ? window.innerWidth : 1000;
   const h = typeof window !== 'undefined' ? window.innerHeight : 700;
   return {
-    joystick: { x: 24, y: Math.max(16, h - 160) },
-    dash: { x: Math.max(160, w - 144), y: Math.max(16, h - 160) },
+    joystick: { x: 24, y: Math.max(16, h - 160), scale: 1.0, opacity: 1.0 },
+    dash: { x: Math.max(160, w - 144), y: Math.max(16, h - 160), scale: 1.0, opacity: 1.0 },
   };
 };
 
@@ -76,14 +78,30 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
   // HUD Customization Mode
   const [isCustomizingHUD, setIsCustomizingHUD] = useState(false);
+  const [selectedCustomControl, setSelectedCustomControl] = useState<'joystick' | 'dash'>('joystick');
   const [controlsLayout, setControlsLayout] = useState<ControlLayout>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('ringout_hud_controls_layout_v2');
+        const saved =
+          localStorage.getItem('ringout_hud_controls_layout_v3') ||
+          localStorage.getItem('ringout_hud_controls_layout_v2');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed.joystick && parsed.dash) {
-            return parsed;
+            return {
+              joystick: {
+                x: parsed.joystick.x ?? 24,
+                y: parsed.joystick.y ?? 400,
+                scale: parsed.joystick.scale ?? 1.0,
+                opacity: parsed.joystick.opacity ?? 1.0,
+              },
+              dash: {
+                x: parsed.dash.x ?? 700,
+                y: parsed.dash.y ?? 400,
+                scale: parsed.dash.scale ?? 1.0,
+                opacity: parsed.dash.opacity ?? 1.0,
+              },
+            };
           }
         }
       } catch {}
@@ -92,7 +110,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   });
   const [tempLayout, setTempLayout] = useState<ControlLayout>(controlsLayout);
   const [activeCustomDrag, setActiveCustomDrag] = useState<'joystick' | 'dash' | null>(null);
-  const customDragOffsetRef = useRef<ControlPos>({ x: 0, y: 0 });
+  const customDragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Joystick state
   const joystickBaseRef = useRef<HTMLDivElement>(null);
@@ -167,6 +185,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     setIsSettingsOpen(false);
     setPauseModalTab('menu');
     setTempLayout(controlsLayout);
+    setSelectedCustomControl('joystick');
     setIsCustomizingHUD(true);
     if (!state.isPaused) {
       onTogglePause();
@@ -178,7 +197,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   const handleSaveLayout = () => {
     setControlsLayout(tempLayout);
     try {
-      localStorage.setItem('ringout_hud_controls_layout_v2', JSON.stringify(tempLayout));
+      localStorage.setItem('ringout_hud_controls_layout_v3', JSON.stringify(tempLayout));
     } catch {}
     setIsCustomizingHUD(false);
     setIsSettingsOpen(true);
@@ -205,6 +224,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     if (!isCustomizingHUD) return;
     e.stopPropagation();
     e.preventDefault();
+    setSelectedCustomControl(type);
     setActiveCustomDrag(type);
     const cur = tempLayout[type];
     customDragOffsetRef.current = {
@@ -547,6 +567,83 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
               <span>Cancel</span>
             </button>
           </div>
+
+          {/* Options Bar for Selected Control: Size & Visibility Sliders */}
+          <div className="bg-black/75 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-2 shadow-2xl flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-1">
+            {/* Control Switcher Pills */}
+            <div className="flex items-center gap-1 bg-white/10 p-0.5 rounded-xl border border-white/10">
+              <button
+                onClick={() => setSelectedCustomControl('joystick')}
+                className={`px-2.5 py-1 rounded-lg font-black uppercase text-[10px] tracking-wider transition-all cursor-pointer ${
+                  selectedCustomControl === 'joystick'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                Joystick
+              </button>
+              <button
+                onClick={() => setSelectedCustomControl('dash')}
+                className={`px-2.5 py-1 rounded-lg font-black uppercase text-[10px] tracking-wider transition-all cursor-pointer ${
+                  selectedCustomControl === 'dash'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                Dash Button
+              </button>
+            </div>
+
+            {/* Size Slider */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-200 whitespace-nowrap">
+                Size: <span className="text-cyan-300 font-mono">{Math.round((tempLayout[selectedCustomControl]?.scale ?? 1.0) * 100)}%</span>
+              </span>
+              <input
+                type="range"
+                min="70"
+                max="150"
+                step="5"
+                value={Math.round((tempLayout[selectedCustomControl]?.scale ?? 1.0) * 100)}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10) / 100;
+                  setTempLayout((prev) => ({
+                    ...prev,
+                    [selectedCustomControl]: {
+                      ...prev[selectedCustomControl],
+                      scale: val,
+                    },
+                  }));
+                }}
+                className="w-20 sm:w-28 h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-cyan-400 border border-white/20"
+              />
+            </div>
+
+            {/* Visibility / Opacity Slider */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-200 whitespace-nowrap">
+                Visibility: <span className="text-amber-300 font-mono">{Math.round((tempLayout[selectedCustomControl]?.opacity ?? 1.0) * 100)}%</span>
+              </span>
+              <input
+                type="range"
+                min="30"
+                max="100"
+                step="5"
+                value={Math.round((tempLayout[selectedCustomControl]?.opacity ?? 1.0) * 100)}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10) / 100;
+                  setTempLayout((prev) => ({
+                    ...prev,
+                    [selectedCustomControl]: {
+                      ...prev[selectedCustomControl],
+                      opacity: val,
+                    },
+                  }));
+                }}
+                className="w-20 sm:w-28 h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-amber-400 border border-white/20"
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -557,19 +654,35 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           position: 'absolute',
           left: `${activeLayout.joystick.x}px`,
           top: `${activeLayout.joystick.y}px`,
+          transform: `scale(${activeLayout.joystick.scale ?? 1.0})`,
+          transformOrigin: 'center center',
+          opacity: isCustomizingHUD
+            ? Math.max(0.45, activeLayout.joystick.opacity ?? 1.0)
+            : (activeLayout.joystick.opacity ?? 1.0),
         }}
+        onClick={() => isCustomizingHUD && setSelectedCustomControl('joystick')}
         onPointerDown={(e) => isCustomizingHUD && handleCustomPointerDown('joystick', e)}
         onPointerMove={(e) => isCustomizingHUD && handleCustomPointerMove(e)}
         onPointerUp={(e) => isCustomizingHUD && handleCustomPointerUp(e)}
         className={`pointer-events-auto touch-none select-none transition-shadow z-45 ${
           isCustomizingHUD
-            ? 'z-50 cursor-grab active:cursor-grabbing p-1.5 rounded-full border-2 border-dashed border-cyan-400 bg-cyan-500/20 shadow-[0_0_25px_rgba(0,245,255,0.6)]'
+            ? `z-50 cursor-grab active:cursor-grabbing p-1.5 rounded-full border-2 border-dashed ${
+                selectedCustomControl === 'joystick'
+                  ? 'border-cyan-300 bg-cyan-500/25 shadow-[0_0_30px_rgba(0,245,255,0.8)] ring-2 ring-cyan-400'
+                  : 'border-cyan-400/60 bg-cyan-500/10'
+              }`
             : ''
         }`}
       >
         {isCustomizingHUD && (
-          <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-cyan-200 bg-slate-900 border border-cyan-400 px-2.5 py-0.5 rounded-full shadow-lg">
-            ✥ Drag Joystick
+          <span
+            className={`absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-lg ${
+              selectedCustomControl === 'joystick'
+                ? 'bg-cyan-950 border border-cyan-400 text-cyan-200 shadow-cyan-500/50 scale-105'
+                : 'bg-slate-900 border border-slate-600 text-slate-400'
+            }`}
+          >
+            ✥ {selectedCustomControl === 'joystick' ? 'Selected: Joystick' : 'Joystick'}
           </span>
         )}
 
@@ -614,19 +727,35 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           position: 'absolute',
           left: `${activeLayout.dash.x}px`,
           top: `${activeLayout.dash.y}px`,
+          transform: `scale(${activeLayout.dash.scale ?? 1.0})`,
+          transformOrigin: 'center center',
+          opacity: isCustomizingHUD
+            ? Math.max(0.45, activeLayout.dash.opacity ?? 1.0)
+            : (activeLayout.dash.opacity ?? 1.0),
         }}
+        onClick={() => isCustomizingHUD && setSelectedCustomControl('dash')}
         onPointerDown={(e) => isCustomizingHUD && handleCustomPointerDown('dash', e)}
         onPointerMove={(e) => isCustomizingHUD && handleCustomPointerMove(e)}
         onPointerUp={(e) => isCustomizingHUD && handleCustomPointerUp(e)}
         className={`pointer-events-auto touch-none select-none transition-shadow z-45 ${
           isCustomizingHUD
-            ? 'z-50 cursor-grab active:cursor-grabbing p-1.5 rounded-full border-2 border-dashed border-amber-400 bg-amber-500/20 shadow-[0_0_25px_rgba(245,158,11,0.6)]'
+            ? `z-50 cursor-grab active:cursor-grabbing p-1.5 rounded-full border-2 border-dashed ${
+                selectedCustomControl === 'dash'
+                  ? 'border-amber-300 bg-amber-500/25 shadow-[0_0_30px_rgba(245,158,11,0.8)] ring-2 ring-amber-400'
+                  : 'border-amber-400/60 bg-amber-500/10'
+              }`
             : ''
         }`}
       >
         {isCustomizingHUD && (
-          <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-amber-200 bg-slate-900 border border-amber-400 px-2.5 py-0.5 rounded-full shadow-lg">
-            ✥ Drag Dash
+          <span
+            className={`absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-lg ${
+              selectedCustomControl === 'dash'
+                ? 'bg-amber-950 border border-amber-400 text-amber-200 shadow-amber-500/50 scale-105'
+                : 'bg-slate-900 border border-slate-600 text-slate-400'
+            }`}
+          >
+            ✥ {selectedCustomControl === 'dash' ? 'Selected: Dash' : 'Dash'}
           </span>
         )}
 

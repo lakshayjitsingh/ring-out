@@ -504,43 +504,48 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         </div>
       </div>
 
-      {/* CUSTOMIZATION MODE OVERLAY (NO LINE, ALLOWS PLACING CONTROLS FREELY UP TO TOP) */}
+      {/* CUSTOMIZATION MODE ACTION BAR (NO BOXY THEME: SLEEK FLOATING GAME BUTTONS) */}
       {isCustomizingHUD && (
-        <div className="absolute top-20 sm:top-24 left-1/2 -translate-x-1/2 z-50 pointer-events-auto animate-in slide-in-from-top-4 duration-200">
-          <div className="bg-slate-900/95 border-2 border-cyan-400 rounded-3xl p-3 sm:px-6 sm:py-3 shadow-[0_0_35px_rgba(0,245,255,0.4)] flex flex-wrap items-center justify-center gap-3">
-            <div className="flex items-center gap-2 mr-2">
-              <Gamepad2 className="w-5 h-5 text-cyan-400 animate-pulse" />
-              <div className="text-left">
-                <div className="text-xs font-black uppercase tracking-wider text-cyan-300">
-                  Customization Mode
-                </div>
-                <div className="text-[10px] text-slate-300 font-semibold hidden sm:block">
-                  Drag controls anywhere across the screen
-                </div>
-              </div>
-            </div>
+        <div className="absolute top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-auto animate-in slide-in-from-top-3 duration-200 flex flex-col items-center gap-2">
+          {/* Pure White Shadow-Fight Title with Glow (No Box) */}
+          <div className="flex items-center gap-2">
+            <Gamepad2 className="w-4 h-4 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+            <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+              CUSTOMIZE CONTROLS
+            </span>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleResetLayout}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-all"
-              >
-                Reset Default
-              </button>
-              <button
-                onClick={handleSaveLayout}
-                className="px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/30 cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
-              >
-                <Check className="w-3.5 h-3.5" />
-                Save & Apply
-              </button>
-              <button
-                onClick={handleCancelCustomizing}
-                className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/50 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-all"
-              >
-                Cancel
-              </button>
-            </div>
+          {/* Floating Action Buttons (No Enclosing Box, Pure 3D Game Buttons) */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Reset Button */}
+            <button
+              onClick={handleResetLayout}
+              className="px-4 py-2 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.5)] active:translate-y-0.5 active:shadow-[0_2px_0_#075985] transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Reset to default layout"
+            >
+              <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Reset</span>
+            </button>
+
+            {/* Save & Apply Button */}
+            <button
+              onClick={handleSaveLayout}
+              className="px-5 py-2.5 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_4px_0_#365314,0_8px_18px_rgba(0,0,0,0.5)] active:translate-y-0.5 active:shadow-[0_2px_0_#365314] transition-all flex items-center gap-2 cursor-pointer scale-105"
+              title="Save and return to pause menu"
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>Save & Apply</span>
+            </button>
+
+            {/* Cancel Button */}
+            <button
+              onClick={handleCancelCustomizing}
+              className="px-4 py-2 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.5)] active:translate-y-0.5 active:shadow-[0_2px_0_#7f1d1d] transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Cancel changes and return"
+            >
+              <X className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Cancel</span>
+            </button>
           </div>
         </div>
       )}
@@ -615,7 +620,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         onPointerUp={(e) => isCustomizingHUD && handleCustomPointerUp(e)}
         className={`pointer-events-auto touch-none select-none transition-shadow z-45 ${
           isCustomizingHUD
-            ? 'z-50 cursor-grab active:cursor-grabbing p-1.5 rounded-3xl border-2 border-dashed border-amber-400 bg-amber-500/20 shadow-[0_0_25px_rgba(245,158,11,0.6)]'
+            ? 'z-50 cursor-grab active:cursor-grabbing p-1.5 rounded-full border-2 border-dashed border-amber-400 bg-amber-500/20 shadow-[0_0_25px_rgba(245,158,11,0.6)]'
             : ''
         }`}
       >

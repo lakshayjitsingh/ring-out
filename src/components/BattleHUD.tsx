@@ -804,7 +804,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           
           {/* TAB 1: MAIN 5-BUTTON PAUSE MENU */}
           {pauseModalTab === 'menu' && (
-            <div className="relative w-full max-w-xs sm:max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-12 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+            <div className="relative w-full max-w-[340px] sm:max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 sm:pt-20 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
               {/* Top Glossy Golden-Orange 3D Ribbon: "PAUSE" */}
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)]">
                 <span className="text-xl sm:text-2xl font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
@@ -815,14 +815,14 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
               {/* Close X Button in top right corner */}
               <button
                 onClick={closeSettings}
-                className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
+                className="absolute -top-3 -right-3 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
                 title="Resume Match"
               >
                 <X className="w-5 h-5 stroke-[3]" />
               </button>
 
               {/* 5 Distinct Buttons Requested By User */}
-              <div className="flex flex-col gap-3 mt-3">
+              <div className="flex flex-col gap-3 mt-2">
                 {/* 1. RESUME */}
                 <button
                   onClick={closeSettings}
@@ -874,11 +874,11 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             </div>
           )}
 
-          {/* TAB 2: SOUND SUB-POPUP (SOUND & VOL WITH CROSS ICON) */}
+          {/* TAB 2: SOUND SUB-POPUP (SOUND & VOL WITH CROSS ICON - NO OVERLAP, NO DONE BUTTON) */}
           {pauseModalTab === 'sound' && (
-            <div className="relative w-full max-w-xs sm:max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-12 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+            <div className="relative w-full max-w-[340px] sm:max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 sm:pt-20 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
               {/* Top Glossy Golden-Orange 3D Ribbon: "SOUND" */}
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-8 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)]">
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)]">
                 <span className="text-xl sm:text-2xl font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
                   SOUND
                 </span>
@@ -887,13 +887,13 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
               {/* Close X Button in top right corner to return to main pause menu */}
               <button
                 onClick={() => setPauseModalTab('menu')}
-                className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
+                className="absolute -top-3 -right-3 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
                 title="Back to Pause Menu"
               >
                 <X className="w-5 h-5 stroke-[3]" />
               </button>
 
-              <div className="space-y-3.5 text-left mt-3">
+              <div className="space-y-3.5 text-left mt-2">
                 {/* Row 1: Sound Effects Toggle */}
                 <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 flex items-center justify-between shadow-inner">
                   <div className="flex items-center gap-3">
@@ -999,24 +999,15 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                     className="w-full h-3.5 bg-[#013f6b] rounded-full appearance-none cursor-pointer accent-lime-400 border border-sky-300/50 shadow-inner"
                   />
                 </div>
-
-                {/* Return Back Button */}
-                <button
-                  onClick={() => setPauseModalTab('menu')}
-                  className="w-full py-3 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_4px_0_#365314,0_6px_12px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#365314] transition-all flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>Done</span>
-                </button>
               </div>
             </div>
           )}
 
-          {/* TAB 3: CONTROL SUB-POPUP (CAMERA & CONTROLS WITH CROSS ICON) */}
+          {/* TAB 3: CONTROL SUB-POPUP (CAMERA MODES IN STRAIGHT VERTICAL LINE - NO OVERLAP, NO CONTROLS REF, NO CUSTOMIZATION BTN, NO DONE BTN) */}
           {pauseModalTab === 'control' && (
-            <div className="relative w-full max-w-xs sm:max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-12 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+            <div className="relative w-full max-w-[340px] sm:max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 sm:pt-20 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
               {/* Top Glossy Golden-Orange 3D Ribbon: "CONTROL" */}
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-8 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)]">
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)]">
                 <span className="text-xl sm:text-2xl font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
                   CONTROL
                 </span>
@@ -1025,84 +1016,79 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
               {/* Close X Button in top right corner to return to main pause menu */}
               <button
                 onClick={() => setPauseModalTab('menu')}
-                className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
+                className="absolute -top-3 -right-3 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
                 title="Back to Pause Menu"
               >
                 <X className="w-5 h-5 stroke-[3]" />
               </button>
 
-              <div className="space-y-3.5 text-left mt-3">
-                {/* Camera View Angle Section */}
-                <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 shadow-inner">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Camera className="w-4 h-4 text-cyan-300" />
-                    <span className="text-xs font-black uppercase tracking-wider text-sky-200">
-                      Camera View Angle
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { id: 'third_person' as CameraMode, name: 'Action', icon: <Eye className="w-3.5 h-3.5" /> },
-                      { id: 'isometric' as CameraMode, name: 'Overhead', icon: <Camera className="w-3.5 h-3.5" /> },
-                      { id: 'close_action' as CameraMode, name: 'Close', icon: <Zap className="w-3.5 h-3.5" /> },
-                    ].map((mode) => {
-                      const isSelected = state.cameraMode === mode.id;
-                      return (
-                        <button
-                          key={mode.id}
-                          onClick={() => onCameraChange(mode.id)}
-                          className={`py-2 px-1.5 rounded-xl text-center flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+              {/* Straight Vertical Line of Camera Modes (User Request: "action and all in straing vertical line") */}
+              <div className="space-y-3 mt-2 text-left">
+                {[
+                  {
+                    id: 'third_person' as CameraMode,
+                    name: 'Action Cam',
+                    desc: 'Dynamic chase view',
+                    icon: <Eye className="w-5 h-5" />,
+                  },
+                  {
+                    id: 'isometric' as CameraMode,
+                    name: 'Overhead Cam',
+                    desc: 'Tactical arena view',
+                    icon: <Camera className="w-5 h-5" />,
+                  },
+                  {
+                    id: 'close_action' as CameraMode,
+                    name: 'Close Combat',
+                    desc: 'Cinematic tight view',
+                    icon: <Zap className="w-5 h-5" />,
+                  },
+                ].map((mode) => {
+                  const isSelected = state.cameraMode === mode.id;
+                  return (
+                    <button
+                      key={mode.id}
+                      onClick={() => onCameraChange(mode.id)}
+                      className={`w-full p-3.5 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer border-2 ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-[#84cc16] via-[#65a30d] to-[#4d7c0f] text-white border-lime-200 shadow-[0_4px_12px_rgba(77,124,15,0.4),inset_0_1px_3px_rgba(255,255,255,0.5)] scale-[1.02]'
+                          : 'bg-[#02568f]/80 hover:bg-[#026cb5] text-sky-100 border-[#81d4fa]/40 hover:border-sky-300 shadow-inner'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md transition-all ${
                             isSelected
-                              ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white font-black shadow-md border border-[#bef264] scale-105'
-                              : 'bg-[#013f6b] text-sky-200 font-bold hover:bg-[#014e85] border border-sky-300/30'
+                              ? 'bg-white/25 text-white'
+                              : 'bg-white/10 text-sky-200'
                           }`}
                         >
-                          <span className="text-xs">{mode.icon}</span>
-                          <span className="text-[10px] leading-tight font-black">{mode.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                          {mode.icon}
+                        </div>
+                        <div>
+                          <div className="text-sm font-black uppercase tracking-wider drop-shadow-xs">
+                            {mode.name}
+                          </div>
+                          <div
+                            className={`text-[11px] font-semibold ${
+                              isSelected ? 'text-lime-100' : 'text-sky-200'
+                            }`}
+                          >
+                            {mode.desc}
+                          </div>
+                        </div>
+                      </div>
 
-                {/* Controls Quick Reference Guide */}
-                <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 shadow-inner">
-                  <span className="text-xs font-black uppercase tracking-wider text-sky-200 block mb-1.5">
-                    Controls Reference
-                  </span>
-                  <div className="grid grid-cols-3 gap-1 text-center text-[10px]">
-                    <div className="bg-[#013f6b] p-1.5 rounded-lg border border-sky-300/30">
-                      <span className="text-sky-300 block font-bold uppercase text-[9px]">Move</span>
-                      <span className="font-bold text-white">Stick / WASD</span>
-                    </div>
-                    <div className="bg-[#013f6b] p-1.5 rounded-lg border border-sky-300/30">
-                      <span className="text-sky-300 block font-bold uppercase text-[9px]">Dash</span>
-                      <span className="font-bold text-lime-300">Tap / Space</span>
-                    </div>
-                    <div className="bg-[#013f6b] p-1.5 rounded-lg border border-sky-300/30">
-                      <span className="text-sky-300 block font-bold uppercase text-[9px]">Aim</span>
-                      <span className="font-bold text-amber-300">Drag Button</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Direct shortcut to Customization layout */}
-                <button
-                  onClick={startCustomization}
-                  className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border border-purple-300 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                >
-                  <Move className="w-3.5 h-3.5" />
-                  <span>Customize HUD Positions</span>
-                </button>
-
-                {/* Return Back Button */}
-                <button
-                  onClick={() => setPauseModalTab('menu')}
-                  className="w-full py-3 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_4px_0_#365314,0_6px_12px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#365314] transition-all flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>Done</span>
-                </button>
+                      {isSelected ? (
+                        <div className="w-6 h-6 rounded-full bg-white text-emerald-700 flex items-center justify-center shadow-md">
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-full border-2 border-sky-300/40" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

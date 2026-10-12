@@ -12,94 +12,18 @@ import {
   Flame,
   Shield,
   Sparkles,
-  Settings,
   X,
-  Timer,
   Eye,
   Camera,
   Zap,
   Gamepad2,
   Check,
+  Move,
+  Pause,
+  LogOut,
 } from 'lucide-react';
 
-function getChampionAvatar(champId: ChampionId) {
-  switch (champId) {
-    case 'leo':
-      return (
-        <svg viewBox="0 0 36 36" className="w-6 h-6" fill="none">
-          <circle cx="18" cy="18" r="16" fill="#064e3b" stroke="#10b981" strokeWidth="2" />
-          <path d="M10 14C10 9 14 6 18 6C22 6 26 9 26 14C23 15 13 15 10 14Z" fill="#10b981" />
-          <path d="M8 14H13V16H8Z" fill="#34d399" />
-          <circle cx="18" cy="19" r="6" fill="#fde68a" />
-          <circle cx="16" cy="19" r="1.2" fill="#1e293b" />
-          <circle cx="20" cy="19" r="1.2" fill="#1e293b" />
-          <path d="M16 22C17 23 19 23 20 22" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
-        </svg>
-      );
-    case 'kai':
-      return (
-        <svg viewBox="0 0 36 36" className="w-6 h-6" fill="none">
-          <circle cx="18" cy="18" r="16" fill="#083344" stroke="#00f5ff" strokeWidth="2" />
-          <rect x="9" y="14" width="18" height="7" rx="3.5" fill="#00f5ff" />
-          <rect x="11" y="16" width="14" height="3" rx="1.5" fill="#ffffff" />
-          <rect x="6" y="13" width="3" height="9" rx="1.5" fill="#38bdf8" />
-          <rect x="27" y="13" width="3" height="9" rx="1.5" fill="#38bdf8" />
-          <path d="M7 14C7 8 11 6 18 6C25 6 29 8 29 14" stroke="#38bdf8" strokeWidth="2" />
-        </svg>
-      );
-    case 'nova':
-      return (
-        <svg viewBox="0 0 36 36" className="w-6 h-6" fill="none">
-          <circle cx="18" cy="18" r="16" fill="#4c0519" stroke="#f43f5e" strokeWidth="2" />
-          <polygon points="18,10 26,17 22,24 18,22 14,24 10,17" fill="#f43f5e" />
-          <polygon points="18,13 23,17 20,21 18,20 16,21 13,17" fill="#fda4af" />
-          <line x1="12" y1="12" x2="6" y2="6" stroke="#fb7185" strokeWidth="2" strokeLinecap="round" />
-          <line x1="24" y1="12" x2="30" y2="6" stroke="#fb7185" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      );
-    case 'titan':
-      return (
-        <svg viewBox="0 0 36 36" className="w-6 h-6" fill="none">
-          <circle cx="18" cy="18" r="16" fill="#451a03" stroke="#f59e0b" strokeWidth="2" />
-          <rect x="10" y="10" width="16" height="16" rx="3" fill="#b45309" stroke="#fbbf24" strokeWidth="1.5" />
-          <rect x="13" y="14" width="10" height="3.5" rx="1" fill="#451a03" />
-          <circle cx="15.5" cy="15.8" r="1" fill="#ef4444" />
-          <circle cx="20.5" cy="15.8" r="1" fill="#ef4444" />
-          <path d="M12 21H24" stroke="#fbbf24" strokeWidth="2" />
-        </svg>
-      );
-    case 'kage':
-      return (
-        <svg viewBox="0 0 36 36" className="w-6 h-6" fill="none">
-          <circle cx="18" cy="18" r="16" fill="#1e1035" stroke="#a855f7" strokeWidth="2" />
-          <path d="M9 13C9 7 13 5 18 5C23 5 27 7 27 13V24C27 24 23 27 18 27C13 27 9 24 9 24V13Z" fill="#2e1065" />
-          <ellipse cx="14" cy="17" rx="3" ry="1.8" fill="#c084fc" />
-          <ellipse cx="22" cy="17" rx="3" ry="1.8" fill="#c084fc" />
-          <circle cx="14" cy="17" r="1" fill="#ffffff" />
-          <circle cx="22" cy="17" r="1" fill="#ffffff" />
-          <path d="M15 22L18 20L21 22" stroke="#a855f7" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      );
-    case 'bolt':
-      return (
-        <svg viewBox="0 0 36 36" className="w-6 h-6" fill="none">
-          <circle cx="18" cy="18" r="16" fill="#451a03" stroke="#eab308" strokeWidth="2" />
-          <path d="M11 9L15 15H9L11 9Z" fill="#ca8a04" />
-          <path d="M25 9L21 15H27L25 9Z" fill="#ca8a04" />
-          <circle cx="18" cy="19" r="7" fill="#eab308" />
-          <circle cx="15" cy="18" r="1.5" fill="#451a03" />
-          <circle cx="21" cy="18" r="1.5" fill="#451a03" />
-          <ellipse cx="18" cy="22" rx="2" ry="1.2" fill="#78350f" />
-        </svg>
-      );
-    default:
-      return (
-        <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center font-black text-cyan-400 text-xs">
-          ★
-        </div>
-      );
-  }
-}
+
 
 interface ControlPos {
   x: number;
@@ -147,6 +71,9 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [volumeLevel, setVolumeLevel] = useState(Math.round(sounds.volume * 100));
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // 5-Button Pause Menu navigation: 'menu' (5 buttons) | 'sound' (sub-popup) | 'control' (sub-popup)
+  const [pauseModalTab, setPauseModalTab] = useState<'menu' | 'sound' | 'control'>('menu');
 
   // HUD Customization Mode
   const [isCustomizingHUD, setIsCustomizingHUD] = useState(false);
@@ -221,6 +148,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   };
 
   const openSettings = () => {
+    setPauseModalTab('menu');
     setIsSettingsOpen(true);
     if (!state.isPaused) {
       onTogglePause();
@@ -229,6 +157,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
   const closeSettings = () => {
     setIsSettingsOpen(false);
+    setPauseModalTab('menu');
     if (state.isPaused && !isCustomizingHUD) {
       onTogglePause();
     }
@@ -237,6 +166,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   // Start Customization Mode
   const startCustomization = () => {
     setIsSettingsOpen(false);
+    setPauseModalTab('menu');
     setTempLayout(controlsLayout);
     setIsCustomizingHUD(true);
     if (!state.isPaused) {
@@ -298,7 +228,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     const elemW = isJoy ? 128 : 112;
     const elemH = isJoy ? 128 : 112;
 
-    // Strict boundary enforcement: Y >= 125px so it NEVER overlaps top player/opponent cards or timer!
+    // Strict boundary enforcement: Y >= 125px so it NEVER overlaps top player/opponent names or timer!
     const clampedX = Math.max(16, Math.min(w - elemW - 16, rawX));
     const clampedY = Math.max(125, Math.min(h - elemH - 24, rawY));
 
@@ -398,12 +328,8 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     onAimChange(false);
   };
 
-  // Format time MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Raw seconds for fight timer (No "00:", just the number like Shadow Fight 4!)
+  const remainingSeconds = Math.max(0, Math.ceil(state.timeRemaining));
 
   const charge = Math.min(100, Math.max(0, state.playerCharge));
   const isReady = charge >= 10;
@@ -483,55 +409,34 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         </div>
       )}
 
-      {/* 1. TOP HEADER STATUS (LEVEL ALIGNMENT FOR BOTH PLAYER AND OPPONENT) */}
-      <div className="absolute top-0 left-0 right-0 p-3 sm:p-4 flex items-start justify-between pointer-events-auto z-50">
-        {/* Left: Player Champion Card & Solid White Round Wins */}
+      {/* 1. TOP HEADER STATUS (SHADOW FIGHT 4 STYLE: NO BOXES, PURE WHITE NAMES & PURE TIMER NUMBER) */}
+      <div className="absolute top-0 left-0 right-0 p-4 sm:p-5 flex items-start justify-between pointer-events-auto z-50">
+        {/* Left: Player Name (NO BOX, PURE WHITE NAME + WHITE ROUND DIAMONDS) */}
         {(() => {
           const champ = CHAMPIONS[selectedChampion || 'leo'] || CHAMPIONS.leo;
           return (
-            <div className="flex flex-col items-start gap-1.5">
-              {/* Player Identity Card */}
-              <div className="flex items-center gap-2.5 bg-slate-900/90 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-cyan-500/40 shadow-xl shadow-cyan-950/30">
-                <div
-                  className="relative w-10 h-10 rounded-xl border-2 flex items-center justify-center shadow-md overflow-hidden"
-                  style={{
-                    backgroundColor: `${champ.color}25`,
-                    borderColor: champ.color,
-                  }}
-                >
-                  {getChampionAvatar(champ.id)}
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-slate-950 shadow-[0_0_6px_#10b981]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-black text-white tracking-wide" style={{ color: champ.color }}>
-                      {champ.name}
-                    </span>
-                    <span className="text-[9px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded-md border border-cyan-400/40">
-                      YOU
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-semibold leading-none mt-0.5">
-                    {champ.archetype}
-                  </div>
-                </div>
+            <div className="flex flex-col items-start gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xl sm:text-2xl font-black tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                  {champ.name}
+                </span>
               </div>
 
-              {/* Round Victory Diamonds - TURNS SOLID PURE WHITE ON WIN (SHADOW FIGHT STYLE) */}
-              <div className="flex items-center gap-2 ml-1">
+              {/* Round Victory Diamonds - TURNS SOLID PURE WHITE ON WIN */}
+              <div className="flex items-center gap-2 ml-0.5">
                 {[0, 1, 2].map((i) => {
                   const isWon = i < state.playerRoundWins;
                   return (
                     <div
                       key={i}
-                      className={`relative w-4 h-4 rotate-45 rounded-xs flex items-center justify-center transition-all duration-300 ${
+                      className={`relative w-3.5 h-3.5 rotate-45 rounded-xs flex items-center justify-center transition-all duration-300 ${
                         isWon
                           ? 'bg-white border-2 border-white shadow-[0_0_14px_rgba(255,255,255,1)] scale-110'
                           : 'bg-black/70 border border-white/40 shadow-inner'
                       }`}
                       title={`Round Win ${i + 1} ${isWon ? '(Won)' : '(Needed)'}`}
                     >
-                      {isWon && <div className="w-1.5 h-1.5 rounded-full bg-slate-900" />}
+                      {isWon && <div className="w-1 h-1 rounded-full bg-slate-900" />}
                     </div>
                   );
                 })}
@@ -540,119 +445,86 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           );
         })()}
 
-        {/* Center: Command Cluster (Locker, Timer & Pause/Settings all horizontally unified) */}
+        {/* Center: Clean Timer Number & Actions (No Box, Just Number - Shadow Fight 4 Style) */}
         <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             {/* Locker Button */}
             <button
               onClick={onOpenShowcase}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-amber-400/50 hover:border-amber-300 rounded-2xl shadow-xl transition-all cursor-pointer text-amber-300 active:scale-95 text-xs font-black uppercase tracking-wider"
+              className="p-1.5 hover:bg-white/10 rounded-xl transition-all cursor-pointer text-amber-300 active:scale-95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
               title="Open Champion Locker & 360 Showcase"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Locker</span>
+              <Sparkles className="w-5 h-5 text-amber-400" />
             </button>
 
-            {/* Central Arcade Timer */}
-            <div
-              className={`px-4 sm:px-5 py-2 rounded-2xl border backdrop-blur-md shadow-2xl flex items-center gap-2 transition-all duration-200 ${
-                state.timeRemaining <= 15
-                  ? 'bg-rose-950/85 border-rose-500/80 shadow-[0_0_25px_rgba(244,63,94,0.5)] animate-pulse'
-                  : 'bg-slate-900/90 border-slate-700/80 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
-              }`}
-            >
-              <div
-                className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                  state.timeRemaining <= 15 ? 'bg-rose-500/30 text-rose-300' : 'bg-amber-500/20 text-amber-400'
-                }`}
-              >
-                <Timer className={`w-4 h-4 ${state.timeRemaining <= 15 ? 'animate-spin' : ''}`} />
-              </div>
+            {/* Timer Number: Pure number, no 00:, no box */}
+            <div className="flex flex-col items-center min-w-[48px]">
               <span
-                className={`text-xl md:text-2xl font-black tracking-widest font-mono ${
-                  state.timeRemaining <= 15 ? 'text-rose-400' : 'text-amber-400'
+                className={`text-3xl sm:text-4xl font-black font-mono tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] ${
+                  remainingSeconds <= 15
+                    ? 'text-rose-400 animate-pulse'
+                    : 'text-white'
                 }`}
               >
-                {formatTime(state.timeRemaining)}
+                {remainingSeconds}
               </span>
             </div>
 
-            {/* Pause & Settings Button */}
+            {/* Pause Button */}
             <button
               onClick={openSettings}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/80 hover:border-cyan-400/60 rounded-2xl shadow-xl transition-all cursor-pointer text-slate-200 active:scale-95 text-xs font-black uppercase tracking-wider"
-              title="Open Pause & Settings"
+              className="p-1.5 hover:bg-white/10 rounded-xl transition-all cursor-pointer text-white active:scale-95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+              title="Pause Battle"
             >
-              <Settings className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Pause</span>
+              <Pause className="w-5 h-5 text-cyan-300" />
             </button>
           </div>
 
           {/* Warning Text Banner when arena is collapsing or sudden death */}
           {state.warningText && (
-            <div className="mt-2 px-3.5 py-1 bg-red-600/95 text-white font-black text-xs tracking-wider uppercase rounded-full shadow-[0_0_15px_rgba(239,68,68,0.7)] border border-red-300 animate-bounce">
+            <div className="mt-1 px-3 py-0.5 bg-red-600/95 text-white font-black text-[10px] tracking-wider uppercase rounded-full shadow-[0_0_15px_rgba(239,68,68,0.7)] border border-red-300 animate-bounce">
               {state.warningText}
             </div>
           )}
         </div>
 
-        {/* Right: Opponent Identity Card & Solid White Round Wins (EXACT SAME Y-LEVEL AS LEFT) */}
-        {(() => {
-          const botChamp = CHAMPIONS.kage;
-          return (
-            <div className="flex flex-col items-end gap-1.5">
-              {/* Opponent Card */}
-              <div className="flex items-center gap-2.5 bg-slate-900/90 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-purple-500/40 shadow-xl shadow-purple-950/30">
-                <div className="text-right">
-                  <div className="flex items-center gap-1.5 justify-end">
-                    <span className="text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-md border border-purple-400/40">
-                      RIVAL
-                    </span>
-                    <span className="text-sm font-black text-purple-300 tracking-wide">
-                      ShadowNinja
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-semibold leading-none mt-0.5">
-                    {botChamp.archetype}
-                  </div>
-                </div>
-                <div className="relative w-10 h-10 rounded-xl bg-purple-500/20 border-2 border-purple-400 flex items-center justify-center shadow-md overflow-hidden">
-                  {getChampionAvatar('kage')}
-                  <span className="absolute bottom-0 left-0 w-2.5 h-2.5 rounded-full bg-rose-500 border border-slate-950 shadow-[0_0_6px_#f43f5e]" />
-                </div>
-              </div>
+        {/* Right: Opponent Name (NO BOX, PURE WHITE NAME + WHITE ROUND DIAMONDS) */}
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xl sm:text-2xl font-black tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+              ShadowNinja
+            </span>
+          </div>
 
-              {/* Round Victory Diamonds - TURNS SOLID PURE WHITE ON WIN (SHADOW FIGHT STYLE) */}
-              <div className="flex items-center gap-2 mr-1 justify-end">
-                {[0, 1, 2].map((i) => {
-                  const isWon = i < state.botRoundWins;
-                  return (
-                    <div
-                      key={i}
-                      className={`relative w-4 h-4 rotate-45 rounded-xs flex items-center justify-center transition-all duration-300 ${
-                        isWon
-                          ? 'bg-white border-2 border-white shadow-[0_0_14px_rgba(255,255,255,1)] scale-110'
-                          : 'bg-black/70 border border-white/40 shadow-inner'
-                      }`}
-                      title={`Bot Round Win ${i + 1} ${isWon ? '(Won)' : '(Needed)'}`}
-                    >
-                      {isWon && <div className="w-1.5 h-1.5 rounded-full bg-slate-900" />}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
+          {/* Round Victory Diamonds - TURNS SOLID PURE WHITE ON WIN */}
+          <div className="flex items-center gap-2 mr-0.5 justify-end">
+            {[0, 1, 2].map((i) => {
+              const isWon = i < state.botRoundWins;
+              return (
+                <div
+                  key={i}
+                  className={`relative w-3.5 h-3.5 rotate-45 rounded-xs flex items-center justify-center transition-all duration-300 ${
+                    isWon
+                      ? 'bg-white border-2 border-white shadow-[0_0_14px_rgba(255,255,255,1)] scale-110'
+                      : 'bg-black/70 border border-white/40 shadow-inner'
+                  }`}
+                  title={`Bot Round Win ${i + 1} ${isWon ? '(Won)' : '(Needed)'}`}
+                >
+                  {isWon && <div className="w-1 h-1 rounded-full bg-slate-900" />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* CUSTOMIZATION MODE OVERLAY & SAFE ZONE BOUNDARY */}
       {isCustomizingHUD && (
         <>
-          {/* Top Safe Area Barrier (Prevents overlapping Player & Opponent cards) */}
+          {/* Top Safe Area Barrier (Prevents overlapping Player & Opponent names) */}
           <div className="absolute top-[116px] left-4 right-4 pointer-events-none z-40 border-b-2 border-dashed border-rose-500/60 pb-1 flex items-center justify-center">
             <span className="text-[10px] font-black uppercase tracking-widest text-rose-300 bg-rose-950/90 px-3 py-1 rounded-full border border-rose-500/50 shadow-lg">
-              🔒 Safe Boundary: Controls restricted below this line to protect Player Cards
+              🔒 Safe Boundary: Controls restricted below this line to protect Fighter Names
             </span>
           </div>
 
@@ -926,127 +798,198 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         </div>
       )}
 
-      {/* 4. HIGH-PRODUCTION MOBILE PAUSE & SETTINGS MODAL (INSPIRED BY SAMPLE POPUP) */}
+      {/* 4. MODULAR PAUSE MENU & SUB-POPUPS (USER REQUEST: 5 BUTTONS + SOUND & CONTROL SUB-POPUPS) */}
       {(isSettingsOpen || (state.isPaused && !state.isGameOver && !isCustomizingHUD)) && (
         <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto z-50 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-9 p-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
-            {/* Top Glossy Golden-Orange 3D Ribbon: "PAUSE" */}
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)]">
-              <span className="text-xl md:text-2xl font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                PAUSE
-              </span>
+          
+          {/* TAB 1: MAIN 5-BUTTON PAUSE MENU */}
+          {pauseModalTab === 'menu' && (
+            <div className="relative w-full max-w-xs sm:max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-12 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+              {/* Top Glossy Golden-Orange 3D Ribbon: "PAUSE" */}
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)]">
+                <span className="text-xl sm:text-2xl font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                  PAUSE
+                </span>
+              </div>
+
+              {/* Close X Button in top right corner */}
+              <button
+                onClick={closeSettings}
+                className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
+                title="Resume Match"
+              >
+                <X className="w-5 h-5 stroke-[3]" />
+              </button>
+
+              {/* 5 Distinct Buttons Requested By User */}
+              <div className="flex flex-col gap-3 mt-3">
+                {/* 1. RESUME */}
+                <button
+                  onClick={closeSettings}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-base uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_5px_0_#365314,0_8px_16px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#365314] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                >
+                  <Play className="w-5 h-5 fill-white" />
+                  <span>Resume</span>
+                </button>
+
+                {/* 2. SOUND */}
+                <button
+                  onClick={() => setPauseModalTab('sound')}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                >
+                  <Volume2 className="w-5 h-5 text-white" />
+                  <span>Sound</span>
+                </button>
+
+                {/* 3. CONTROL */}
+                <button
+                  onClick={() => setPauseModalTab('control')}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#a78bfa] via-[#7c3aed] to-[#5b21b6] hover:from-[#c4b5fd] hover:to-[#7c3aed] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-purple-200 shadow-[0_4px_0_#4c1d95,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#4c1d95] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                >
+                  <Gamepad2 className="w-5 h-5 text-white" />
+                  <span>Control</span>
+                </button>
+
+                {/* 4. CUSTOMIZATION */}
+                <button
+                  onClick={startCustomization}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#facc15] via-[#eab308] to-[#ca8a04] hover:from-[#fde047] hover:to-[#eab308] text-[#78350f] font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-amber-200 shadow-[0_4px_0_#854d0e,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#854d0e] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                >
+                  <Move className="w-5 h-5 stroke-[2.5]" />
+                  <span>Customization</span>
+                </button>
+
+                {/* 5. QUIT */}
+                <button
+                  onClick={() => {
+                    closeSettings();
+                    onOpenShowcase?.();
+                  }}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#7f1d1d] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                >
+                  <LogOut className="w-5 h-5 stroke-[2.5]" />
+                  <span>Quit Match</span>
+                </button>
+              </div>
             </div>
+          )}
 
-            {/* Close X Button in top right corner */}
-            <button
-              onClick={closeSettings}
-              className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
-              title="Close Settings"
-            >
-              <X className="w-5 h-5 stroke-[3]" />
-            </button>
-
-            {/* Inner Content Area */}
-            <div className="space-y-4 text-left mt-2">
-              {/* Row 1: Sound Effects Toggle (3D Green Pill Slider Switch) */}
-              <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 flex items-center justify-between shadow-inner">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-md">
-                    {soundEnabled ? (
-                      <Volume2 className="w-5 h-5 text-white drop-shadow" />
-                    ) : (
-                      <VolumeX className="w-5 h-5 text-white/80" />
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-sm font-black text-white tracking-wide block">
-                      Sound Effects
-                    </span>
-                    <span className="text-[10px] text-sky-200 font-semibold">
-                      Collisions & action audio
-                    </span>
-                  </div>
-                </div>
-
-                {/* Tactile 3D ON / OFF Pill Toggle */}
-                <button
-                  onClick={toggleSound}
-                  className="bg-[#013f6b] p-1 rounded-full border border-sky-300/40 flex items-center cursor-pointer shadow-inner transition-all"
-                >
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
-                      soundEnabled
-                        ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)] border border-[#bef264]'
-                        : 'text-sky-300 opacity-60'
-                    }`}
-                  >
-                    ON
-                  </span>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
-                      !soundEnabled
-                        ? 'bg-gradient-to-b from-slate-400 to-slate-600 text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)] border border-slate-300'
-                        : 'text-sky-300 opacity-60'
-                    }`}
-                  >
-                    OFF
-                  </span>
-                </button>
+          {/* TAB 2: SOUND SUB-POPUP (SOUND & VOL WITH CROSS ICON) */}
+          {pauseModalTab === 'sound' && (
+            <div className="relative w-full max-w-xs sm:max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-12 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+              {/* Top Glossy Golden-Orange 3D Ribbon: "SOUND" */}
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-8 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)]">
+                <span className="text-xl sm:text-2xl font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                  SOUND
+                </span>
               </div>
 
-              {/* Row 2: Music / Ambience Toggle */}
-              <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 flex items-center justify-between shadow-inner">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-md">
-                    <Music className="w-5 h-5 text-white drop-shadow" />
+              {/* Close X Button in top right corner to return to main pause menu */}
+              <button
+                onClick={() => setPauseModalTab('menu')}
+                className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
+                title="Back to Pause Menu"
+              >
+                <X className="w-5 h-5 stroke-[3]" />
+              </button>
+
+              <div className="space-y-3.5 text-left mt-3">
+                {/* Row 1: Sound Effects Toggle */}
+                <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 flex items-center justify-between shadow-inner">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-md">
+                      {soundEnabled ? (
+                        <Volume2 className="w-5 h-5 text-white drop-shadow" />
+                      ) : (
+                        <VolumeX className="w-5 h-5 text-white/80" />
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-sm font-black text-white tracking-wide block">
+                        Sound Effects
+                      </span>
+                      <span className="text-[10px] text-sky-200 font-semibold">
+                        Hits & Ring-outs
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-sm font-black text-white tracking-wide block">
-                      Music & Atmosphere
+
+                  <button
+                    onClick={toggleSound}
+                    className="bg-[#013f6b] p-1 rounded-full border border-sky-300/40 flex items-center cursor-pointer shadow-inner transition-all"
+                  >
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
+                        soundEnabled
+                          ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)] border border-[#bef264]'
+                          : 'text-sky-300 opacity-60'
+                      }`}
+                    >
+                      ON
                     </span>
-                    <span className="text-[10px] text-sky-200 font-semibold">
-                      Ocean waves & battle breeze
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
+                        !soundEnabled
+                          ? 'bg-gradient-to-b from-slate-400 to-slate-600 text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)] border border-slate-300'
+                          : 'text-sky-300 opacity-60'
+                      }`}
+                    >
+                      OFF
                     </span>
-                  </div>
+                  </button>
                 </div>
 
-                {/* Tactile 3D ON / OFF Pill Toggle */}
-                <button
-                  onClick={toggleMusic}
-                  className="bg-[#013f6b] p-1 rounded-full border border-sky-300/40 flex items-center cursor-pointer shadow-inner transition-all"
-                >
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
-                      musicEnabled
-                        ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)] border border-[#bef264]'
-                        : 'text-sky-300 opacity-60'
-                    }`}
-                  >
-                    ON
-                  </span>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
-                      !musicEnabled
-                        ? 'bg-gradient-to-b from-slate-400 to-slate-600 text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)] border border-slate-300'
-                        : 'text-sky-300 opacity-60'
-                    }`}
-                  >
-                    OFF
-                  </span>
-                </button>
-              </div>
+                {/* Row 2: Music & Atmosphere Toggle */}
+                <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 flex items-center justify-between shadow-inner">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-md">
+                      <Music className="w-5 h-5 text-white drop-shadow" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-black text-white tracking-wide block">
+                        Atmosphere
+                      </span>
+                      <span className="text-[10px] text-sky-200 font-semibold">
+                        Ocean breeze
+                      </span>
+                    </div>
+                  </div>
 
-              {/* Row 3: Master Volume Slider (Candy Striped Green Bar from Image 4) */}
-              <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 shadow-inner">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-sky-200 flex items-center gap-1.5">
-                    <Volume2 className="w-3.5 h-3.5 text-white" /> Volume Level
-                  </span>
-                  <span className="text-xs font-black font-mono text-lime-300">
-                    {volumeLevel}%
-                  </span>
+                  <button
+                    onClick={toggleMusic}
+                    className="bg-[#013f6b] p-1 rounded-full border border-sky-300/40 flex items-center cursor-pointer shadow-inner transition-all"
+                  >
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
+                        musicEnabled
+                          ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)] border border-[#bef264]'
+                          : 'text-sky-300 opacity-60'
+                      }`}
+                    >
+                      ON
+                    </span>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
+                        !musicEnabled
+                          ? 'bg-gradient-to-b from-slate-400 to-slate-600 text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)] border border-slate-300'
+                          : 'text-sky-300 opacity-60'
+                      }`}
+                    >
+                      OFF
+                    </span>
+                  </button>
                 </div>
-                <div className="relative flex items-center">
+
+                {/* Row 3: Master Volume Slider */}
+                <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 shadow-inner">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-sky-200 flex items-center gap-1.5">
+                      <Volume2 className="w-3.5 h-3.5 text-white" /> Volume Level
+                    </span>
+                    <span className="text-xs font-black font-mono text-lime-300">
+                      {volumeLevel}%
+                    </span>
+                  </div>
                   <input
                     type="range"
                     min="0"
@@ -1056,87 +999,114 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                     className="w-full h-3.5 bg-[#013f6b] rounded-full appearance-none cursor-pointer accent-lime-400 border border-sky-300/50 shadow-inner"
                   />
                 </div>
-              </div>
 
-              {/* Row 4: Camera Mode Selector ("camer option which pop up and the gamer choose the camera he wants") */}
-              <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 shadow-inner">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Camera className="w-4 h-4 text-cyan-300" />
-                  <span className="text-xs font-black uppercase tracking-wider text-sky-200">
-                    Camera View Angle
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'third_person' as CameraMode, name: 'Action Cam', icon: <Eye className="w-3.5 h-3.5" /> },
-                    { id: 'isometric' as CameraMode, name: 'Overhead', icon: <Camera className="w-3.5 h-3.5" /> },
-                    { id: 'close_action' as CameraMode, name: 'Close Combat', icon: <Zap className="w-3.5 h-3.5" /> },
-                  ].map((mode) => {
-                    const isSelected = state.cameraMode === mode.id;
-                    return (
-                      <button
-                        key={mode.id}
-                        onClick={() => onCameraChange(mode.id)}
-                        className={`py-2 px-2 rounded-xl text-center flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white font-black shadow-md border border-[#bef264] scale-105'
-                            : 'bg-[#013f6b] text-sky-200 font-bold hover:bg-[#014e85] border border-sky-300/30'
-                        }`}
-                      >
-                        <span className="text-xs">{mode.icon}</span>
-                        <span className="text-[10px] leading-tight font-black">{mode.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Row 5: CUSTOMIZATION Mode Button ("add the change control option in which he could customize to put where he want the controls") */}
-              <button
-                onClick={startCustomization}
-                className="w-full py-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 border-2 border-cyan-300 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 group"
-              >
-                <Gamepad2 className="w-4 h-4 text-cyan-300 group-hover:rotate-12 transition-transform" />
-                <span>Customization (Change Controls Layout)</span>
-              </button>
-
-              {/* Bottom 3D Buttons (Sample Image 4 Style: Bubbly Green Play/Resume, Yellow Restart, Blue Locker) */}
-              <div className="pt-2 grid grid-cols-3 gap-2">
-                {/* 1. Play / Resume Button */}
+                {/* Return Back Button */}
                 <button
-                  onClick={closeSettings}
-                  className="py-3 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_5px_0_#365314,0_8px_16px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#365314] transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  onClick={() => setPauseModalTab('menu')}
+                  className="w-full py-3 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_4px_0_#365314,0_6px_12px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#365314] transition-all flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>Play</span>
-                </button>
-
-                {/* 2. Restart Match Button */}
-                <button
-                  onClick={() => {
-                    closeSettings();
-                    onRestart();
-                  }}
-                  className="py-3 bg-gradient-to-b from-[#facc15] via-[#eab308] to-[#ca8a04] hover:from-[#fde047] hover:to-[#eab308] text-[#78350f] font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-amber-200 shadow-[0_4px_0_#854d0e,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#854d0e] transition-all flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Restart</span>
-                </button>
-
-                {/* 3. Champions Locker Button */}
-                <button
-                  onClick={() => {
-                    closeSettings();
-                    onOpenShowcase?.();
-                  }}
-                  className="py-3 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                  <span>Locker</span>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Done</span>
                 </button>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* TAB 3: CONTROL SUB-POPUP (CAMERA & CONTROLS WITH CROSS ICON) */}
+          {pauseModalTab === 'control' && (
+            <div className="relative w-full max-w-xs sm:max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-12 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+              {/* Top Glossy Golden-Orange 3D Ribbon: "CONTROL" */}
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-8 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)]">
+                <span className="text-xl sm:text-2xl font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                  CONTROL
+                </span>
+              </div>
+
+              {/* Close X Button in top right corner to return to main pause menu */}
+              <button
+                onClick={() => setPauseModalTab('menu')}
+                className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
+                title="Back to Pause Menu"
+              >
+                <X className="w-5 h-5 stroke-[3]" />
+              </button>
+
+              <div className="space-y-3.5 text-left mt-3">
+                {/* Camera View Angle Section */}
+                <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 shadow-inner">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Camera className="w-4 h-4 text-cyan-300" />
+                    <span className="text-xs font-black uppercase tracking-wider text-sky-200">
+                      Camera View Angle
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'third_person' as CameraMode, name: 'Action', icon: <Eye className="w-3.5 h-3.5" /> },
+                      { id: 'isometric' as CameraMode, name: 'Overhead', icon: <Camera className="w-3.5 h-3.5" /> },
+                      { id: 'close_action' as CameraMode, name: 'Close', icon: <Zap className="w-3.5 h-3.5" /> },
+                    ].map((mode) => {
+                      const isSelected = state.cameraMode === mode.id;
+                      return (
+                        <button
+                          key={mode.id}
+                          onClick={() => onCameraChange(mode.id)}
+                          className={`py-2 px-1.5 rounded-xl text-center flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white font-black shadow-md border border-[#bef264] scale-105'
+                              : 'bg-[#013f6b] text-sky-200 font-bold hover:bg-[#014e85] border border-sky-300/30'
+                          }`}
+                        >
+                          <span className="text-xs">{mode.icon}</span>
+                          <span className="text-[10px] leading-tight font-black">{mode.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Controls Quick Reference Guide */}
+                <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 shadow-inner">
+                  <span className="text-xs font-black uppercase tracking-wider text-sky-200 block mb-1.5">
+                    Controls Reference
+                  </span>
+                  <div className="grid grid-cols-3 gap-1 text-center text-[10px]">
+                    <div className="bg-[#013f6b] p-1.5 rounded-lg border border-sky-300/30">
+                      <span className="text-sky-300 block font-bold uppercase text-[9px]">Move</span>
+                      <span className="font-bold text-white">Stick / WASD</span>
+                    </div>
+                    <div className="bg-[#013f6b] p-1.5 rounded-lg border border-sky-300/30">
+                      <span className="text-sky-300 block font-bold uppercase text-[9px]">Dash</span>
+                      <span className="font-bold text-lime-300">Tap / Space</span>
+                    </div>
+                    <div className="bg-[#013f6b] p-1.5 rounded-lg border border-sky-300/30">
+                      <span className="text-sky-300 block font-bold uppercase text-[9px]">Aim</span>
+                      <span className="font-bold text-amber-300">Drag Button</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct shortcut to Customization layout */}
+                <button
+                  onClick={startCustomization}
+                  className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border border-purple-300 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Move className="w-3.5 h-3.5" />
+                  <span>Customize HUD Positions</span>
+                </button>
+
+                {/* Return Back Button */}
+                <button
+                  onClick={() => setPauseModalTab('menu')}
+                  className="w-full py-3 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_4px_0_#365314,0_6px_12px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#365314] transition-all flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Done</span>
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
     </div>

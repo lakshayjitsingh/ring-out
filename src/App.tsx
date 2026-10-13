@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { GameEngine, type GameState, type CameraMode } from './game/GameEngine';
 import { BattleHUD } from './components/BattleHUD';
 import { ChampionShowcase } from './components/ChampionShowcase';
+import { HomeScreen } from './components/HomeScreen';
 import { type ChampionId } from './game/championModels';
 
 export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
 
-  const [activeScreen, setActiveScreen] = useState<'showcase' | 'battle'>('showcase');
+  const [activeScreen, setActiveScreen] = useState<'home' | 'brawlers' | 'battle'>('home');
   const [selectedChampion, setSelectedChampion] = useState<ChampionId>('leo');
 
   const [gameState, setGameState] = useState<GameState>({
@@ -76,9 +77,24 @@ export function App() {
     engineRef.current?.resetMatch();
   };
 
+  const handleStartStory = () => {
+    engineRef.current?.resetMatch();
+    engineRef.current?.setBotChampion('kage');
+    setActiveScreen('battle');
+  };
+
+  const handleStartPvP = () => {
+    engineRef.current?.resetMatch();
+    const rivalChamps: ChampionId[] = ['titan', 'nova', 'bolt', 'kai', 'kage'];
+    const filtered = rivalChamps.filter((c) => c !== selectedChampion);
+    const rival = filtered[Math.floor(Math.random() * filtered.length)] || 'kage';
+    engineRef.current?.setBotChampion(rival);
+    setActiveScreen('battle');
+  };
+
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
-      {/* 3D Battle Arena View */}
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans">
+      {/* 1. 3D Battle Arena View */}
       <div
         className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
           activeScreen === 'battle' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -88,7 +104,7 @@ export function App() {
         <BattleHUD
           state={gameState}
           selectedChampion={selectedChampion}
-          onOpenShowcase={() => setActiveScreen('showcase')}
+          onOpenShowcase={() => setActiveScreen('home')}
           onDash={handleDash}
           onAimChange={handleAimChange}
           onJoystickMove={handleJoystickMove}
@@ -98,16 +114,24 @@ export function App() {
         />
       </div>
 
-      {/* 3D Champion Showcase (Shop & 360° Inspection) */}
-      {activeScreen === 'showcase' && (
+      {/* 2. Central Arcade Home Page Hub */}
+      {activeScreen === 'home' && (
+        <HomeScreen
+          selectedChampion={selectedChampion}
+          onSelectChampion={handleSelectChampion}
+          onOpenBrawlers={() => setActiveScreen('brawlers')}
+          onStartStoryMatch={handleStartStory}
+          onStartPvPMatch={handleStartPvP}
+        />
+      )}
+
+      {/* 3. 3D Champion Roster / Brawlers Showcase */}
+      {activeScreen === 'brawlers' && (
         <ChampionShowcase
           selectedChampion={selectedChampion}
           onSelectChampion={handleSelectChampion}
           onBackToBattle={() => {
-            setActiveScreen('battle');
-            if (gameState.isGameOver) {
-              handleRestart();
-            }
+            setActiveScreen('home');
           }}
         />
       )}

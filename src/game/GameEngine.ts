@@ -1657,6 +1657,30 @@ export class GameEngine {
     }
   }
 
+  public setBotChampion(id: ChampionId) {
+    if (this.botChampionId === id && this.bot) return;
+    this.botChampionId = id;
+
+    if (this.bot && this.bot.mesh) {
+      const pos = this.bot.pos.clone();
+      const rotY = this.bot.currentAngle;
+      this.scene.remove(this.bot.mesh);
+
+      const bMesh = createChampionMesh(id);
+      bMesh.group.position.copy(pos);
+      bMesh.group.rotation.y = rotY;
+      this.scene.add(bMesh.group);
+
+      this.bot.mesh = bMesh.group;
+      this.bot.bodyMesh = bMesh.bodyMesh;
+      this.bot.coreMesh = bMesh.coreMesh;
+      this.bot.fists = bMesh.fists;
+      this.bot.legs = bMesh.legs;
+      this.bot.arms = bMesh.arms;
+      this.bot.pos = bMesh.group.position;
+    }
+  }
+
   // Input Handling
   private onKeyDown = (e: KeyboardEvent) => {
     this.keys[e.key.toLowerCase()] = true;

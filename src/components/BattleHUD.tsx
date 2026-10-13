@@ -20,6 +20,7 @@ import {
   Move,
   Pause,
   LogOut,
+  Home,
 } from 'lucide-react';
 
 
@@ -875,13 +876,22 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   </div>
                 </div>
 
-                <button
-                  onClick={onRestart}
-                  className="w-full py-3.5 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-base uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_5px_0_#365314,0_8px_16px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#365314] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
-                >
-                  <RotateCcw className="w-5 h-5 stroke-[2.5]" />
-                  <span>PLAY AGAIN</span>
-                </button>
+                <div className="flex items-center gap-2.5 mt-2">
+                  <button
+                    onClick={() => onOpenShowcase?.()}
+                    className="flex-1 py-3 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Home className="w-4 h-4 stroke-[2.5]" />
+                    <span>HOME</span>
+                  </button>
+                  <button
+                    onClick={onRestart}
+                    className="flex-1 py-3 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_4px_0_#365314,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#365314] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4 stroke-[2.5]" />
+                    <span>PLAY AGAIN</span>
+                  </button>
+                </div>
               </>
             ) : state.winner === 'bot' ? (
               <>
@@ -908,13 +918,22 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   </div>
                 </div>
 
-                <button
-                  onClick={onRestart}
-                  className="w-full py-3.5 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-base uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_5px_0_#075985,0_8px_16px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
-                >
-                  <RotateCcw className="w-5 h-5 stroke-[2.5]" />
-                  <span>PLAY AGAIN</span>
-                </button>
+                <div className="flex items-center gap-2.5 mt-2">
+                  <button
+                    onClick={() => onOpenShowcase?.()}
+                    className="flex-1 py-3 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#7f1d1d] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Home className="w-4 h-4 stroke-[2.5]" />
+                    <span>HOME</span>
+                  </button>
+                  <button
+                    onClick={onRestart}
+                    className="flex-1 py-3 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4 stroke-[2.5]" />
+                    <span>PLAY AGAIN</span>
+                  </button>
+                </div>
               </>
             ) : (
               <>
@@ -941,13 +960,22 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   </div>
                 </div>
 
-                <button
-                  onClick={onRestart}
-                  className="w-full py-3.5 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-base uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_5px_0_#075985,0_8px_16px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
-                >
-                  <RotateCcw className="w-5 h-5 stroke-[2.5]" />
-                  <span>PLAY AGAIN</span>
-                </button>
+                <div className="flex items-center gap-2.5 mt-2">
+                  <button
+                    onClick={() => onOpenShowcase?.()}
+                    className="flex-1 py-3 bg-gradient-to-b from-slate-600 via-slate-700 to-slate-800 hover:from-slate-500 hover:to-slate-700 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-slate-400 shadow-[0_4px_0_#1e293b,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#1e293b] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Home className="w-4 h-4 stroke-[2.5]" />
+                    <span>HOME</span>
+                  </button>
+                  <button
+                    onClick={onRestart}
+                    className="flex-1 py-3 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4 stroke-[2.5]" />
+                    <span>PLAY AGAIN</span>
+                  </button>
+                </div>
               </>
             )}
           </div>

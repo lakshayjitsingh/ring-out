@@ -78,7 +78,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
   // HUD Customization Mode
   const [isCustomizingHUD, setIsCustomizingHUD] = useState(false);
-  const [selectedCustomControl, setSelectedCustomControl] = useState<'joystick' | 'dash'>('joystick');
+  const [selectedCustomControl, setSelectedCustomControl] = useState<'joystick' | 'dash' | null>(null);
   const [controlsLayout, setControlsLayout] = useState<ControlLayout>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -185,7 +185,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     setIsSettingsOpen(false);
     setPauseModalTab('menu');
     setTempLayout(controlsLayout);
-    setSelectedCustomControl('joystick');
+    setSelectedCustomControl(null);
     setIsCustomizingHUD(true);
     if (!state.isPaused) {
       onTogglePause();
@@ -565,21 +565,9 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             </button>
           </div>
 
-          {/* Active Control Label & Vertical Sliders (NO BOX, Pure floating arcade elements in a clean vertical line) */}
-          <div className="flex flex-col items-center gap-1.5 mt-1.5 animate-in fade-in duration-150">
-            {/* Control Name: indicates what is clicked ('JOYSTICK' or 'DASH') */}
-            <span
-              className={`text-xs sm:text-sm font-black tracking-widest uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] ${
-                selectedCustomControl === 'joystick'
-                  ? 'text-cyan-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.9)]'
-                  : 'text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,0.9)]'
-              }`}
-            >
-              ● {selectedCustomControl === 'joystick' ? 'JOYSTICK' : 'DASH BUTTON'}
-            </span>
-
-            {/* Vertical Stack: Size Slider on row 1, Visibility Slider on row 2 */}
-            <div className="flex flex-col items-center gap-1.5">
+          {/* Sliders for Selected Control: Size & Visibility (Appears ONLY when a control is tapped, NO header text) */}
+          {selectedCustomControl && (
+            <div className="flex flex-col items-center gap-1.5 mt-2 animate-in fade-in duration-150">
               {/* Size Slider */}
               <div className="flex items-center gap-2.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
                 <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white whitespace-nowrap w-24 text-right">
@@ -614,7 +602,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                 />
               </div>
 
-              {/* Visibility / Opacity Slider */}
+              {/* Visibility / Opacity Slider (0% to 100%) */}
               <div className="flex items-center gap-2.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
                 <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white whitespace-nowrap w-24 text-right">
                   Visibility:{' '}
@@ -628,7 +616,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                 </span>
                 <input
                   type="range"
-                  min="30"
+                  min="0"
                   max="100"
                   step="5"
                   value={Math.round((tempLayout[selectedCustomControl]?.opacity ?? 1.0) * 100)}
@@ -648,7 +636,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                 />
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -661,9 +649,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           top: `${activeLayout.joystick.y}px`,
           transform: `scale(${activeLayout.joystick.scale ?? 1.0})`,
           transformOrigin: 'center center',
-          opacity: isCustomizingHUD
-            ? Math.max(0.45, activeLayout.joystick.opacity ?? 1.0)
-            : (activeLayout.joystick.opacity ?? 1.0),
+          opacity: isCustomizingHUD ? 1.0 : (activeLayout.joystick.opacity ?? 1.0),
         }}
         onClick={() => isCustomizingHUD && setSelectedCustomControl('joystick')}
         onPointerDown={(e) => isCustomizingHUD && handleCustomPointerDown('joystick', e)}
@@ -693,6 +679,9 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
         <div
           ref={joystickBaseRef}
+          style={{
+            opacity: activeLayout.joystick.opacity ?? 1.0,
+          }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -734,9 +723,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           top: `${activeLayout.dash.y}px`,
           transform: `scale(${activeLayout.dash.scale ?? 1.0})`,
           transformOrigin: 'center center',
-          opacity: isCustomizingHUD
-            ? Math.max(0.45, activeLayout.dash.opacity ?? 1.0)
-            : (activeLayout.dash.opacity ?? 1.0),
+          opacity: isCustomizingHUD ? 1.0 : (activeLayout.dash.opacity ?? 1.0),
         }}
         onClick={() => isCustomizingHUD && setSelectedCustomControl('dash')}
         onPointerDown={(e) => isCustomizingHUD && handleCustomPointerDown('dash', e)}
@@ -764,7 +751,12 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           </span>
         )}
 
-        <div className="flex flex-col items-center">
+        <div
+          style={{
+            opacity: activeLayout.dash.opacity ?? 1.0,
+          }}
+          className="flex flex-col items-center"
+        >
           <div className="relative w-28 h-28 flex items-center justify-center touch-none">
             {/* SVG Circular Progress Meter (0% to 100%) */}
             <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">

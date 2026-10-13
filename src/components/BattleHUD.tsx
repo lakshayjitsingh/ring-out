@@ -813,99 +813,143 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
       {/* 3. FINAL MATCH VICTORY / DEFEAT MODAL (FIRST TO 3 ROUND WINS) */}
       {state.isGameOver && !isCustomizingHUD && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto z-50">
-          <div className="w-full max-w-md bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/80 rounded-3xl p-6 shadow-2xl text-center animate-in zoom-in-95 duration-200">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto z-50 animate-in fade-in duration-200">
+          <div
+            className={`relative w-full max-w-[340px] sm:max-w-sm rounded-[36px] pt-14 sm:pt-16 px-6 pb-6 text-center shadow-[0_20px_60px_rgba(0,0,0,0.85),inset_0_2px_10px_rgba(255,255,255,0.25)] animate-in zoom-in-95 duration-150 ${
+              state.winner === 'player'
+                ? 'bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#020617] border-4 border-[#fde047]'
+                : state.winner === 'bot'
+                ? 'bg-gradient-to-b from-[#450a0a] via-[#1c1917] to-[#0c0a09] border-4 border-[#f87171]'
+                : 'bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#020617] border-4 border-[#cbd5e1]'
+            }`}
+          >
+            {/* Top Glossy 3D Ribbon Banner */}
+            <div
+              className={`absolute -top-6 left-1/2 -translate-x-1/2 px-8 sm:px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap border-2 ${
+                state.winner === 'player'
+                  ? 'bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-[#fef08a]'
+                  : state.winner === 'bot'
+                  ? 'bg-gradient-to-b from-[#f87171] via-[#dc2626] to-[#991b1b] border-[#fecaca]'
+                  : 'bg-gradient-to-b from-[#e2e8f0] via-[#94a3b8] to-[#64748b] border-white'
+              }`}
+            >
+              <span
+                className={`text-xl sm:text-2xl font-black tracking-widest uppercase ${
+                  state.winner === 'player'
+                    ? 'text-[#78350f] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]'
+                    : state.winner === 'bot'
+                    ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'
+                    : 'text-[#0f172a] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]'
+                }`}
+              >
+                {state.winner === 'player'
+                  ? 'MATCH VICTORY'
+                  : state.winner === 'bot'
+                  ? 'MATCH DEFEAT'
+                  : 'MATCH DRAW'}
+              </span>
+            </div>
+
             {state.winner === 'player' ? (
               <>
-                <div className="w-20 h-20 mx-auto rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30 animate-pulse">
-                  <Trophy className="w-10 h-10 text-amber-400" />
+                <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-b from-amber-400/20 to-yellow-600/30 border-2 border-amber-300 flex items-center justify-center mb-2 shadow-[0_0_25px_rgba(245,158,11,0.4)] animate-pulse">
+                  <Trophy className="w-10 h-10 text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.8)]" />
                 </div>
-                <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-500">
-                  MATCH VICTORY!
-                </h2>
-                <p className="text-slate-300 text-sm mt-1">
-                  You conquered the arena {state.playerRoundWins} - {state.botRoundWins}!
+                <p className="text-slate-300 text-sm font-semibold mt-1">
+                  You conquered the arena {state.playerRoundWins} - {state.botRoundWins}
                 </p>
 
                 {/* Match Rewards */}
-                <div className="grid grid-cols-3 gap-2 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-3 my-4">
+                <div className="grid grid-cols-3 gap-2 bg-black/40 border border-white/10 rounded-2xl p-3 my-4 shadow-inner">
                   <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Trophies</div>
-                    <div className="text-lg font-black text-amber-400">+35 🏆</div>
+                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Trophies</div>
+                    <div className="text-base sm:text-lg font-black text-amber-400 drop-shadow">+35 🏆</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Gold</div>
-                    <div className="text-lg font-black text-yellow-300">+120 🟡</div>
+                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Gold</div>
+                    <div className="text-base sm:text-lg font-black text-yellow-300 drop-shadow">+120 🪙</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Account XP</div>
-                    <div className="text-lg font-black text-cyan-400">+150 ⭐</div>
+                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Account XP</div>
+                    <div className="text-base sm:text-lg font-black text-cyan-400 drop-shadow">+150 ⭐</div>
                   </div>
                 </div>
+
+                <button
+                  onClick={onRestart}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-base uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_5px_0_#365314,0_8px_16px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#365314] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                >
+                  <RotateCcw className="w-5 h-5 stroke-[2.5]" />
+                  <span>PLAY AGAIN</span>
+                </button>
               </>
             ) : state.winner === 'bot' ? (
               <>
-                <div className="w-20 h-20 mx-auto rounded-full bg-rose-500/20 border-2 border-rose-500 flex items-center justify-center mb-3 shadow-lg shadow-rose-500/30">
-                  <span className="text-3xl">💥</span>
+                <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-b from-rose-500/20 to-red-950/40 border-2 border-rose-400 flex items-center justify-center mb-2 shadow-[0_0_25px_rgba(244,63,94,0.4)]">
+                  <span className="text-4xl filter drop-shadow-[0_2px_6px_rgba(244,63,94,0.8)]">💥</span>
                 </div>
-                <h2 className="text-3xl font-black text-rose-400">MATCH DEFEAT</h2>
-                <p className="text-slate-300 text-sm mt-1">
-                  ShadowNinja won {state.botRoundWins} - {state.playerRoundWins}!
+                <p className="text-slate-300 text-sm font-semibold mt-1">
+                  ShadowNinja won {state.botRoundWins} - {state.playerRoundWins}
                 </p>
 
                 {/* Consolation Rewards */}
-                <div className="grid grid-cols-3 gap-2 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-3 my-4">
+                <div className="grid grid-cols-3 gap-2 bg-black/40 border border-white/10 rounded-2xl p-3 my-4 shadow-inner">
                   <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Trophies</div>
-                    <div className="text-lg font-black text-rose-400">-10 🏆</div>
+                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Trophies</div>
+                    <div className="text-base sm:text-lg font-black text-rose-400 drop-shadow">-10 🏆</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Gold</div>
-                    <div className="text-lg font-black text-yellow-300">+25 🟡</div>
+                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Gold</div>
+                    <div className="text-base sm:text-lg font-black text-yellow-300 drop-shadow">+25 🪙</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Account XP</div>
-                    <div className="text-lg font-black text-cyan-400">+40 ⭐</div>
+                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Account XP</div>
+                    <div className="text-base sm:text-lg font-black text-cyan-400 drop-shadow">+40 ⭐</div>
                   </div>
                 </div>
+
+                <button
+                  onClick={onRestart}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-base uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_5px_0_#075985,0_8px_16px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                >
+                  <RotateCcw className="w-5 h-5 stroke-[2.5]" />
+                  <span>PLAY AGAIN</span>
+                </button>
               </>
             ) : (
               <>
-                <div className="w-20 h-20 mx-auto rounded-full bg-slate-100/10 border-2 border-white/80 flex items-center justify-center mb-3 shadow-lg shadow-white/30 animate-pulse">
-                  <Shield className="w-10 h-10 text-white drop-shadow-md" />
+                <div className="w-20 h-20 mx-auto rounded-full bg-slate-500/20 border-2 border-slate-300 flex items-center justify-center mb-2 shadow-lg shadow-slate-500/30 animate-pulse">
+                  <Shield className="w-10 h-10 text-slate-200 drop-shadow-md" />
                 </div>
-                <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
-                  MATCH DRAW!
-                </h2>
-                <p className="text-slate-300 text-sm mt-1">
-                  STALEMATE — The match concluded without a victor ({state.playerRoundWins} - {state.botRoundWins})!
+                <p className="text-slate-300 text-sm font-semibold mt-1">
+                  STALEMATE — The match concluded without a victor ({state.playerRoundWins} - {state.botRoundWins})
                 </p>
 
                 {/* Stalemate Split Rewards */}
-                <div className="grid grid-cols-3 gap-2 bg-slate-800/60 border border-slate-700/60 rounded-2xl p-3 my-4">
+                <div className="grid grid-cols-3 gap-2 bg-black/40 border border-white/10 rounded-2xl p-3 my-4 shadow-inner">
                   <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Trophies</div>
-                    <div className="text-lg font-black text-slate-200">+10 🏆</div>
+                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Trophies</div>
+                    <div className="text-base sm:text-lg font-black text-slate-200 drop-shadow">+10 🏆</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Gold</div>
-                    <div className="text-lg font-black text-yellow-300">+50 🟡</div>
+                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Gold</div>
+                    <div className="text-base sm:text-lg font-black text-yellow-300 drop-shadow">+50 🪙</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Account XP</div>
-                    <div className="text-lg font-black text-cyan-400">+60 ⭐</div>
+                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Account XP</div>
+                    <div className="text-base sm:text-lg font-black text-cyan-400 drop-shadow">+60 ⭐</div>
                   </div>
                 </div>
+
+                <button
+                  onClick={onRestart}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-base uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_5px_0_#075985,0_8px_16px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                >
+                  <RotateCcw className="w-5 h-5 stroke-[2.5]" />
+                  <span>PLAY AGAIN</span>
+                </button>
               </>
             )}
-
-            <button
-              onClick={onRestart}
-              className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-base rounded-2xl shadow-lg shadow-cyan-500/30 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
-            >
-              <RotateCcw className="w-5 h-5" />
-              PLAY AGAIN
-            </button>
           </div>
         </div>
       )}

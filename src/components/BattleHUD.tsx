@@ -78,7 +78,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
   // HUD Customization Mode
   const [isCustomizingHUD, setIsCustomizingHUD] = useState(false);
-  const [selectedCustomControl, setSelectedCustomControl] = useState<'joystick' | 'dash'>('joystick');
+  const [selectedCustomControl, setSelectedCustomControl] = useState<'joystick' | 'dash' | null>(null);
   const [controlsLayout, setControlsLayout] = useState<ControlLayout>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -185,7 +185,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     setIsSettingsOpen(false);
     setPauseModalTab('menu');
     setTempLayout(controlsLayout);
-    setSelectedCustomControl('joystick');
+    setSelectedCustomControl(null);
     setIsCustomizingHUD(true);
     if (!state.isPaused) {
       onTogglePause();
@@ -568,82 +568,97 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             </button>
           </div>
 
-          {/* Options Bar for Selected Control: Size & Visibility Sliders */}
-          <div className="bg-black/75 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-2 shadow-2xl flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-1">
-            {/* Control Switcher Pills */}
-            <div className="flex items-center gap-1 bg-white/10 p-0.5 rounded-xl border border-white/10">
-              <button
-                onClick={() => setSelectedCustomControl('joystick')}
-                className={`px-2.5 py-1 rounded-lg font-black uppercase text-[10px] tracking-wider transition-all cursor-pointer ${
-                  selectedCustomControl === 'joystick'
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                Joystick
-              </button>
-              <button
-                onClick={() => setSelectedCustomControl('dash')}
-                className={`px-2.5 py-1 rounded-lg font-black uppercase text-[10px] tracking-wider transition-all cursor-pointer ${
-                  selectedCustomControl === 'dash'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                Dash Button
-              </button>
-            </div>
+          {/* Sliders for Selected Control: Size & Visibility (NO BOX, Pure floating arcade elements, shown only when a control is tapped) */}
+          {selectedCustomControl ? (
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-2 animate-in fade-in zoom-in-95 duration-150">
+              {/* Selected Control Name Indicator - No Box */}
+              <div className="flex items-center gap-1.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                <span
+                  className={`text-xs sm:text-sm font-black tracking-wider uppercase ${
+                    selectedCustomControl === 'joystick'
+                      ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]'
+                      : 'text-amber-300 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]'
+                  }`}
+                >
+                  ● {selectedCustomControl === 'joystick' ? 'JOYSTICK' : 'DASH BUTTON'}
+                </span>
+              </div>
 
-            {/* Size Slider */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-200 whitespace-nowrap">
-                Size: <span className="text-cyan-300 font-mono">{Math.round((tempLayout[selectedCustomControl]?.scale ?? 1.0) * 100)}%</span>
-              </span>
-              <input
-                type="range"
-                min="70"
-                max="150"
-                step="5"
-                value={Math.round((tempLayout[selectedCustomControl]?.scale ?? 1.0) * 100)}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10) / 100;
-                  setTempLayout((prev) => ({
-                    ...prev,
-                    [selectedCustomControl]: {
-                      ...prev[selectedCustomControl],
-                      scale: val,
-                    },
-                  }));
-                }}
-                className="w-20 sm:w-28 h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-cyan-400 border border-white/20"
-              />
-            </div>
+              {/* Size Slider - Pure floating slider, no enclosing box */}
+              <div className="flex items-center gap-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white whitespace-nowrap">
+                  Size:{' '}
+                  <span
+                    className={`font-mono font-black ${
+                      selectedCustomControl === 'joystick' ? 'text-cyan-300' : 'text-amber-300'
+                    }`}
+                  >
+                    {Math.round((tempLayout[selectedCustomControl]?.scale ?? 1.0) * 100)}%
+                  </span>
+                </span>
+                <input
+                  type="range"
+                  min="70"
+                  max="150"
+                  step="5"
+                  value={Math.round((tempLayout[selectedCustomControl]?.scale ?? 1.0) * 100)}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10) / 100;
+                    setTempLayout((prev) => ({
+                      ...prev,
+                      [selectedCustomControl]: {
+                        ...prev[selectedCustomControl],
+                        scale: val,
+                      },
+                    }));
+                  }}
+                  className={`w-24 sm:w-32 h-2 bg-slate-900/80 rounded-full appearance-none cursor-pointer border border-white/30 shadow-inner ${
+                    selectedCustomControl === 'joystick' ? 'accent-cyan-400' : 'accent-amber-400'
+                  }`}
+                />
+              </div>
 
-            {/* Visibility / Opacity Slider */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-200 whitespace-nowrap">
-                Visibility: <span className="text-amber-300 font-mono">{Math.round((tempLayout[selectedCustomControl]?.opacity ?? 1.0) * 100)}%</span>
-              </span>
-              <input
-                type="range"
-                min="30"
-                max="100"
-                step="5"
-                value={Math.round((tempLayout[selectedCustomControl]?.opacity ?? 1.0) * 100)}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10) / 100;
-                  setTempLayout((prev) => ({
-                    ...prev,
-                    [selectedCustomControl]: {
-                      ...prev[selectedCustomControl],
-                      opacity: val,
-                    },
-                  }));
-                }}
-                className="w-20 sm:w-28 h-2 bg-slate-800 rounded-full appearance-none cursor-pointer accent-amber-400 border border-white/20"
-              />
+              {/* Visibility / Opacity Slider - Pure floating slider, no enclosing box */}
+              <div className="flex items-center gap-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white whitespace-nowrap">
+                  Visibility:{' '}
+                  <span
+                    className={`font-mono font-black ${
+                      selectedCustomControl === 'joystick' ? 'text-cyan-300' : 'text-amber-300'
+                    }`}
+                  >
+                    {Math.round((tempLayout[selectedCustomControl]?.opacity ?? 1.0) * 100)}%
+                  </span>
+                </span>
+                <input
+                  type="range"
+                  min="30"
+                  max="100"
+                  step="5"
+                  value={Math.round((tempLayout[selectedCustomControl]?.opacity ?? 1.0) * 100)}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10) / 100;
+                    setTempLayout((prev) => ({
+                      ...prev,
+                      [selectedCustomControl]: {
+                        ...prev[selectedCustomControl],
+                        opacity: val,
+                      },
+                    }));
+                  }}
+                  className={`w-24 sm:w-32 h-2 bg-slate-900/80 rounded-full appearance-none cursor-pointer border border-white/30 shadow-inner ${
+                    selectedCustomControl === 'joystick' ? 'accent-cyan-400' : 'accent-amber-400'
+                  }`}
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-2 text-center animate-in fade-in duration-200">
+              <span className="text-[11px] sm:text-xs font-bold text-white/80 uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                Tap Joystick or Dash Button to adjust size & visibility
+              </span>
+            </div>
+          )}
         </div>
       )}
 

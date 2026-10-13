@@ -384,7 +384,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
       {state.countdown > 0 && !state.isGameOver && !state.roundBannerText && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40 bg-black/30 backdrop-blur-xs">
           <div className="text-center animate-in zoom-in-75 duration-150">
-            <div className="text-8xl md:text-9xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-500 drop-shadow-[0_10px_25px_rgba(245,158,11,0.6)]">
+            <div className="text-8xl md:text-9xl font-black italic tracking-normal px-8 py-2 inline-block text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-500 drop-shadow-[0_10px_25px_rgba(245,158,11,0.6)]">
               {Math.ceil(state.countdown) > 1 ? `ROUND ${state.currentRound}` : 'FIGHT!'}
             </div>
             <p className="text-sm md:text-base font-black tracking-widest text-cyan-300 uppercase mt-2 drop-shadow-md">
@@ -401,7 +401,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40 bg-black/40 backdrop-blur-xs">
           <div className="text-center animate-in zoom-in-50 duration-200">
             <div
-              className={`text-6xl md:text-8xl font-black italic tracking-tighter drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] ${
+              className={`text-6xl md:text-8xl font-black italic tracking-normal px-8 py-2 inline-block drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] ${
                 state.roundBannerType === 'player'
                   ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-300 to-teal-400 drop-shadow-[0_0_35px_rgba(0,245,255,0.7)]'
                   : state.roundBannerType === 'bot'
@@ -424,7 +424,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
         </div>
       )}
 
-      {/* 1. TOP HEADER STATUS (SHADOW FIGHT 4 STYLE: NO BOXES, PURE WHITE NAMES & PURE TIMER NUMBER) */}
+      {/* 1. TOP HEADER STATUS (SHADOW FIGHT 4 STYLE: NO BOXES, PURE WHITE NAMES) */}
       <div className="absolute top-0 left-0 right-0 p-4 sm:p-5 flex items-start justify-between pointer-events-auto z-50">
         {/* Left: Player Name (NO BOX, PURE WHITE NAME + WHITE ROUND DIAMONDS) */}
         {(() => {
@@ -460,40 +460,6 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           );
         })()}
 
-        {/* Center: Clean Timer Number & Pause Button (User request: "only leave the pause button there should be no icon") */}
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-3">
-            {/* Timer Number: Pure number, no 00:, no box */}
-            <div className="flex flex-col items-center min-w-[48px]">
-              <span
-                className={`text-3xl sm:text-4xl font-black font-mono tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] ${
-                  remainingSeconds <= 15
-                    ? 'text-rose-400 animate-pulse'
-                    : 'text-white'
-                }`}
-              >
-                {remainingSeconds}
-              </span>
-            </div>
-
-            {/* Pause Button */}
-            <button
-              onClick={openSettings}
-              className="p-1.5 hover:bg-white/10 rounded-xl transition-all cursor-pointer text-white active:scale-95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-              title="Pause Battle"
-            >
-              <Pause className="w-5 h-5 text-cyan-300" />
-            </button>
-          </div>
-
-          {/* Warning Text Banner when arena is collapsing or sudden death */}
-          {state.warningText && (
-            <div className="mt-1 px-3 py-0.5 bg-red-600/95 text-white font-black text-[10px] tracking-wider uppercase rounded-full shadow-[0_0_15px_rgba(239,68,68,0.7)] border border-red-300 animate-bounce">
-              {state.warningText}
-            </div>
-          )}
-        </div>
-
         {/* Right: Opponent Name (NO BOX, PURE WHITE NAME + WHITE ROUND DIAMONDS) */}
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-2">
@@ -522,6 +488,38 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             })}
           </div>
         </div>
+      </div>
+
+      {/* TOP CENTER: EXACT DEAD CENTER (50% OF SCREEN) TIMER NUMBER & PAUSE BUTTON */}
+      <div className="absolute top-4 sm:top-5 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto z-50">
+        <div className="relative flex items-center justify-center">
+          {/* Timer Number: Exactly in the dead center */}
+          <span
+            className={`text-3xl sm:text-4xl font-black font-mono tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] ${
+              remainingSeconds <= 15
+                ? 'text-rose-400 animate-pulse'
+                : 'text-white'
+            }`}
+          >
+            {remainingSeconds}
+          </span>
+
+          {/* Pause Button: Floats right next to timer without pulling timer off-center */}
+          <button
+            onClick={openSettings}
+            className="absolute left-full ml-2 p-1.5 hover:bg-white/10 rounded-xl transition-all cursor-pointer text-white active:scale-95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+            title="Pause Battle"
+          >
+            <Pause className="w-5 h-5 text-cyan-300" />
+          </button>
+        </div>
+
+        {/* Warning Text Banner when arena is collapsing or sudden death */}
+        {state.warningText && (
+          <div className="mt-1 px-3 py-0.5 bg-red-600/95 text-white font-black text-[10px] tracking-wider uppercase rounded-full shadow-[0_0_15px_rgba(239,68,68,0.7)] border border-red-300 animate-bounce whitespace-nowrap">
+            {state.warningText}
+          </div>
+        )}
       </div>
 
       {/* CUSTOMIZATION MODE ACTION BAR (NO BOXY THEME: SLEEK FLOATING GAME BUTTONS) */}

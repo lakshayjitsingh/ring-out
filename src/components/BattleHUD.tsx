@@ -78,7 +78,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
   // HUD Customization Mode
   const [isCustomizingHUD, setIsCustomizingHUD] = useState(false);
-  const [selectedCustomControl, setSelectedCustomControl] = useState<'joystick' | 'dash' | null>(null);
+  const [selectedCustomControl, setSelectedCustomControl] = useState<'joystick' | 'dash'>('joystick');
   const [controlsLayout, setControlsLayout] = useState<ControlLayout>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -185,7 +185,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     setIsSettingsOpen(false);
     setPauseModalTab('menu');
     setTempLayout(controlsLayout);
-    setSelectedCustomControl(null);
+    setSelectedCustomControl('joystick');
     setIsCustomizingHUD(true);
     if (!state.isPaused) {
       onTogglePause();
@@ -541,7 +541,6 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             <button
               onClick={handleResetLayout}
               className="px-4 py-2 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.5)] active:translate-y-0.5 active:shadow-[0_2px_0_#075985] transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Reset to default layout"
             >
               <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Reset</span>
@@ -551,7 +550,6 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             <button
               onClick={handleSaveLayout}
               className="px-5 py-2.5 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_4px_0_#365314,0_8px_18px_rgba(0,0,0,0.5)] active:translate-y-0.5 active:shadow-[0_2px_0_#365314] transition-all flex items-center gap-2 cursor-pointer scale-105"
-              title="Save and return to pause menu"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>Save & Apply</span>
@@ -561,32 +559,30 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             <button
               onClick={handleCancelCustomizing}
               className="px-4 py-2 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.5)] active:translate-y-0.5 active:shadow-[0_2px_0_#7f1d1d] transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Cancel changes and return"
             >
               <X className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Cancel</span>
             </button>
           </div>
 
-          {/* Sliders for Selected Control: Size & Visibility (NO BOX, Pure floating arcade elements, shown only when a control is tapped) */}
-          {selectedCustomControl ? (
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-2 animate-in fade-in zoom-in-95 duration-150">
-              {/* Selected Control Name Indicator - No Box */}
-              <div className="flex items-center gap-1.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                <span
-                  className={`text-xs sm:text-sm font-black tracking-wider uppercase ${
-                    selectedCustomControl === 'joystick'
-                      ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]'
-                      : 'text-amber-300 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]'
-                  }`}
-                >
-                  ● {selectedCustomControl === 'joystick' ? 'JOYSTICK' : 'DASH BUTTON'}
-                </span>
-              </div>
+          {/* Active Control Label & Vertical Sliders (NO BOX, Pure floating arcade elements in a clean vertical line) */}
+          <div className="flex flex-col items-center gap-1.5 mt-1.5 animate-in fade-in duration-150">
+            {/* Control Name: indicates what is clicked ('JOYSTICK' or 'DASH') */}
+            <span
+              className={`text-xs sm:text-sm font-black tracking-widest uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] ${
+                selectedCustomControl === 'joystick'
+                  ? 'text-cyan-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.9)]'
+                  : 'text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,0.9)]'
+              }`}
+            >
+              ● {selectedCustomControl === 'joystick' ? 'JOYSTICK' : 'DASH BUTTON'}
+            </span>
 
-              {/* Size Slider - Pure floating slider, no enclosing box */}
-              <div className="flex items-center gap-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white whitespace-nowrap">
+            {/* Vertical Stack: Size Slider on row 1, Visibility Slider on row 2 */}
+            <div className="flex flex-col items-center gap-1.5">
+              {/* Size Slider */}
+              <div className="flex items-center gap-2.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white whitespace-nowrap w-24 text-right">
                   Size:{' '}
                   <span
                     className={`font-mono font-black ${
@@ -612,15 +608,15 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                       },
                     }));
                   }}
-                  className={`w-24 sm:w-32 h-2 bg-slate-900/80 rounded-full appearance-none cursor-pointer border border-white/30 shadow-inner ${
+                  className={`w-36 sm:w-44 h-2 bg-slate-900/80 rounded-full appearance-none cursor-pointer border border-white/30 shadow-inner ${
                     selectedCustomControl === 'joystick' ? 'accent-cyan-400' : 'accent-amber-400'
                   }`}
                 />
               </div>
 
-              {/* Visibility / Opacity Slider - Pure floating slider, no enclosing box */}
-              <div className="flex items-center gap-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white whitespace-nowrap">
+              {/* Visibility / Opacity Slider */}
+              <div className="flex items-center gap-2.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white whitespace-nowrap w-24 text-right">
                   Visibility:{' '}
                   <span
                     className={`font-mono font-black ${
@@ -646,19 +642,13 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                       },
                     }));
                   }}
-                  className={`w-24 sm:w-32 h-2 bg-slate-900/80 rounded-full appearance-none cursor-pointer border border-white/30 shadow-inner ${
+                  className={`w-36 sm:w-44 h-2 bg-slate-900/80 rounded-full appearance-none cursor-pointer border border-white/30 shadow-inner ${
                     selectedCustomControl === 'joystick' ? 'accent-cyan-400' : 'accent-amber-400'
                   }`}
                 />
               </div>
             </div>
-          ) : (
-            <div className="mt-2 text-center animate-in fade-in duration-200">
-              <span className="text-[11px] sm:text-xs font-bold text-white/80 uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                Tap Joystick or Dash Button to adjust size & visibility
-              </span>
-            </div>
-          )}
+          </div>
         </div>
       )}
 

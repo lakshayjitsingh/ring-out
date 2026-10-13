@@ -649,7 +649,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           top: `${activeLayout.joystick.y}px`,
           transform: `scale(${activeLayout.joystick.scale ?? 1.0})`,
           transformOrigin: 'center center',
-          opacity: isCustomizingHUD ? 1.0 : (activeLayout.joystick.opacity ?? 1.0),
+          opacity: activeLayout.joystick.opacity ?? 1.0,
         }}
         onClick={() => isCustomizingHUD && setSelectedCustomControl('joystick')}
         onPointerDown={(e) => isCustomizingHUD && handleCustomPointerDown('joystick', e)}
@@ -723,7 +723,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           top: `${activeLayout.dash.y}px`,
           transform: `scale(${activeLayout.dash.scale ?? 1.0})`,
           transformOrigin: 'center center',
-          opacity: isCustomizingHUD ? 1.0 : (activeLayout.dash.opacity ?? 1.0),
+          opacity: activeLayout.dash.opacity ?? 1.0,
         }}
         onClick={() => isCustomizingHUD && setSelectedCustomControl('dash')}
         onPointerDown={(e) => isCustomizingHUD && handleCustomPointerDown('dash', e)}

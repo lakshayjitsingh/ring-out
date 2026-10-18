@@ -20,6 +20,8 @@ import {
   Star,
 } from 'lucide-react';
 import { sounds } from '../audio/soundManager';
+import { crazyGames } from '../game/crazyGamesSdk';
+import { ShopModal } from './ShopModal';
 
 interface HomeScreenProps {
   selectedChampion: ChampionId;
@@ -47,21 +49,86 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const activeChampion = CHAMPIONS[selectedChampion];
 
-  // User Profile & Currencies
+  // User Profile & Currencies (Persisted)
   const [trophies, _setTrophies] = useState(1250);
-  const [gold, setGold] = useState(840);
-  const [gems, setGems] = useState(50);
+  const [gold, setGold] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('ringout_gold');
+      return saved ? parseInt(saved, 10) : 840;
+    } catch {
+      return 840;
+    }
+  });
+  const [gems, setGems] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('ringout_gems');
+      return saved ? parseInt(saved, 10) : 150;
+    } catch {
+      return 150;
+    }
+  });
   const [playerLevel] = useState(5);
+  const [unlockedChampions, setUnlockedChampions] = useState<ChampionId[]>(() => {
+    try {
+      const saved = localStorage.getItem('ringout_unlocked_champions');
+      return saved ? JSON.parse(saved) : ['leo', 'bolt', 'kai'];
+    } catch {
+      return ['leo', 'bolt', 'kai'];
+    }
+  });
 
   // Modals
   const [isTrophyRoadOpen, setIsTrophyRoadOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isShopOpen, setIsShopOpen] = useState(false);
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [matchmakingCountdown, setMatchmakingCountdown] = useState(3);
   const [soundMuted, setSoundMuted] = useState(!sounds.enabled);
 
   // Bottom Navigation Active Tab
   const [activeTab, setActiveTab] = useState<'home' | 'brawlers' | 'story' | 'trophy' | 'shop'>('home');
+
+  // CrazyGames SDK Init
+  useEffect(() => {
+    crazyGames.init();
+  }, []);
+
+  const handleAddGems = (amount: number) => {
+    setGems((prev) => {
+      const next = prev + amount;
+      try {
+        localStorage.setItem('ringout_gems', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleAddGold = (amount: number) => {
+    setGold((prev) => {
+      const next = prev + amount;
+      try {
+        localStorage.setItem('ringout_gold', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleUnlockChampion = (id: ChampionId, cost: number) => {
+    setGems((prev) => {
+      const next = Math.max(0, prev - cost);
+      try {
+        localStorage.setItem('ringout_gems', String(next));
+      } catch {}
+      return next;
+    });
+    setUnlockedChampions((prev) => {
+      const next = [...prev, id];
+      try {
+        localStorage.setItem('ringout_unlocked_champions', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Three.js Turntable Refs
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -386,21 +453,41 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* Right: Currencies & Settings Gear */}
         <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
-          {/* Gold Pill */}
-          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-400/50 shadow-inner">
+          {/* Gold Pill (Clickable -> Opens Shop) */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsShopOpen(true);
+            }}
+            className="flex items-center gap-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-400/50 hover:border-yellow-300 shadow-inner cursor-pointer active:scale-95 transition-all group"
+            title="Open Shop for Gold"
+          >
             <span className="text-sm">🪙</span>
             <span className="text-xs sm:text-sm font-black text-yellow-300 font-mono">
               {gold.toLocaleString()}
             </span>
-          </div>
+            <span className="w-4 h-4 rounded-full bg-yellow-400 text-yellow-950 text-[10px] font-black flex items-center justify-center ml-0.5 group-hover:scale-110">
+              +
+            </span>
+          </button>
 
-          {/* Gems Pill */}
-          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-emerald-400/50 shadow-inner">
+          {/* Gems Pill (Clickable -> Opens Shop) */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsShopOpen(true);
+            }}
+            className="flex items-center gap-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-emerald-400/50 hover:border-emerald-300 shadow-inner cursor-pointer active:scale-95 transition-all group"
+            title="Open Shop for Gems"
+          >
             <span className="text-sm">💎</span>
             <span className="text-xs sm:text-sm font-black text-emerald-300 font-mono">
-              {gems}
+              {gems.toLocaleString()}
             </span>
-          </div>
+            <span className="w-4 h-4 rounded-full bg-emerald-400 text-emerald-950 text-[10px] font-black flex items-center justify-center ml-0.5 group-hover:scale-110">
+              +
+            </span>
+          </button>
 
           {/* Settings Button */}
           <button
@@ -561,7 +648,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <span>Brawlers</span>
           </button>
 
-          {/* Tab 3: Trophy Road */}
+          {/* Tab 3: Shop */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsShopOpen(true);
+            }}
+            className="px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-300 hover:text-white bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border border-amber-300/50 hover:border-amber-200 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+          >
+            <span>🛒 Shop</span>
+          </button>
+
+          {/* Tab 4: Trophy Road */}
           <button
             onClick={() => {
               sounds.playBump(0.6);
@@ -572,7 +670,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <span>Trophies</span>
           </button>
 
-          {/* Tab 4: Settings */}
+          {/* Tab 5: Settings */}
           <button
             onClick={() => {
               sounds.playBump(0.6);
@@ -792,6 +890,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* 8. 3D ARCADE SHOP MODAL (GEMS, REWARDED ADS, XSOLLA PACKS, CHAMPIONS) */}
+      <ShopModal
+        isOpen={isShopOpen}
+        onClose={() => setIsShopOpen(false)}
+        gold={gold}
+        gems={gems}
+        onAddGems={handleAddGems}
+        onAddGold={handleAddGold}
+        unlockedChampions={unlockedChampions}
+        onUnlockChampion={handleUnlockChampion}
+      />
     </div>
   );
 };

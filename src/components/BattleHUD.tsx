@@ -21,7 +21,10 @@ import {
   Pause,
   LogOut,
   Home,
+  Tv,
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { crazyGames } from '../game/crazyGamesSdk';
 
 
 
@@ -179,6 +182,75 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     if (state.isPaused && !isCustomizingHUD) {
       onTogglePause();
     }
+  };
+
+  // CrazyGames Ad and Reward Integration
+  const [hasClaimed2X, setHasClaimed2X] = useState(false);
+  const [adInProgress, setAdInProgress] = useState(false);
+
+  useEffect(() => {
+    if (!state.isGameOver && state.countdown <= 0) {
+      crazyGames.gameplayStart();
+    }
+  }, [state.countdown, state.isGameOver]);
+
+  useEffect(() => {
+    if (state.isGameOver) {
+      crazyGames.gameplayStop();
+      if (state.winner === 'player') {
+        crazyGames.happyTime();
+      }
+    } else {
+      setHasClaimed2X(false);
+    }
+  }, [state.isGameOver, state.winner]);
+
+  const handleHomeWithAd = () => {
+    sounds.playBump(0.6);
+    crazyGames.requestMidgameAd({
+      onFinish: () => {
+        onOpenShowcase?.();
+      },
+    });
+  };
+
+  const handleRestartWithAd = () => {
+    sounds.playBump(0.6);
+    crazyGames.requestMidgameAd({
+      onFinish: () => {
+        onRestart();
+      },
+    });
+  };
+
+  const handleClaim2XReward = () => {
+    if (hasClaimed2X || adInProgress) return;
+    setAdInProgress(true);
+    sounds.playBump(0.6);
+
+    crazyGames.requestRewardedAd({
+      onStart: () => {},
+      onReward: () => {
+        try {
+          const curGems = parseInt(localStorage.getItem('ringout_gems') || '150', 10);
+          localStorage.setItem('ringout_gems', String(curGems + 200));
+        } catch {}
+        sounds.playLevelUp?.();
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#facc15', '#38bdf8', '#22c55e'],
+        });
+        setHasClaimed2X(true);
+      },
+      onFinish: () => {
+        setAdInProgress(false);
+      },
+      onError: () => {
+        setAdInProgress(false);
+      },
+    });
   };
 
   // Start Customization Mode
@@ -876,16 +948,30 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   </div>
                 </div>
 
+                {/* 2X Rewarded Ad Button on Victory */}
+                <button
+                  disabled={hasClaimed2X || adInProgress}
+                  onClick={handleClaim2XReward}
+                  className={`w-full py-3 mb-2 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
+                    hasClaimed2X
+                      ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300 opacity-80 cursor-default'
+                      : 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-yellow-950 border-amber-200 shadow-[0_4px_0_#78350f,0_6px_15px_rgba(245,158,11,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#78350f] animate-pulse'
+                  }`}
+                >
+                  <Tv className="w-4 h-4" />
+                  <span>{hasClaimed2X ? '✓ CLAIMED +200 GEMS!' : '📺 2X REWARD: CLAIM +200 GEMS'}</span>
+                </button>
+
                 <div className="flex items-center gap-2.5 mt-2">
                   <button
-                    onClick={() => onOpenShowcase?.()}
+                    onClick={handleHomeWithAd}
                     className="flex-1 py-3 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Home className="w-4 h-4 stroke-[2.5]" />
                     <span>HOME</span>
                   </button>
                   <button
-                    onClick={onRestart}
+                    onClick={handleRestartWithAd}
                     className="flex-1 py-3 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_4px_0_#365314,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#365314] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <RotateCcw className="w-4 h-4 stroke-[2.5]" />
@@ -918,16 +1004,30 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   </div>
                 </div>
 
+                {/* Consolation Rewarded Ad */}
+                <button
+                  disabled={hasClaimed2X || adInProgress}
+                  onClick={handleClaim2XReward}
+                  className={`w-full py-3 mb-2 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
+                    hasClaimed2X
+                      ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300 opacity-80 cursor-default'
+                      : 'bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-600 hover:from-sky-400 hover:to-blue-400 text-white border-sky-200 shadow-[0_4px_0_#1e3a8a,0_6px_15px_rgba(14,165,233,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#1e3a8a]'
+                  }`}
+                >
+                  <Tv className="w-4 h-4" />
+                  <span>{hasClaimed2X ? '✓ CLAIMED +200 GEMS!' : '📺 REVENGE CRATE: GET +200 GEMS'}</span>
+                </button>
+
                 <div className="flex items-center gap-2.5 mt-2">
                   <button
-                    onClick={() => onOpenShowcase?.()}
+                    onClick={handleHomeWithAd}
                     className="flex-1 py-3 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#7f1d1d] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Home className="w-4 h-4 stroke-[2.5]" />
                     <span>HOME</span>
                   </button>
                   <button
-                    onClick={onRestart}
+                    onClick={handleRestartWithAd}
                     className="flex-1 py-3 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <RotateCcw className="w-4 h-4 stroke-[2.5]" />
@@ -962,14 +1062,14 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
                 <div className="flex items-center gap-2.5 mt-2">
                   <button
-                    onClick={() => onOpenShowcase?.()}
+                    onClick={handleHomeWithAd}
                     className="flex-1 py-3 bg-gradient-to-b from-slate-600 via-slate-700 to-slate-800 hover:from-slate-500 hover:to-slate-700 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-slate-400 shadow-[0_4px_0_#1e293b,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#1e293b] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Home className="w-4 h-4 stroke-[2.5]" />
                     <span>HOME</span>
                   </button>
                   <button
-                    onClick={onRestart}
+                    onClick={handleRestartWithAd}
                     className="flex-1 py-3 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_4px_0_#075985,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <RotateCcw className="w-4 h-4 stroke-[2.5]" />

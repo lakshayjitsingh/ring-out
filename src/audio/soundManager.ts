@@ -131,6 +131,11 @@ class SoundManager {
     });
   }
 
+  // Chime for gems, purchases, and rewards
+  playLevelUp() {
+    this.playVictory();
+  }
+
   // Defeat descending tones
   playDefeat() {
     if (!this.enabled) return;

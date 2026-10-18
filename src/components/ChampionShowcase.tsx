@@ -6,8 +6,9 @@ import {
   type ChampionId,
   createChampionMesh,
   type CreatedChampion,
+  animateChampion,
 } from '../game/championModels';
-import { Swords, Check, ArrowLeft, Rotate3d, Sparkles, Shield, Zap } from 'lucide-react';
+import { Swords, Check, ArrowLeft, Rotate3d, Sparkles } from 'lucide-react';
 
 interface ChampionShowcaseProps {
   selectedChampion: ChampionId;
@@ -175,10 +176,9 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
         pedestalRef.current.rotation.y = currentRotationYRef.current * 0.4;
       }
 
-      // Subtle breathing float on hero pose (no walking/jumping)
+      // Sine-wave breathing, limb sway, and head gaze
       if (currentModelRef.current) {
-        const breathe = Math.sin(clock.getElapsedTime() * 2.2) * 0.03;
-        currentModelRef.current.group.position.y = breathe;
+        animateChampion(currentModelRef.current, clock.getElapsedTime(), false, false);
       }
 
       renderer.render(scene, camera);
@@ -381,25 +381,61 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
             {activeChampion.description}
           </p>
 
-          {/* Fair Play & Chapter Specs */}
-          <div className="space-y-2 bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 mb-4 text-xs font-mono">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Chapter
+          {/* Active Special Skill Card */}
+          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 mb-3 text-left">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
+                <span>{activeChampion.skill.icon}</span> Active Special Skill
               </span>
-              <span className="text-emerald-300 font-bold">{activeChampion.chapter}</span>
+              <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800">
+                {activeChampion.skill.cooldown}s CD
+              </span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-cyan-400" /> Match Physics
-              </span>
-              <span className="text-cyan-300 font-bold">100% Balanced</span>
+            <div className="text-sm font-black text-white mb-0.5">
+              {activeChampion.skill.name}
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-400" /> Fair Play Rule
-              </span>
-              <span className="text-amber-300 font-bold">Zero Stat Advantage</span>
+            <p className="text-[11px] text-slate-300 leading-snug">
+              {activeChampion.skill.desc}
+            </p>
+          </div>
+
+          {/* Champion Stats */}
+          <div className="space-y-1.5 bg-slate-950/70 border border-slate-800 rounded-2xl p-3 mb-3 text-xs font-mono">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 text-[11px]">Power</span>
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-rose-500 rounded-full" style={{ width: `${(activeChampion.stats.power / 10) * 100}%` }} />
+                </div>
+                <span className="text-white text-[11px] font-bold w-4 text-right">{activeChampion.stats.power}</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 text-[11px]">Speed</span>
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-sky-400 rounded-full" style={{ width: `${(activeChampion.stats.speed / 10) * 100}%` }} />
+                </div>
+                <span className="text-white text-[11px] font-bold w-4 text-right">{activeChampion.stats.speed}</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 text-[11px]">Weight</span>
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-400 rounded-full" style={{ width: `${(activeChampion.stats.weight / 10) * 100}%` }} />
+                </div>
+                <span className="text-white text-[11px] font-bold w-4 text-right">{activeChampion.stats.weight}</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 text-[11px]">Special</span>
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${(activeChampion.stats.special / 10) * 100}%` }} />
+                </div>
+                <span className="text-white text-[11px] font-bold w-4 text-right">{activeChampion.stats.special}</span>
+              </div>
             </div>
           </div>
 

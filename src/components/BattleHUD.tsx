@@ -54,6 +54,7 @@ interface BattleHUDProps {
   selectedChampion?: ChampionId;
   onOpenShowcase?: () => void;
   onDash: (aimX?: number, aimZ?: number) => void;
+  onSpecialSkill?: () => void;
   onAimChange: (isAiming: boolean, aimX?: number, aimZ?: number) => void;
   onJoystickMove: (x: number, z: number) => void;
   onCameraChange: (mode: CameraMode) => void;
@@ -66,6 +67,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   selectedChampion,
   onOpenShowcase,
   onDash,
+  onSpecialSkill,
   onAimChange,
   onJoystickMove,
   onCameraChange,
@@ -125,6 +127,10 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   // Dash Button (Option C: Hold & Drag to Aim, Quick Tap to Dash)
   const dashTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isAimingRef = useRef(false);
+
+  const activeChampId = selectedChampion || state.playerChampionId || 'leo';
+  const currentChamp = CHAMPIONS[activeChampId] || CHAMPIONS.leo;
+  const currentSkill = currentChamp.skill;
 
   // Ensure controls stay within screen bounds on window resize
   useEffect(() => {
@@ -882,6 +888,55 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             </span>
           </div>
         </div>
+      </div>
+
+      {/* 2C. ACTIVE SPECIAL SKILL BUTTON (BRAWL STARS STYLE SUPER BUTTON) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: `${Math.max(16, activeLayout.dash.x - 90)}px`,
+          top: `${Math.max(16, activeLayout.dash.y - 12)}px`,
+          transform: `scale(${activeLayout.dash.scale ?? 1.0})`,
+          transformOrigin: 'center center',
+          opacity: activeLayout.dash.opacity ?? 1.0,
+        }}
+        className="pointer-events-auto touch-none select-none z-45 flex flex-col items-center"
+      >
+        <button
+          onClick={() => {
+            if (state.playerSkillCooldown <= 0) {
+              sounds.playBump(1.2);
+              onSpecialSkill?.();
+            }
+          }}
+          disabled={state.playerSkillCooldown > 0 || state.countdown > 0}
+          className={`relative w-20 h-20 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 border-3 shadow-xl ${
+            state.playerSkillCooldown <= 0
+              ? 'bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 border-yellow-200 text-amber-950 shadow-[0_0_25px_rgba(245,158,11,0.8),inset_0_2px_4px_rgba(255,255,255,0.9)] animate-pulse'
+              : 'bg-slate-900/90 border-slate-700 text-slate-400 cursor-not-allowed opacity-80 shadow-inner'
+          }`}
+          title={`${currentSkill.name} (Press E or Tap)`}
+        >
+          {state.playerSkillCooldown > 0 ? (
+            <div className="flex flex-col items-center justify-center">
+              <span className="text-xl leading-none opacity-40">{currentSkill.icon}</span>
+              <span className="text-sm font-black font-mono text-amber-300 mt-0.5">
+                {Math.ceil(state.playerSkillCooldown)}s
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center">
+              <span className="text-2xl leading-none drop-shadow">{currentSkill.icon}</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-amber-950 bg-white/70 px-1.5 py-0.2 rounded-full mt-0.5 shadow-sm">
+                READY [E]
+              </span>
+            </div>
+          )}
+        </button>
+
+        <span className="px-2 py-0.5 rounded-full bg-black/80 border border-yellow-500/50 text-[9px] text-yellow-300 uppercase tracking-widest font-black drop-shadow mt-1">
+          {currentSkill.name.split(' ')[0]}
+        </span>
       </div>
 
       {/* 3. FINAL MATCH VICTORY / DEFEAT MODAL (FIRST TO 3 ROUND WINS) */}

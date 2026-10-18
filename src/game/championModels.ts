@@ -1,6 +1,22 @@
 import * as THREE from 'three';
 
-export type ChampionId = 'leo' | 'kai' | 'nova' | 'titan' | 'kage' | 'bolt';
+export type ChampionId = 'leo' | 'kage' | 'titan' | 'bolt' | 'nova' | 'kai';
+
+export interface ChampionSkill {
+  id: string;
+  name: string;
+  desc: string;
+  cooldown: number; // in seconds
+  icon: string;
+  color: string;
+}
+
+export interface ChampionStats {
+  power: number;   // 1 to 10
+  speed: number;   // 1 to 10
+  weight: number;  // 1 to 10
+  special: number; // 1 to 10
+}
 
 export interface ChampionInfo {
   id: ChampionId;
@@ -12,6 +28,8 @@ export interface ChampionInfo {
   glowColor: number;
   tagline: string;
   description: string;
+  skill: ChampionSkill;
+  stats: ChampionStats;
 }
 
 export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
@@ -24,7 +42,96 @@ export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
     color: '#10b981',
     glowColor: 0x10b981,
     tagline: 'Backwards cap, island scout vest, confident smile.',
-    description: 'An adventurous human brawler from the coastal shores. Armed with quick reflexes, a golden compass medallion, and punchy skate kicks.',
+    description: 'An adventurous human brawler from coastal shores. Armed with quick reflexes, punchy skate kicks, and seismic ground slams.',
+    skill: {
+      id: 'ground_slam',
+      name: 'Mega Ground Slam',
+      desc: 'Slams the arena floor with volcanic force, launching an expanding radial shockwave that blows nearby rivals off the turf.',
+      cooldown: 7,
+      icon: '💥',
+      color: '#10b981',
+    },
+    stats: { power: 8, speed: 7, weight: 7, special: 8 },
+  },
+  kage: {
+    id: 'kage',
+    name: 'Kage',
+    title: 'Shadow Shinobi',
+    archetype: 'Void Assassin',
+    chapter: 'Night Shallows',
+    color: '#34d399',
+    glowColor: 0x34d399,
+    tagline: 'Obsidian stealth hood with glowing emerald optics.',
+    description: 'Silent fighter cloaked in carbon-fiber scale armor and trailing cyber-scarf ribbons. Moves like a phantom across boundaries.',
+    skill: {
+      id: 'shadow_blink',
+      name: 'Shadow Blink',
+      desc: 'Instantly teleports 5m forward through emerald smoke, bypassing incoming attacks and re-appearing behind the opponent.',
+      cooldown: 5,
+      icon: '⚡',
+      color: '#34d399',
+    },
+    stats: { power: 6, speed: 10, weight: 5, special: 9 },
+  },
+  titan: {
+    id: 'titan',
+    name: 'Titan Gorr',
+    title: 'Heavy Juggernaut',
+    archetype: 'Iron Juggernaut',
+    chapter: 'Industrial Works',
+    color: '#f59e0b',
+    glowColor: 0xf59e0b,
+    tagline: 'Heavy hydraulic pistons. Shakes the floor on impact.',
+    description: 'Reinforced industrial mech built for pure ring dominance. Broad hazard-striped pauldrons and giant iron knuckles blast foes off the perimeter.',
+    skill: {
+      id: 'iron_barrier',
+      name: 'Iron Barrier',
+      desc: 'Hardens into impenetrable kinetic steel for 3 seconds. Completely immune to knockback with 2.5x impact weight on collision.',
+      cooldown: 9,
+      icon: '🛡️',
+      color: '#f59e0b',
+    },
+    stats: { power: 10, speed: 5, weight: 10, special: 8 },
+  },
+  bolt: {
+    id: 'bolt',
+    name: 'Bolt',
+    title: 'Cyber Robo-Fox',
+    archetype: 'Zooba Mascot',
+    chapter: 'Solar Outpost',
+    color: '#eab308',
+    glowColor: 0xeab308,
+    tagline: 'Pointed radar ears, expressive almond eyes, blazing tail core.',
+    description: 'A fierce mechanical animal mascot brawler equipped with high-torque claw thrusters and an overcharged energy surge.',
+    skill: {
+      id: 'overcharge_surge',
+      name: 'Overcharge Surge',
+      desc: 'Instantly recharges dash to 100% and leaves an electrifying plasma trail on the arena turf that slows and knocks enemies.',
+      cooldown: 6,
+      icon: '⚡',
+      color: '#eab308',
+    },
+    stats: { power: 7, speed: 9, weight: 6, special: 10 },
+  },
+  nova: {
+    id: 'nova',
+    name: 'Nova',
+    title: 'Solar Valkyrie',
+    archetype: 'Agile Duelist',
+    chapter: 'Orbital Arena',
+    color: '#f43f5e',
+    glowColor: 0xf43f5e,
+    tagline: 'Twin plasma antennae. Razor-sharp ring recovery.',
+    description: 'A celestial champion from the orbital circuit. Her high-voltage magenta conduits and lightweight alloy suit make her dashes lethal.',
+    skill: {
+      id: 'gravity_vortex',
+      name: 'Gravity Vortex',
+      desc: 'Summons a cosmic gravitational singularity in the arena center that pulls the opponent inward before exploding them outward.',
+      cooldown: 8,
+      icon: '🌌',
+      color: '#f43f5e',
+    },
+    stats: { power: 8, speed: 8, weight: 6, special: 9 },
   },
   kai: {
     id: 'kai',
@@ -36,50 +143,15 @@ export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
     glowColor: 0x00f5ff,
     tagline: 'Precision timing, street style, unstoppable momentum.',
     description: 'Armed with high-frequency kinetic headphones and a reactive cyber-jacket, Kai commands the center ring with sharp reflexes.',
-  },
-  nova: {
-    id: 'nova',
-    name: 'Nova',
-    title: 'Plasma Valkyrie',
-    archetype: 'Agile Duelist',
-    chapter: 'Orbital Arena',
-    color: '#f43f5e',
-    glowColor: 0xf43f5e,
-    tagline: 'Twin plasma antennae. Razor-sharp ring recovery.',
-    description: 'A champion from the neon orbital circuit. Her high-voltage magenta conduits and lightweight alloy suit make her dashes lethal.',
-  },
-  titan: {
-    id: 'titan',
-    name: 'Titan (Gorr)',
-    title: 'Heavy Juggernaut',
-    archetype: 'Iron Juggernaut',
-    chapter: 'Industrial Works',
-    color: '#f59e0b',
-    glowColor: 0xf59e0b,
-    tagline: 'Heavy hydraulic pistons. Shakes the floor on impact.',
-    description: 'Reinforced industrial mech built for pure ring dominance. Broad hazard-striped pauldrons and giant iron knuckles blast foes off the perimeter.',
-  },
-  kage: {
-    id: 'kage',
-    name: 'Kage',
-    title: 'Shadow Shinobi',
-    archetype: 'Void Assassin',
-    chapter: 'Night Shallows',
-    color: '#10b981',
-    glowColor: 0x10b981,
-    tagline: 'Obsidian stealth hood with glowing emerald optics.',
-    description: 'Silent fighter cloaked in carbon-fiber scale armor and trailing cyber-scarf ribbons. Moves like a phantom across the boundary.',
-  },
-  bolt: {
-    id: 'bolt',
-    name: 'Bolt',
-    title: 'Cyber Robo-Fox',
-    archetype: 'Beast Scout',
-    chapter: 'Solar Outpost',
-    color: '#eab308',
-    glowColor: 0xeab308,
-    tagline: 'Pointed radar ears, digital LED eyes, blazing tail core.',
-    description: 'A fierce mechanical animal brawler equipped with high-torque claw thrusters and an expressive holographic visor.',
+    skill: {
+      id: 'sonic_burst',
+      name: 'Sonic Shockwave',
+      desc: 'Blasts a high-decibel sonic cone forward, knocking any charging opponent backwards.',
+      cooldown: 6,
+      icon: '🔊',
+      color: '#00f5ff',
+    },
+    stats: { power: 7, speed: 8, weight: 6, special: 8 },
   },
 };
 
@@ -91,8 +163,17 @@ export interface CreatedChampion {
   coreMesh: THREE.Mesh;
   fists: THREE.Mesh[];
   accentMeshes: THREE.Mesh[];
-  legs?: THREE.Group[];
-  arms?: THREE.Group[];
+  head?: THREE.Object3D;
+  torso?: THREE.Object3D;
+  leftArm?: THREE.Object3D;
+  rightArm?: THREE.Object3D;
+  leftLeg?: THREE.Object3D;
+  rightLeg?: THREE.Object3D;
+  legs?: THREE.Object3D[];
+  arms?: THREE.Object3D[];
+  tail?: THREE.Object3D;
+  ribbons?: THREE.Object3D[];
+  baseY?: number;
 }
 
 /**
@@ -1041,7 +1122,7 @@ function createNovaMesh(): CreatedChampion {
     accentMeshes.push(heel);
   });
 
-  return { group, bodyMesh: body, coreMesh: core, fists: [leftFist, rightFist], accentMeshes };
+  return { group, bodyMesh: body, coreMesh: core, fists: [leftFist, rightFist], accentMeshes, head };
 }
 
 // ----------------------------------------------------------------------
@@ -1165,7 +1246,7 @@ function createTitanMesh(): CreatedChampion {
     accentMeshes.push(toeCap);
   });
 
-  return { group, bodyMesh: body, coreMesh: core, fists: [leftFist, rightFist], accentMeshes };
+  return { group, bodyMesh: body, coreMesh: core, fists: [leftFist, rightFist], accentMeshes, head };
 }
 
 // ----------------------------------------------------------------------
@@ -1272,7 +1353,7 @@ function createKageMesh(): CreatedChampion {
     accentMeshes.push(edge);
   });
 
-  return { group, bodyMesh: body, coreMesh: core, fists: [leftFist, rightFist], accentMeshes };
+  return { group, bodyMesh: body, coreMesh: core, fists: [leftFist, rightFist], accentMeshes, head: hood };
 }
 
 // ----------------------------------------------------------------------
@@ -1402,5 +1483,140 @@ function createBoltMesh(): CreatedChampion {
     accentMeshes.push(pad);
   });
 
-  return { group, bodyMesh: body, coreMesh: core, fists: [leftFist, rightFist], accentMeshes };
+  return {
+    group,
+    bodyMesh: body,
+    coreMesh: core,
+    fists: [leftFist, rightFist],
+    accentMeshes,
+    head,
+    tail: tailGroup,
+  };
 }
+
+/**
+ * Procedural sine-wave animation for character models.
+ * Drives breathing, limb counter-swing, foot plant, and head sway.
+ */
+export function animateChampion(
+  champ: CreatedChampion,
+  time: number,
+  isMoving: boolean = false,
+  isDashing: boolean = false
+) {
+  if (!champ || !champ.group) return;
+
+  const baseY = champ.baseY ?? 0;
+
+  if (isDashing) {
+    // Dynamic dash pose: athletic forward thrust
+    champ.group.rotation.x = 0.28;
+    champ.group.position.y = baseY - 0.04;
+    if (champ.fists && champ.fists.length >= 2) {
+      champ.fists[0].position.z = -0.55;
+      champ.fists[1].position.z = 0.25;
+      champ.fists[0].position.y = 0.95;
+      champ.fists[1].position.y = 0.85;
+    }
+    if (champ.tail) {
+      champ.tail.rotation.x = -0.35;
+      champ.tail.rotation.y = Math.sin(time * 20) * 0.15;
+    }
+    return;
+  }
+
+  if (isMoving) {
+    // Sprint cycle with natural brawler gait
+    const stepFreq = 11.0;
+    const legSwing = Math.sin(time * stepFreq) * 0.55;
+    const armSwing = Math.sin(time * stepFreq) * 0.45;
+    const bob = Math.abs(Math.sin(time * stepFreq)) * 0.08;
+
+    champ.group.position.y = baseY + bob;
+    champ.group.rotation.x = 0.10;
+
+    if (champ.leftLeg && champ.rightLeg) {
+      champ.leftLeg.rotation.x = legSwing;
+      champ.rightLeg.rotation.x = -legSwing;
+    } else if (champ.legs && champ.legs.length >= 2) {
+      champ.legs[0].rotation.x = legSwing;
+      champ.legs[1].rotation.x = -legSwing;
+    }
+
+    if (champ.leftArm && champ.rightArm) {
+      champ.leftArm.rotation.x = -armSwing;
+      champ.rightArm.rotation.x = armSwing;
+    } else if (champ.arms && champ.arms.length >= 2) {
+      champ.arms[0].rotation.x = -armSwing;
+      champ.arms[1].rotation.x = armSwing;
+    }
+
+    if (champ.fists && champ.fists.length >= 2) {
+      champ.fists[0].position.z = -0.28 + Math.sin(time * stepFreq) * 0.25;
+      champ.fists[1].position.z = -0.28 - Math.sin(time * stepFreq) * 0.25;
+    }
+
+    if (champ.head) {
+      champ.head.rotation.x = Math.sin(time * stepFreq * 2) * 0.04;
+    }
+
+    if (champ.tail) {
+      champ.tail.rotation.y = Math.sin(time * 8) * 0.4;
+      champ.tail.rotation.z = Math.cos(time * 8) * 0.2;
+    }
+  } else {
+    // Smooth idle breathing and subtle organic sway
+    const breathFreq = 2.4;
+    const breath = Math.sin(time * breathFreq) * 0.035;
+    const sway = Math.sin(time * 1.6) * 0.025;
+
+    champ.group.position.y = baseY + breath;
+    champ.group.rotation.x = 0;
+    champ.group.rotation.z = sway * 0.5;
+
+    // Reset leg rotations
+    if (champ.leftLeg && champ.rightLeg) {
+      champ.leftLeg.rotation.x = 0;
+      champ.rightLeg.rotation.x = 0;
+    } else if (champ.legs && champ.legs.length >= 2) {
+      champ.legs[0].rotation.x = 0;
+      champ.legs[1].rotation.x = 0;
+    }
+
+    // Gentle idle arm sway
+    if (champ.leftArm && champ.rightArm) {
+      champ.leftArm.rotation.x = Math.sin(time * 2.2) * 0.08;
+      champ.rightArm.rotation.x = -Math.sin(time * 2.2) * 0.08;
+    } else if (champ.arms && champ.arms.length >= 2) {
+      champ.arms[0].rotation.x = Math.sin(time * 2.2) * 0.08;
+      champ.arms[1].rotation.x = -Math.sin(time * 2.2) * 0.08;
+    }
+
+    // Fists float rhythmically
+    if (champ.fists && champ.fists.length >= 2) {
+      champ.fists[0].position.y = 0.92 + Math.sin(time * 2.8) * 0.03;
+      champ.fists[1].position.y = 0.92 + Math.sin(time * 2.8 + Math.PI * 0.5) * 0.03;
+    }
+
+    // Subtle head tilt / scanning gaze
+    if (champ.head) {
+      champ.head.rotation.y = Math.sin(time * 1.2) * 0.06;
+      champ.head.rotation.x = Math.sin(time * 2.4) * 0.03;
+    }
+
+    // Tail waving smoothly
+    if (champ.tail) {
+      champ.tail.rotation.y = Math.sin(time * 3.8) * 0.32;
+      champ.tail.rotation.z = Math.cos(time * 3.8) * 0.12;
+    }
+
+    // Scarf / ribbons wave
+    if (champ.ribbons) {
+      champ.ribbons.forEach((ribbon, idx) => {
+        ribbon.rotation.x = Math.sin(time * 4 + idx) * 0.2;
+        ribbon.rotation.z = Math.cos(time * 3 + idx) * 0.15;
+      });
+    }
+  }
+}
+

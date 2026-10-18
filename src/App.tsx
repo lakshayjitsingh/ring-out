@@ -31,6 +31,10 @@ export function App() {
     winner: null,
     cameraMode: 'third_person',
     warningText: null,
+    playerSkillCooldown: 0,
+    playerSkillMaxCooldown: 7,
+    isPlayerSkillActive: false,
+    playerChampionId: 'leo',
   });
 
   useEffect(() => {
@@ -55,6 +59,10 @@ export function App() {
 
   const handleDash = (aimX?: number, aimZ?: number) => {
     engineRef.current?.triggerDash(aimX, aimZ);
+  };
+
+  const handleSpecialSkill = () => {
+    engineRef.current?.triggerSpecialSkill(true);
   };
 
   const handleAimChange = (isAiming: boolean, aimX?: number, aimZ?: number) => {
@@ -106,6 +114,7 @@ export function App() {
           selectedChampion={selectedChampion}
           onOpenShowcase={() => setActiveScreen('home')}
           onDash={handleDash}
+          onSpecialSkill={handleSpecialSkill}
           onAimChange={handleAimChange}
           onJoystickMove={handleJoystickMove}
           onCameraChange={handleCameraChange}

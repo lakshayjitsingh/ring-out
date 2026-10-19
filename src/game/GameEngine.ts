@@ -2180,7 +2180,8 @@ export class GameEngine {
 
     // 7. Update Continuous Dash Power Charge (0% to 100%)
     if (!this.player.isDashing) {
-      this.player.chargePercent = Math.min(100, this.player.chargePercent + dt * 38);
+      const pChargeMult = CHAMPIONS[this.playerChampionId]?.stats?.chargeMult || 1.0;
+      this.player.chargePercent = Math.min(100, this.player.chargePercent + dt * 38 * pChargeMult);
       this.state.playerCharge = this.player.chargePercent;
     }
 
@@ -2214,9 +2215,13 @@ export class GameEngine {
   private updateBrawlerPhysics(b: Brawler, inputX: number, inputZ: number, dt: number) {
     if (b.isKnockedOut) return;
 
-    // Movement speed & acceleration
-    const baseSpeed = 9.5;
-    const accel = 45;
+    // Movement speed & acceleration scaled by champion stats
+    const stats = b.isBot
+      ? CHAMPIONS[this.botChampionId]?.stats
+      : CHAMPIONS[this.playerChampionId]?.stats;
+    const speedMult = stats?.speedMult || 1.0;
+    const baseSpeed = 9.5 * speedMult;
+    const accel = 45 * speedMult;
     const friction = 7.5;
 
     if (!b.isDashing && b.isGrounded) {
@@ -2317,7 +2322,8 @@ export class GameEngine {
 
     // Bot continuous power charge
     if (!this.bot.isDashing) {
-      this.bot.chargePercent = Math.min(100, this.bot.chargePercent + dt * 34);
+      const bChargeMult = CHAMPIONS[this.botChampionId]?.stats?.chargeMult || 1.0;
+      this.bot.chargePercent = Math.min(100, this.bot.chargePercent + dt * 34 * bChargeMult);
     }
 
     const dx = this.player.pos.x - this.bot.pos.x;
@@ -2376,31 +2382,34 @@ export class GameEngine {
       this.bot.pos.x += nx * overlap * 0.5;
       this.bot.pos.z += nz * overlap * 0.5;
 
-      // Elastic knockback impulse - dynamically scaled by exact charge percentage!
-      let pImpulse = 8;
-      let bImpulse = 8;
+      // Champion-specific physics stats
+      const pStats = CHAMPIONS[this.playerChampionId]?.stats || { speedMult: 1, powerMult: 1, massMult: 1, chargeMult: 1 };
+      const bStats = CHAMPIONS[this.botChampionId]?.stats || { speedMult: 1, powerMult: 1, massMult: 1, chargeMult: 1 };
+
+      // Elastic knockback impulse - dynamically scaled by exact charge percentage and stats!
+      let pImpulse = 8 * (bStats.powerMult / pStats.massMult);
+      let bImpulse = 8 * (pStats.powerMult / bStats.massMult);
 
       if (this.player.isDashing && !this.bot.isDashing) {
         // Player landed power dash!
         const pRatio = Math.max(0.1, this.player.dashPowerPercent / 100);
-        // 40% -> 18.8, 50% -> 21.0, 100% -> 32.0 (noticeable power differences!)
-        bImpulse = 10 + pRatio * 22;
-        pImpulse = 3.5;
+        bImpulse = (10 + pRatio * 22) * (pStats.powerMult / bStats.massMult);
+        pImpulse = 3.5 / pStats.massMult;
         this.triggerScreenShake(0.1 + pRatio * 0.3, 0.2 + pRatio * 0.6);
         sounds.playBump(1.0 + pRatio * 1.5);
       } else if (this.bot.isDashing && !this.player.isDashing) {
         // Bot landed power dash!
         const bRatio = Math.max(0.1, this.bot.dashPowerPercent / 100);
-        pImpulse = 10 + bRatio * 22;
-        bImpulse = 3.5;
+        pImpulse = (10 + bRatio * 22) * (bStats.powerMult / pStats.massMult);
+        bImpulse = 3.5 / bStats.massMult;
         this.triggerScreenShake(0.1 + bRatio * 0.3, 0.2 + bRatio * 0.6);
         sounds.playBump(1.0 + bRatio * 1.5);
       } else if (this.player.isDashing && this.bot.isDashing) {
-        // Clash! Higher percentage charge wins the momentum contest!
+        // Clash! Higher percentage charge & power stats win the momentum contest!
         const pRatio = Math.max(0.1, this.player.dashPowerPercent / 100);
         const bRatio = Math.max(0.1, this.bot.dashPowerPercent / 100);
-        pImpulse = 12 + bRatio * 14 - pRatio * 6;
-        bImpulse = 12 + pRatio * 14 - bRatio * 6;
+        pImpulse = (12 + bRatio * 14 - pRatio * 6) * (bStats.powerMult / pStats.massMult);
+        bImpulse = (12 + pRatio * 14 - bRatio * 6) * (pStats.powerMult / bStats.massMult);
         this.triggerScreenShake(0.35, 0.8);
         sounds.playBump(2.4);
       } else {

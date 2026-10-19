@@ -12,7 +12,6 @@ import {
   BookOpen,
   Settings,
   Play,
-  RotateCcw,
   X,
   ChevronRight,
   Volume2,
@@ -22,6 +21,7 @@ import {
 import { sounds } from '../audio/soundManager';
 import { crazyGames } from '../game/crazyGamesSdk';
 import { ShopModal } from './ShopModal';
+import { LeaderboardModal } from './LeaderboardModal';
 
 interface HomeScreenProps {
   selectedChampion: ChampionId;
@@ -81,12 +81,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [isTrophyRoadOpen, setIsTrophyRoadOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [matchmakingCountdown, setMatchmakingCountdown] = useState(3);
   const [soundMuted, setSoundMuted] = useState(!sounds.enabled);
 
   // Bottom Navigation Active Tab
-  const [activeTab, setActiveTab] = useState<'home' | 'brawlers' | 'story' | 'trophy' | 'shop'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'brawlers' | 'shop' | 'leaderboard'>('home');
 
   // CrazyGames SDK Init
   useEffect(() => {
@@ -184,8 +185,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     const container = containerRef.current;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x060913);
-    scene.fog = new THREE.FogExp2(0x060913, 0.035);
+    scene.background = new THREE.Color(0x38bdf8); // Radiant sunny azure sky
+    scene.fog = new THREE.FogExp2(0x7dd3fc, 0.008); // Soft coastal sea horizon haze
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
@@ -199,50 +200,69 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(renderer.domElement);
 
-    // Studio Lighting
-    const ambient = new THREE.AmbientLight(0xdbeafe, 1.1);
+    // Radiant Sunny Daylight Lighting
+    const ambient = new THREE.AmbientLight(0xffffff, 1.3);
     scene.add(ambient);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x0f172a, 1.0);
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0284c7, 1.1);
     scene.add(hemiLight);
 
-    const frontKey = new THREE.DirectionalLight(0xffffff, 2.2);
-    frontKey.position.set(1.5, 4.0, 5.0);
-    frontKey.castShadow = true;
-    scene.add(frontKey);
+    // Warm Sun Directional Light
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, 2.4);
+    sunLight.position.set(2.5, 6.0, 4.5);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 1024;
+    sunLight.shadow.mapSize.height = 1024;
+    scene.add(sunLight);
 
-    const keySpot = new THREE.SpotLight(0xffffff, 2.5, 20, Math.PI / 4, 0.35, 1);
-    keySpot.position.set(0, 6, 2);
-    scene.add(keySpot);
+    // Azure Sky Fill Light
+    const skyFill = new THREE.DirectionalLight(0x7dd3fc, 1.5);
+    skyFill.position.set(-3, 3, -3);
+    scene.add(skyFill);
 
-    const rimLight = new THREE.DirectionalLight(0x38bdf8, 2.2);
-    rimLight.position.set(0, 3, -4);
-    scene.add(rimLight);
+    // Golden Stage Spotlight
+    const stageSpot = new THREE.SpotLight(0xfef08a, 2.0, 20, Math.PI / 4, 0.35, 1);
+    stageSpot.position.set(0, 6, 2);
+    scene.add(stageSpot);
 
-    const accentFloorLight = new THREE.PointLight(activeChampion.glowColor, 3.0, 6);
+    const accentFloorLight = new THREE.PointLight(activeChampion.glowColor, 3.5, 8);
     accentFloorLight.position.set(0, 0.3, 0);
     scene.add(accentFloorLight);
 
-    // Turntable Pedestal
+    // Championship Tournament Pedestal (Polished Cyan Platform + Gold Rim)
     const pedestalGroup = new THREE.Group();
     pedestalRef.current = pedestalGroup;
 
+    // Platform Base
     const baseGeo = new THREE.CylinderGeometry(1.8, 2.0, 0.25, 48);
     const baseMat = new THREE.MeshStandardMaterial({
-      color: 0x111827,
-      metalness: 0.9,
-      roughness: 0.15,
+      color: 0x0284c7,
+      metalness: 0.3,
+      roughness: 0.25,
     });
     const baseMesh = new THREE.Mesh(baseGeo, baseMat);
     baseMesh.position.y = -0.125;
     baseMesh.receiveShadow = true;
     pedestalGroup.add(baseMesh);
 
-    const rimGeo = new THREE.TorusGeometry(1.8, 0.05, 16, 48);
+    // Polished Golden Beveled Rim
+    const goldRimGeo = new THREE.TorusGeometry(1.85, 0.055, 16, 48);
+    goldRimGeo.rotateX(Math.PI / 2);
+    const goldRimMat = new THREE.MeshStandardMaterial({
+      color: 0xfbbf24,
+      metalness: 0.85,
+      roughness: 0.2,
+    });
+    const goldRim = new THREE.Mesh(goldRimGeo, goldRimMat);
+    goldRim.position.y = -0.01;
+    pedestalGroup.add(goldRim);
+
+    // Glowing Champion Neon Ring
+    const rimGeo = new THREE.TorusGeometry(1.72, 0.035, 16, 48);
     rimGeo.rotateX(Math.PI / 2);
     const rimMat = new THREE.MeshBasicMaterial({ color: activeChampion.glowColor });
     const rimMesh = new THREE.Mesh(rimGeo, rimMat);
-    rimMesh.position.y = 0.01;
+    rimMesh.position.y = 0.015;
     pedestalGroup.add(rimMesh);
 
     scene.add(pedestalGroup);
@@ -252,24 +272,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     modelHolderRef.current = modelHolder;
     scene.add(modelHolder);
 
-    // Starfield Dust
-    const starsGeo = new THREE.BufferGeometry();
-    const starCount = 200;
-    const starPos = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i += 3) {
-      starPos[i] = (Math.random() - 0.5) * 20;
-      starPos[i + 1] = Math.random() * 8;
-      starPos[i + 2] = (Math.random() - 0.5) * 20;
+    // Warm Sunny Daylight Motes (Gold & Cyan Sparkling Sunlight Particles)
+    const motesGeo = new THREE.BufferGeometry();
+    const moteCount = 180;
+    const motePos = new Float32Array(moteCount * 3);
+    for (let i = 0; i < moteCount * 3; i += 3) {
+      motePos[i] = (Math.random() - 0.5) * 16;
+      motePos[i + 1] = Math.random() * 7;
+      motePos[i + 2] = (Math.random() - 0.5) * 16;
     }
-    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    const starsMat = new THREE.PointsMaterial({
-      color: 0x60a5fa,
-      size: 0.06,
+    motesGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
+    const motesMat = new THREE.PointsMaterial({
+      color: 0xffedd5,
+      size: 0.08,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.65,
     });
-    const stars = new THREE.Points(starsGeo, starsMat);
-    scene.add(stars);
+    const motes = new THREE.Points(motesGeo, motesMat);
+    scene.add(motes);
 
     loadChampionModel(selectedChampion);
 
@@ -392,63 +412,51 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#060913] select-none text-white font-sans">
+    <div className="relative w-screen h-screen overflow-hidden bg-gradient-to-b from-[#0284c7] via-[#38bdf8] to-[#7dd3fc] select-none text-white font-sans">
       {/* 1. 3D HERO TURNTABLE BACKGROUND STAGE */}
       <div ref={containerRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-0" />
 
-      {/* Atmospheric Vignette & Radial Light */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(6,9,19,0.7)_85%,rgba(6,9,19,0.95)_100%)] z-10" />
+      {/* Atmospheric Sunny Vignette & Radial Light */}
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(2,132,199,0.25)_80%,rgba(3,105,161,0.5)_100%)] z-10" />
 
-      {/* 2. TOP HEADER HUD (Profile, Trophy Road Bar, Currencies, Settings) */}
+      {/* 2. TOP HEADER HUD (Profile & Trophy Road unified at TOP-LEFT, Currencies & Settings at TOP-RIGHT) */}
       <div className="absolute top-0 left-0 right-0 p-3 sm:p-5 flex items-center justify-between z-30 pointer-events-none">
         
-        {/* Left: Player Profile Pill */}
-        <div className="pointer-events-auto flex items-center gap-2.5 bg-gradient-to-r from-[#0288d1]/80 to-[#01579b]/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border-2 border-[#81d4fa]/60 shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_3px_rgba(255,255,255,0.4)]">
-          <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 border-2 border-white flex items-center justify-center shadow-md">
-            <span className="text-base sm:text-lg">⭐</span>
-            <span className="absolute -bottom-1 -right-1 bg-sky-500 border border-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow">
-              {playerLevel}
-            </span>
-          </div>
-          <div>
-            <div className="text-xs sm:text-sm font-black tracking-wide text-white drop-shadow">
-              Player
-            </div>
-            <div className="text-[10px] text-sky-200 font-bold">
-              Rank: Brawler
-            </div>
-          </div>
-        </div>
-
-        {/* Center: Trophy Road Progress Pill (Clickable) */}
+        {/* Top-Left: Unified Player Profile & Trophy Road (Clickable -> Opens Trophy Road) */}
         <div
           onClick={() => {
             sounds.playBump(0.8);
             setIsTrophyRoadOpen(true);
           }}
-          className="pointer-events-auto cursor-pointer group flex items-center gap-2 bg-gradient-to-b from-[#29b6f6]/80 via-[#0288d1]/80 to-[#01579b]/80 backdrop-blur-md px-4 py-1.5 rounded-full border-2 border-[#81d4fa]/70 shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
+          className="pointer-events-auto cursor-pointer group flex items-center gap-3 bg-gradient-to-r from-[#0288d1]/90 via-[#01579b]/90 to-[#0284c7]/90 backdrop-blur-md px-3.5 py-2 rounded-2xl border-2 border-[#81d4fa]/70 shadow-[0_6px_20px_rgba(0,0,0,0.35),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
+          title="Open Trophy Road"
         >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-b from-amber-400 to-yellow-600 border border-amber-200 flex items-center justify-center shadow">
-            <Trophy className="w-4 h-4 text-white drop-shadow" />
+          {/* Avatar with level badge */}
+          <div className="relative w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-white flex items-center justify-center shadow-md">
+            <Trophy className="w-5 h-5 text-amber-900 drop-shadow" />
+            <span className="absolute -bottom-1 -right-1 bg-sky-500 border border-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow text-white">
+              {playerLevel}
+            </span>
           </div>
+
           <div className="text-left">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs sm:text-sm font-black text-amber-300 drop-shadow">
-                {trophies.toLocaleString()}
+            <div className="flex items-center gap-2">
+              <span className="text-sm sm:text-base font-black text-amber-300 drop-shadow">
+                {trophies.toLocaleString()} 🏆
               </span>
               <span className="text-[10px] text-sky-200 font-bold uppercase tracking-wider">
-                Trophy Road
+                TROPHY ROAD
               </span>
             </div>
-            {/* Mini Progress Bar to 1500 */}
-            <div className="w-24 sm:w-32 h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/20 mt-0.5">
+            {/* Progress Bar towards 1500 milestone */}
+            <div className="w-28 sm:w-36 h-2 bg-black/50 rounded-full overflow-hidden border border-white/20 mt-1">
               <div
-                className="h-full bg-gradient-to-r from-amber-400 to-yellow-300 rounded-full"
+                className="h-full bg-gradient-to-r from-amber-400 to-yellow-300 rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(100, (trophies / 1500) * 100)}%` }}
               />
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-sky-200 group-hover:translate-x-0.5 transition-transform" />
+          <ChevronRight className="w-4 h-4 text-sky-200 group-hover:translate-x-0.5 transition-transform ml-0.5" />
         </div>
 
         {/* Right: Currencies & Settings Gear */}
@@ -503,28 +511,40 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* 3. CENTER HERO BADGE & CHANGE HERO BUTTON */}
-      <div className="absolute bottom-28 sm:bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 z-20 pointer-events-auto text-center">
-        {/* Hero Identity Pill */}
-        <div className="bg-gradient-to-b from-[#0288d1]/80 to-[#01579b]/80 backdrop-blur-md px-6 py-2 rounded-full border-2 border-[#81d4fa]/70 shadow-[0_6px_20px_rgba(0,0,0,0.6),inset_0_1px_4px_rgba(255,255,255,0.4)]">
-          <div className="text-base sm:text-lg font-black tracking-widest uppercase text-white drop-shadow">
-            {activeChampion.name}
-          </div>
-          <div className="text-[10px] sm:text-xs font-bold text-sky-200 uppercase tracking-wider">
-            {activeChampion.title} • {activeChampion.archetype}
-          </div>
-        </div>
-
-        {/* Change Hero Button */}
+      {/* 3. CENTER HERO BADGE & STATS (Interactive Card -> Opens Brawlers Showcase) */}
+      <div className="absolute bottom-24 sm:bottom-22 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-20 pointer-events-auto text-center">
         <button
           onClick={() => {
             sounds.playBump(0.8);
             onOpenBrawlers();
           }}
-          className="px-5 py-2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] hover:from-[#fef08a] hover:to-[#f59e0b] text-[#78350f] font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-[#fef08a] shadow-[0_4px_0_#b45309,0_6px_14px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-[0_1px_0_#b45309] transition-all flex items-center gap-1.5 cursor-pointer"
+          className="group bg-gradient-to-b from-[#0288d1]/90 via-[#01579b]/90 to-[#0284c7]/90 hover:from-[#0288d1] hover:to-[#0284c7] backdrop-blur-md px-6 py-2.5 rounded-3xl border-2 border-[#81d4fa]/80 shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_4px_rgba(255,255,255,0.4)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          title="Click to view Brawler Stats & Roster"
         >
-          <RotateCcw className="w-3.5 h-3.5 stroke-[3]" />
-          <span>Change Champion</span>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-base sm:text-lg font-black tracking-widest uppercase text-white drop-shadow">
+              {activeChampion.name}
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 font-black uppercase tracking-wider">
+              VIEW STATS
+            </span>
+          </div>
+          <div className="text-[10px] sm:text-xs font-bold text-sky-200 uppercase tracking-wider mt-0.5">
+            {activeChampion.title} • {activeChampion.archetype}
+          </div>
+
+          {/* Real Champion Stats Badges */}
+          <div className="flex items-center gap-2 mt-2 justify-center">
+            <span className="px-2.5 py-0.5 rounded-full bg-black/40 border border-sky-300/40 text-[10px] font-black text-sky-200">
+              ⚡ SPD {activeChampion.stats.speed}/5
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-black/40 border border-amber-400/40 text-[10px] font-black text-amber-300">
+              💥 PWR {activeChampion.stats.power}/5
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-black/40 border border-emerald-400/40 text-[10px] font-black text-emerald-300">
+              🛡️ WGT {activeChampion.stats.weight}/5
+            </span>
+          </div>
         </button>
       </div>
 
@@ -624,17 +644,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
       {/* 6. BOTTOM NAVIGATION DOCK (Home, Brawlers, Story, Trophy Road, Shop) */}
       <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-        <div className="flex items-center gap-1.5 sm:gap-3 bg-gradient-to-b from-[#0288d1]/90 to-[#01579b]/90 backdrop-blur-md px-3 sm:px-5 py-2 rounded-full border-2 border-[#81d4fa]/60 shadow-[0_10px_30px_rgba(0,0,0,0.7),inset_0_1px_3px_rgba(255,255,255,0.4)]">
-          {/* Tab 1: Home */}
+        <div className="flex items-center gap-2 sm:gap-3 bg-gradient-to-b from-[#0288d1]/90 to-[#01579b]/90 backdrop-blur-md px-4 sm:px-6 py-2 rounded-full border-2 border-[#81d4fa]/70 shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(255,255,255,0.4)]">
+          {/* Tab 1: Home (Active) */}
           <button
             onClick={() => setActiveTab('home')}
-            className={`px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+            className={`px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider cursor-pointer ${
               activeTab === 'home'
                 ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-md border border-[#bef264]'
-                : 'text-sky-200 hover:text-white'
+                : 'text-sky-100 hover:text-white hover:bg-white/10'
             }`}
           >
-            <span>Home</span>
+            <span>🏠 Home</span>
           </button>
 
           {/* Tab 2: Brawlers */}
@@ -643,9 +663,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               sounds.playBump(0.6);
               onOpenBrawlers();
             }}
-            className="px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-200 hover:text-white transition-all cursor-pointer"
+            className="px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-100 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
           >
-            <span>Brawlers</span>
+            <span>🥊 Brawlers</span>
           </button>
 
           {/* Tab 3: Shop */}
@@ -654,31 +674,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               sounds.playBump(0.6);
               setIsShopOpen(true);
             }}
-            className="px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-300 hover:text-white bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border border-amber-300/50 hover:border-amber-200 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+            className="px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-300 hover:text-white bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border border-amber-300/50 hover:border-amber-200 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
           >
             <span>🛒 Shop</span>
           </button>
 
-          {/* Tab 4: Trophy Road */}
+          {/* Tab 4: Leaderboard */}
           <button
             onClick={() => {
               sounds.playBump(0.6);
-              setIsTrophyRoadOpen(true);
+              setIsLeaderboardOpen(true);
             }}
-            className="px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-200 hover:text-white transition-all cursor-pointer"
+            className="px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-100 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
           >
-            <span>Trophies</span>
-          </button>
-
-          {/* Tab 5: Settings */}
-          <button
-            onClick={() => {
-              sounds.playBump(0.6);
-              setIsSettingsOpen(true);
-            }}
-            className="px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-200 hover:text-white transition-all cursor-pointer"
-          >
-            <span>Settings</span>
+            <span>🏆 Rankings</span>
           </button>
         </div>
       </div>
@@ -901,6 +910,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         onAddGold={handleAddGold}
         unlockedChampions={unlockedChampions}
         onUnlockChampion={handleUnlockChampion}
+      />
+
+      {/* 9. GLOBAL RANKINGS LEADERBOARD MODAL */}
+      <LeaderboardModal
+        isOpen={isLeaderboardOpen}
+        onClose={() => setIsLeaderboardOpen(false)}
+        playerTrophies={trophies}
+        playerChampion={selectedChampion}
       />
     </div>
   );

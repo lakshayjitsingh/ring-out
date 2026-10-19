@@ -7,7 +7,18 @@ import {
   createChampionMesh,
   type CreatedChampion,
 } from '../game/championModels';
-import { Swords, Check, ArrowLeft, Rotate3d, Sparkles, Shield, Zap } from 'lucide-react';
+import {
+  Swords,
+  Check,
+  Rotate3d,
+  Sparkles,
+  Shield,
+  Home,
+  Flame,
+  Gauge,
+  BatteryCharging,
+} from 'lucide-react';
+import { sounds } from '../audio/soundManager';
 
 interface ChampionShowcaseProps {
   selectedChampion: ChampionId;
@@ -42,8 +53,8 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
 
     // 1. Scene & Camera
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x060913);
-    scene.fog = new THREE.FogExp2(0x060913, 0.035);
+    scene.background = new THREE.Color(0x38bdf8); // Radiant sunny azure sky
+    scene.fog = new THREE.FogExp2(0x7dd3fc, 0.008); // Soft coastal sea horizon haze
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
@@ -59,71 +70,70 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     container.appendChild(renderer.domElement);
 
     // 3. Studio Showroom Lighting
-    const ambient = new THREE.AmbientLight(0xdbeafe, 1.1);
+    const ambient = new THREE.AmbientLight(0xffffff, 1.3);
     scene.add(ambient);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x0f172a, 1.0);
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0284c7, 1.1);
     scene.add(hemiLight);
 
-    // Front Key Light (illuminates visor, face, chest armor directly)
-    const frontKey = new THREE.DirectionalLight(0xffffff, 2.2);
-    frontKey.position.set(1.5, 4.0, 5.0);
+    // Front Key Light (illuminates face and armor)
+    const frontKey = new THREE.DirectionalLight(0xfffbeb, 2.4);
+    frontKey.position.set(1.5, 5.0, 5.0);
     frontKey.castShadow = true;
     frontKey.shadow.mapSize.width = 1024;
     frontKey.shadow.mapSize.height = 1024;
     scene.add(frontKey);
 
     // Overhead Key Spotlight
-    const keySpot = new THREE.SpotLight(0xffffff, 2.5, 20, Math.PI / 4, 0.35, 1);
+    const keySpot = new THREE.SpotLight(0xfef08a, 2.0, 20, Math.PI / 4, 0.35, 1);
     keySpot.position.set(0, 6, 2);
     scene.add(keySpot);
 
-    // Blue/Cyan Rim Backlight
-    const rimLight = new THREE.DirectionalLight(0x38bdf8, 2.2);
+    // Sky Fill Backlight
+    const rimLight = new THREE.DirectionalLight(0x7dd3fc, 1.8);
     rimLight.position.set(0, 3, -4);
     scene.add(rimLight);
 
     // Champion Accent Floor Light (color dynamically updates per champion)
-    const accentFloorLight = new THREE.PointLight(activeChampion.glowColor, 3.0, 6);
+    const accentFloorLight = new THREE.PointLight(activeChampion.glowColor, 3.5, 8);
     accentFloorLight.position.set(0, 0.3, 0);
     scene.add(accentFloorLight);
 
-    // 4. Showroom Pedestal Turntable
+    // 4. Showroom Pedestal Turntable (Cyan Platform with Golden Rim)
     const pedestalGroup = new THREE.Group();
     pedestalRef.current = pedestalGroup;
 
-    // Outer dark metallic disc
+    // Platform base
     const baseGeo = new THREE.CylinderGeometry(1.8, 2.0, 0.25, 48);
     const baseMat = new THREE.MeshStandardMaterial({
-      color: 0x111827,
-      metalness: 0.9,
-      roughness: 0.15,
+      color: 0x0284c7,
+      metalness: 0.3,
+      roughness: 0.25,
     });
     const baseMesh = new THREE.Mesh(baseGeo, baseMat);
     baseMesh.position.y = -0.125;
     baseMesh.receiveShadow = true;
     pedestalGroup.add(baseMesh);
 
+    // Polished Golden Beveled Rim
+    const goldRimGeo = new THREE.TorusGeometry(1.85, 0.055, 16, 48);
+    goldRimGeo.rotateX(Math.PI / 2);
+    const goldRimMat = new THREE.MeshStandardMaterial({
+      color: 0xfbbf24,
+      metalness: 0.85,
+      roughness: 0.2,
+    });
+    const goldRim = new THREE.Mesh(goldRimGeo, goldRimMat);
+    goldRim.position.y = -0.01;
+    pedestalGroup.add(goldRim);
+
     // Neon glowing perimeter rim
-    const rimGeo = new THREE.TorusGeometry(1.8, 0.05, 16, 48);
+    const rimGeo = new THREE.TorusGeometry(1.72, 0.035, 16, 48);
     rimGeo.rotateX(Math.PI / 2);
     const rimMat = new THREE.MeshBasicMaterial({ color: activeChampion.glowColor });
     const rimMesh = new THREE.Mesh(rimGeo, rimMat);
-    rimMesh.position.y = 0.01;
+    rimMesh.position.y = 0.015;
     pedestalGroup.add(rimMesh);
-
-    // Inner glowing geometric rune rings
-    const innerRingGeo = new THREE.RingGeometry(0.8, 0.86, 32);
-    innerRingGeo.rotateX(-Math.PI / 2);
-    const innerRingMat = new THREE.MeshBasicMaterial({
-      color: activeChampion.glowColor,
-      transparent: true,
-      opacity: 0.6,
-      side: THREE.DoubleSide,
-    });
-    const innerRingMesh = new THREE.Mesh(innerRingGeo, innerRingMat);
-    innerRingMesh.position.y = 0.02;
-    pedestalGroup.add(innerRingMesh);
 
     scene.add(pedestalGroup);
 
@@ -132,24 +142,24 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     modelHolderRef.current = modelHolder;
     scene.add(modelHolder);
 
-    // Starfield showroom dust
-    const starsGeo = new THREE.BufferGeometry();
-    const starCount = 200;
-    const starPos = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i += 3) {
-      starPos[i] = (Math.random() - 0.5) * 20;
-      starPos[i + 1] = Math.random() * 8;
-      starPos[i + 2] = (Math.random() - 0.5) * 20;
+    // Warm Sunny Daylight Motes (Gold & Cyan Sparkling Sunlight Particles)
+    const motesGeo = new THREE.BufferGeometry();
+    const moteCount = 180;
+    const motePos = new Float32Array(moteCount * 3);
+    for (let i = 0; i < moteCount * 3; i += 3) {
+      motePos[i] = (Math.random() - 0.5) * 16;
+      motePos[i + 1] = Math.random() * 7;
+      motePos[i + 2] = (Math.random() - 0.5) * 16;
     }
-    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    const starsMat = new THREE.PointsMaterial({
-      color: 0x60a5fa,
-      size: 0.06,
+    motesGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
+    const motesMat = new THREE.PointsMaterial({
+      color: 0xffedd5,
+      size: 0.08,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.65,
     });
-    const stars = new THREE.Points(starsGeo, starsMat);
-    scene.add(stars);
+    const motes = new THREE.Points(motesGeo, motesMat);
+    scene.add(motes);
 
     // Load initial champion
     loadChampion(activeId);
@@ -288,11 +298,13 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
   };
 
   const handleSelectTab = (id: ChampionId) => {
+    sounds.playBump(0.8);
     setActiveId(id);
     loadChampion(id);
   };
 
   const handleEquip = () => {
+    sounds.playVictory();
     onSelectChampion(activeId);
   };
 
@@ -305,7 +317,7 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
   const isEquipped = selectedChampion === activeId;
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans select-none text-white">
+    <div className="relative w-screen h-screen overflow-hidden bg-gradient-to-b from-[#0284c7] via-[#38bdf8] to-[#7dd3fc] font-sans select-none text-white">
       {/* 3D WebGL Studio Canvas (Interactive 360° Drag) */}
       <div
         id="showcase-stage"
@@ -313,93 +325,157 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
         onPointerDown={(e) => handleDragStart(e.clientX)}
         onMouseDown={(e) => handleDragStart(e.clientX)}
         onTouchStart={(e) => e.touches.length > 0 && handleDragStart(e.touches[0].clientX)}
-        className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing touch-none"
+        className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing touch-none z-0"
       />
 
+      {/* Atmospheric Tropical Vignette & Light Diffusion */}
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(2,132,199,0.25)_80%,rgba(3,105,161,0.5)_100%)] z-10" />
+
       {/* TOP HEADER NAVIGATION */}
-      <div className="absolute top-0 left-0 right-0 p-5 flex items-center justify-between pointer-events-auto z-20">
+      <div className="absolute top-0 left-0 right-0 p-4 sm:p-5 flex items-center justify-between pointer-events-auto z-20">
         <button
-          onClick={onBackToBattle}
-          className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-900/85 hover:bg-slate-800 backdrop-blur-md border border-cyan-500/30 rounded-2xl transition-all shadow-xl active:scale-95 group"
+          onClick={() => {
+            sounds.playBump(0.7);
+            onBackToBattle();
+          }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#0284c7]/85 hover:bg-[#0369a1] text-white border-2 border-white/40 rounded-2xl backdrop-blur-md shadow-xl active:scale-95 cursor-pointer transition-all group"
         >
-          <ArrowLeft className="w-5 h-5 text-cyan-400 group-hover:-translate-x-1 transition-transform" />
-          <span className="text-sm font-black tracking-wider uppercase text-cyan-300">
-            Back to Lobby
+          <Home className="w-5 h-5 text-amber-300 group-hover:-translate-y-0.5 transition-transform" />
+          <span className="text-xs sm:text-sm font-black tracking-wider uppercase drop-shadow-sm">
+            Home Lobby
           </span>
         </button>
 
         <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2 px-5 py-2 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-xl">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <h1 className="text-sm md:text-base font-black tracking-widest uppercase bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-amber-300 to-rose-400">
-              Champions Locker
+          <div className="flex items-center gap-2 px-5 py-2 bg-[#0284c7]/85 backdrop-blur-md border-2 border-white/40 rounded-2xl shadow-xl">
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <h1 className="text-sm sm:text-base font-black tracking-widest uppercase text-white drop-shadow">
+              Brawlers Locker
             </h1>
           </div>
-          <span className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest flex items-center gap-1.5">
-            <Rotate3d className="w-3.5 h-3.5 text-cyan-400" />
-            Drag to Inspect 360°
+          <span className="text-[10px] text-sky-100 font-bold mt-1 uppercase tracking-wider flex items-center gap-1.5 drop-shadow-sm">
+            <Rotate3d className="w-3.5 h-3.5 text-amber-300" />
+            Drag to Rotate 360°
           </span>
         </div>
 
         {/* Currency / Trophies */}
-        <div className="flex items-center gap-2 bg-slate-900/85 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-700/60 shadow-lg">
-          <span className="text-xs font-black text-amber-400 font-mono">35 🏆</span>
-          <div className="w-px h-3.5 bg-slate-700" />
-          <span className="text-xs font-black text-yellow-300 font-mono">420 🟡</span>
+        <div className="flex items-center gap-2 bg-[#0284c7]/85 backdrop-blur-md px-3.5 py-2 rounded-2xl border-2 border-white/40 shadow-xl">
+          <span className="text-xs font-black text-amber-300 font-mono">🏆 2,450</span>
+          <div className="w-px h-3.5 bg-white/30" />
+          <span className="text-xs font-black text-yellow-300 font-mono">🪙 1,280</span>
         </div>
       </div>
 
-      {/* LEFT CHAMPION INFO CARD */}
-      <div className="absolute top-24 left-6 max-w-sm pointer-events-auto z-20 hidden md:block animate-in slide-in-from-left duration-200">
-        <div className="bg-slate-900/85 backdrop-blur-xl border border-slate-700/80 rounded-3xl p-5 shadow-2xl">
-          <div className="flex items-center gap-2 mb-1">
+      {/* LEFT CHAMPION INFO & REAL STATS CARD */}
+      <div className="absolute top-20 left-4 sm:left-6 max-w-sm pointer-events-auto z-20 hidden md:block animate-in slide-in-from-left duration-200">
+        <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-white/20 rounded-3xl p-5 shadow-[0_16px_50px_rgba(0,0,0,0.5)]">
+          <div className="flex items-center gap-2 mb-1.5">
             <span
-              className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border"
+              className="text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-sm"
               style={{
                 color: activeChampion.color,
-                borderColor: `${activeChampion.color}60`,
-                backgroundColor: `${activeChampion.color}15`,
+                borderColor: `${activeChampion.color}80`,
+                backgroundColor: `${activeChampion.color}25`,
               }}
             >
               {activeChampion.archetype}
             </span>
             {isEquipped && (
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
-                Current Fighter
+              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 flex items-center gap-1">
+                <Check className="w-3 h-3 stroke-[3]" /> Active Brawler
               </span>
             )}
           </div>
 
-          <h2 className="text-3xl font-black italic tracking-wide text-white">
+          <h2 className="text-3xl font-black italic tracking-wide text-white drop-shadow-sm">
             {activeChampion.name}
           </h2>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+          <p className="text-xs font-bold text-sky-300 uppercase tracking-wider mb-2">
             {activeChampion.title}
           </p>
 
-          <p className="text-xs text-slate-300 leading-relaxed mb-4">
+          <p className="text-xs text-slate-200 leading-relaxed mb-3.5">
             {activeChampion.description}
           </p>
 
-          {/* Fair Play & Chapter Specs */}
-          <div className="space-y-2 bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 mb-4 text-xs font-mono">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Chapter
+          {/* DYNAMIC COMBAT STATS PANEL */}
+          <div className="space-y-2.5 bg-slate-950/70 border border-white/10 rounded-2xl p-3.5 mb-4 shadow-inner">
+            <div className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center justify-between pb-1.5 border-b border-white/10">
+              <span className="flex items-center gap-1.5">
+                <Flame className="w-3.5 h-3.5 text-amber-400" /> Dynamic Combat Attributes
               </span>
-              <span className="text-emerald-300 font-bold">{activeChampion.chapter}</span>
+              <span className="text-[10px] text-sky-300/80 font-mono">Physical Mass</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-cyan-400" /> Match Physics
-              </span>
-              <span className="text-cyan-300 font-bold">100% Balanced</span>
+
+            {/* Signature Trait Badge */}
+            <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-transparent border-l-4 border-amber-400 px-3 py-1.5 rounded-r-xl">
+              <div className="text-[9px] uppercase font-bold text-amber-300/80">Signature Trait</div>
+              <div className="text-xs font-black text-amber-200 tracking-wide">{activeChampion.stats.trait}</div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-400" /> Fair Play Rule
-              </span>
-              <span className="text-amber-300 font-bold">Zero Stat Advantage</span>
+
+            {/* Stat 1: Speed */}
+            <div>
+              <div className="flex justify-between items-center text-xs mb-1">
+                <span className="flex items-center gap-1.5 font-bold text-sky-200">
+                  <Gauge className="w-3.5 h-3.5 text-cyan-400" /> Movement Speed
+                </span>
+                <span className="font-mono font-black text-cyan-300">{activeChampion.stats.speed} / 5</span>
+              </div>
+              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-sky-400 transition-all duration-300 shadow-[0_0_8px_rgba(56,189,248,0.8)]"
+                  style={{ width: `${(activeChampion.stats.speed / 5) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Stat 2: Push Knockback */}
+            <div>
+              <div className="flex justify-between items-center text-xs mb-1">
+                <span className="flex items-center gap-1.5 font-bold text-rose-200">
+                  <Flame className="w-3.5 h-3.5 text-rose-400" /> Push Knockback
+                </span>
+                <span className="font-mono font-black text-rose-300">{activeChampion.stats.power} / 5</span>
+              </div>
+              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-rose-500 to-orange-400 transition-all duration-300 shadow-[0_0_8px_rgba(244,63,94,0.8)]"
+                  style={{ width: `${(activeChampion.stats.power / 5) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Stat 3: Weight / Resistance */}
+            <div>
+              <div className="flex justify-between items-center text-xs mb-1">
+                <span className="flex items-center gap-1.5 font-bold text-emerald-200">
+                  <Shield className="w-3.5 h-3.5 text-emerald-400" /> Mass & Resistance
+                </span>
+                <span className="font-mono font-black text-emerald-300">{activeChampion.stats.weight} / 5</span>
+              </div>
+              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+                  style={{ width: `${(activeChampion.stats.weight / 5) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Stat 4: Dash Recharge */}
+            <div>
+              <div className="flex justify-between items-center text-xs mb-1">
+                <span className="flex items-center gap-1.5 font-bold text-amber-200">
+                  <BatteryCharging className="w-3.5 h-3.5 text-amber-400" /> Dash Recharge
+                </span>
+                <span className="font-mono font-black text-amber-300">{activeChampion.stats.chargeSpeed} / 5</span>
+              </div>
+              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 transition-all duration-300 shadow-[0_0_8px_rgba(251,191,36,0.8)]"
+                  style={{ width: `${(activeChampion.stats.chargeSpeed / 5) * 100}%` }}
+                />
+              </div>
             </div>
           </div>
 
@@ -407,19 +483,19 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
           <button
             onClick={handleEquip}
             disabled={isEquipped}
-            className={`w-full py-3 rounded-2xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 ${
+            className={`w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 cursor-pointer ${
               isEquipped
-                ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-default'
-                : 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white cursor-pointer shadow-cyan-500/30'
+                ? 'bg-slate-800/80 text-emerald-400 border border-emerald-500/40 cursor-default shadow-none'
+                : 'bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 hover:from-amber-300 hover:to-rose-400 text-slate-950 font-black shadow-orange-500/30 border border-amber-200'
             }`}
           >
             {isEquipped ? (
               <>
-                <Check className="w-4 h-4 text-emerald-400" /> EQUIPPED
+                <Check className="w-4 h-4 text-emerald-400 stroke-[3]" /> EQUIPPED IN COMBAT
               </>
             ) : (
               <>
-                <Swords className="w-4 h-4" /> EQUIP CHAMPION
+                <Swords className="w-4 h-4" /> EQUIP FOR BATTLE
               </>
             )}
           </button>
@@ -427,8 +503,8 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
       </div>
 
       {/* BOTTOM CHAMPION ROSTER CAROUSEL */}
-      <div className="absolute bottom-6 left-4 right-4 flex flex-col items-center pointer-events-auto z-20">
-        <div className="w-full max-w-4xl bg-slate-900/85 backdrop-blur-xl border border-slate-700/80 rounded-3xl p-3 shadow-2xl flex items-center justify-between gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="absolute bottom-5 left-3 right-3 flex flex-col items-center pointer-events-auto z-20">
+        <div className="w-full max-w-4xl bg-[#0284c7]/80 backdrop-blur-xl border-2 border-white/30 rounded-3xl p-3 shadow-2xl flex items-center justify-between gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {CHAMPION_LIST.map((champ) => {
             const isActive = champ.id === activeId;
             const isChampEquipped = champ.id === selectedChampion;
@@ -438,59 +514,76 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
                 key={champ.id}
                 data-champ={champ.id}
                 onClick={() => handleSelectTab(champ.id)}
-                className={`flex-1 min-w-[130px] p-2.5 rounded-2xl border transition-all flex flex-col items-center text-center cursor-pointer active:scale-95 ${
+                className={`flex-1 min-w-[120px] sm:min-w-[130px] p-2.5 rounded-2xl border transition-all flex flex-col items-center text-center cursor-pointer active:scale-95 ${
                   isActive
-                    ? 'bg-slate-800/90 border-2 shadow-lg'
-                    : 'bg-slate-950/60 border-slate-800 hover:bg-slate-800/50'
+                    ? 'bg-white/20 border-white shadow-[0_0_20px_rgba(255,255,255,0.4)] scale-105'
+                    : 'bg-black/20 border-white/10 hover:bg-white/10'
                 }`}
                 style={{
-                  borderColor: isActive ? champ.color : undefined,
-                  boxShadow: isActive ? `0 0 20px ${champ.color}40` : undefined,
+                  borderColor: isActive ? '#fef08a' : undefined,
                 }}
               >
                 <div className="relative mb-1">
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-base border"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-base border-2 shadow-md"
                     style={{
-                      backgroundColor: `${champ.color}20`,
+                      backgroundColor: `${champ.color}35`,
                       borderColor: champ.color,
-                      color: champ.color,
+                      color: '#ffffff',
                     }}
                   >
                     {champ.name.charAt(0)}
                   </div>
                   {isChampEquipped && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border border-slate-900 flex items-center justify-center">
-                      <Check className="w-2.5 h-2.5 text-white" />
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border border-white flex items-center justify-center shadow">
+                      <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
                     </div>
                   )}
                 </div>
 
-                <div className="font-black text-xs text-white tracking-wide">
+                <div className="font-black text-xs text-white tracking-wide drop-shadow-sm">
                   {champ.name}
                 </div>
-                <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
+                <div className="text-[9px] text-sky-100 uppercase tracking-widest font-bold">
                   {champ.archetype}
+                </div>
+                
+                {/* Mini Stat preview */}
+                <div className="flex items-center gap-1.5 mt-1 text-[9px] font-mono text-amber-200">
+                  <span>⚡{champ.stats.speed}</span>
+                  <span>💥{champ.stats.power}</span>
+                  <span>🛡️{champ.stats.weight}</span>
                 </div>
               </button>
             );
           })}
         </div>
 
-        {/* Mobile Equip Button */}
-        <div className="w-full max-w-4xl mt-3 md:hidden">
+        {/* Mobile Equip Button & Return Shortcut */}
+        <div className="w-full max-w-4xl mt-2.5 flex items-center gap-2 md:hidden">
+          <button
+            onClick={() => {
+              sounds.playBump(0.7);
+              onBackToBattle();
+            }}
+            className="flex items-center justify-center gap-1.5 px-4 py-3 bg-white/20 border border-white/30 rounded-2xl text-xs font-black uppercase text-white shadow-lg active:scale-95"
+          >
+            <Home className="w-4 h-4 text-amber-300" />
+            <span>Home</span>
+          </button>
+
           <button
             onClick={handleEquip}
             disabled={isEquipped}
-            className={`w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
+            className={`flex-1 py-3 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
               isEquipped
-                ? 'bg-slate-800 text-slate-400 border border-slate-700'
-                : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
+                ? 'bg-slate-800 text-emerald-400 border border-emerald-500/40'
+                : 'bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-slate-950 font-black'
             }`}
           >
             {isEquipped ? (
               <>
-                <Check className="w-4 h-4 text-emerald-400" /> EQUIPPED
+                <Check className="w-4 h-4 text-emerald-400 stroke-[3]" /> EQUIPPED
               </>
             ) : (
               <>

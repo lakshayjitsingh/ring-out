@@ -2,6 +2,18 @@ import * as THREE from 'three';
 
 export type ChampionId = 'leo' | 'kai' | 'nova' | 'titan' | 'kage' | 'bolt';
 
+export interface ChampionStats {
+  speed: number;       // 1 - 5 rating
+  power: number;       // 1 - 5 rating (push/knockback strength)
+  weight: number;      // 1 - 5 rating (knockback resistance/mass)
+  chargeSpeed: number; // 1 - 5 rating (dash stamina recharge)
+  trait: string;       // Distinct archetype trait description
+  speedMult: number;   // In-game physics speed multiplier (0.84 to 1.28)
+  powerMult: number;   // In-game physics knockback push multiplier (0.82 to 1.50)
+  massMult: number;    // In-game physics mass/inertia resistance (0.80 to 1.55)
+  chargeMult: number;  // In-game physics stamina recharge multiplier (0.85 to 1.40)
+}
+
 export interface ChampionInfo {
   id: ChampionId;
   name: string;
@@ -12,6 +24,7 @@ export interface ChampionInfo {
   glowColor: number;
   tagline: string;
   description: string;
+  stats: ChampionStats;
 }
 
 export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
@@ -25,6 +38,17 @@ export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
     glowColor: 0x10b981,
     tagline: 'Backwards cap, scout vest, quick reflexes and skate kicks.',
     description: 'An adventurous human coastal brawler with razor-sharp agility, snapback swagger, and swift kinetic counter-punches.',
+    stats: {
+      speed: 3,
+      power: 3,
+      weight: 3,
+      chargeSpeed: 3,
+      trait: 'Balanced Coastal Scout • Steady Agility & Well-Rounded Control',
+      speedMult: 1.0,
+      powerMult: 1.0,
+      massMult: 1.0,
+      chargeMult: 1.0,
+    },
   },
   kai: {
     id: 'kai',
@@ -36,6 +60,17 @@ export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
     glowColor: 0x00f5ff,
     tagline: 'Neon hoodie, street headphones, spiky hair, fearless momentum.',
     description: 'An urban street brawler who rules the pavement with high-speed footwork, rhythm-timed strikes, and electric cyan sneakers.',
+    stats: {
+      speed: 4,
+      power: 3,
+      weight: 3,
+      chargeSpeed: 4,
+      trait: 'Urban Street Skater • Agile Footwork & Rapid Momentum',
+      speedMult: 1.12,
+      powerMult: 1.05,
+      massMult: 0.95,
+      chargeMult: 1.15,
+    },
   },
   nova: {
     id: 'nova',
@@ -47,6 +82,17 @@ export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
     glowColor: 0xf43f5e,
     tagline: 'High swinging ponytail, taped boxing wraps, explosive ring recovery.',
     description: 'A fearless female kickboxing champion known for lightning-fast edge recoveries, disciplined stance, and relentless flurry combos.',
+    stats: {
+      speed: 3,
+      power: 4,
+      weight: 3,
+      chargeSpeed: 4,
+      trait: 'Agile Kickboxer • Explosive Counter-Punches & Flurry Recovery',
+      speedMult: 1.06,
+      powerMult: 1.18,
+      massMult: 0.98,
+      chargeMult: 1.20,
+    },
   },
   titan: {
     id: 'titan',
@@ -58,6 +104,17 @@ export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
     glowColor: 0xf59e0b,
     tagline: 'Massive barrel chest, bearded powerhouse, golden champion belt.',
     description: 'A colossal human heavyweight powerhouse. With boulder shoulders and heavyweight powerlifting grip, Gorr sends opponents flying into the sea.',
+    stats: {
+      speed: 2,
+      power: 5,
+      weight: 5,
+      chargeSpeed: 2,
+      trait: 'Colossal Heavyweight • Massive Push Force • Unmovable Mass',
+      speedMult: 0.84,
+      powerMult: 1.50,
+      massMult: 1.55,
+      chargeMult: 0.85,
+    },
   },
   kage: {
     id: 'kage',
@@ -69,6 +126,17 @@ export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
     glowColor: 0x059669,
     tagline: 'Trailing headband ribbons, cloth ninja mask, silent counter-strikes.',
     description: 'A disciplined shinobi martial artist wrapped in jade and obsidian robes. He glides across the ring boundary with phantom grace.',
+    stats: {
+      speed: 4,
+      power: 3,
+      weight: 2,
+      chargeSpeed: 5,
+      trait: 'Shadow Ninja • Rapid Dash Recharge & Silent Glide Mobility',
+      speedMult: 1.16,
+      powerMult: 0.95,
+      massMult: 0.88,
+      chargeMult: 1.30,
+    },
   },
   bolt: {
     id: 'bolt',
@@ -80,6 +148,17 @@ export const CHAMPIONS: Record<ChampionId, ChampionInfo> = {
     glowColor: 0xeab308,
     tagline: 'Speed goggles, zip windbreaker, hyperactive parkour sprint.',
     description: 'An acrobatic human parkour trickster wearing high-voltage yellow runners. Axel darts around slower heavyweights before blasting them over the cliff.',
+    stats: {
+      speed: 5,
+      power: 2,
+      weight: 2,
+      chargeSpeed: 5,
+      trait: 'Lightning Parkourist • Maximum Sprint Speed • Rapid Recovery',
+      speedMult: 1.28,
+      powerMult: 0.82,
+      massMult: 0.80,
+      chargeMult: 1.40,
+    },
   },
 };
 
@@ -129,11 +208,6 @@ function createPixarExpressiveEyes(
   });
   const eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x050508 });
   const eyeShineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const eyelidMat = new THREE.MeshStandardMaterial({
-    color: 0x4a2810,
-    roughness: 0.60,
-  });
-
   [-spacing, spacing].forEach((xSide) => {
     // 1. White Curved Sclera
     const scleraGeo = new THREE.SphereGeometry(eyeWidth, 24, 20);
@@ -174,13 +248,6 @@ function createPixarExpressiveEyes(
     const twinkle = new THREE.Mesh(twinkleGeo, eyeShineMat);
     twinkle.position.set(xSide * 0.94 - 0.016, yPos - 0.022, zPos - 0.046);
     eyesGroup.add(twinkle);
-
-    // 7. Upper Eyelid Crease (Curved Torus Arc)
-    const creaseGeo = new THREE.TorusGeometry(eyeWidth * 1.05, 0.009, 8, 16, Math.PI * 0.85);
-    const crease = new THREE.Mesh(creaseGeo, eyelidMat);
-    crease.rotation.z = Math.PI * 0.08;
-    crease.position.set(xSide, yPos + eyeHeight * 0.42, zPos - 0.01);
-    eyesGroup.add(crease);
   });
 
   return eyesGroup;
@@ -509,20 +576,19 @@ function createLeoMesh(): CreatedChampion {
   const hairGroup = new THREE.Group();
   group.add(hairGroup);
 
-  // Front swept bangs over forehead
-  [-0.14, -0.06, 0.06, 0.14].forEach((xOff, i) => {
-    const curlGeo = new THREE.CapsuleGeometry(0.024, 0.12, 8, 12);
-    curlGeo.rotateX(0.48);
-    curlGeo.rotateZ((i - 1.5) * 0.22);
-    const curl = new THREE.Mesh(curlGeo, hairMat);
-    curl.position.set(xOff, 1.84, -0.27);
-    hairGroup.add(curl);
-  });
+  // Front swept fringe tucked cleanly under cap brim
+  const fringeGeo = new THREE.CapsuleGeometry(0.026, 0.24, 8, 14);
+  fringeGeo.rotateZ(Math.PI / 2);
+  fringeGeo.scale(1.2, 0.8, 1.0);
+  const fringe = new THREE.Mesh(fringeGeo, hairMat);
+  fringe.position.set(0.02, 1.89, -0.25);
+  fringe.rotation.z = -0.15;
+  hairGroup.add(fringe);
 
-  // Sideburn curls around ears
-  [-0.26, 0.26].forEach((xSide) => {
-    const sideCurl = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.10, 8, 12), hairMat);
-    sideCurl.position.set(xSide, 1.68, -0.10);
+  // Sideburn locks framing ears cleanly
+  [-0.24, 0.24].forEach((xSide) => {
+    const sideCurl = new THREE.Mesh(new THREE.CapsuleGeometry(0.028, 0.09, 8, 12), hairMat);
+    sideCurl.position.set(xSide, 1.68, -0.12);
     hairGroup.add(sideCurl);
   });
 
@@ -1110,98 +1176,97 @@ function createTitanGorrMesh(): CreatedChampion {
   const goldChampionMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.90, roughness: 0.18 });
 
   // 1. Massive Pelvis & Championship Belt
-  const pelvisGeo = new THREE.CapsuleGeometry(0.32, 0.28, 16, 24);
-  pelvisGeo.scale(1.48, 1.0, 1.05);
+  const pelvisGeo = new THREE.CapsuleGeometry(0.28, 0.22, 16, 24);
+  pelvisGeo.scale(1.42, 1.0, 1.0);
   const pelvis = new THREE.Mesh(pelvisGeo, singletMat);
-  pelvis.position.set(0, 0.74, 0);
+  pelvis.position.set(0, 0.65, 0);
   group.add(pelvis);
 
   // Colossal Gold Champion Weight Belt
-  const beltGeo = new THREE.TorusGeometry(0.42, 0.052, 12, 32);
+  const beltGeo = new THREE.TorusGeometry(0.38, 0.045, 12, 32);
   beltGeo.rotateX(Math.PI / 2);
   const belt = new THREE.Mesh(beltGeo, leatherBeltMat);
-  belt.position.set(0, 0.88, 0);
+  belt.position.set(0, 0.78, 0);
   group.add(belt);
 
   // Massive Golden Medallion Buckle with Eagle Crest
-  const buckleGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.035, 20);
+  const buckleGeo = new THREE.CylinderGeometry(0.10, 0.10, 0.035, 20);
   buckleGeo.rotateX(Math.PI / 2);
   const buckle = new THREE.Mesh(buckleGeo, goldChampionMat);
-  buckle.position.set(0, 0.88, -0.38);
+  buckle.position.set(0, 0.78, -0.36);
   group.add(buckle);
 
-  const core = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 12), amberStripeMat);
-  core.position.set(0, 0.88, -0.40);
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.040, 12, 12), amberStripeMat);
+  core.position.set(0, 0.78, -0.38);
   group.add(core);
   accentMeshes.push(core);
 
-  // 2. Colossal Barrel Chest (1.5x width of standard brawlers)
-  const chestGeo = new THREE.CapsuleGeometry(0.38, 0.44, 20, 26);
-  chestGeo.scale(1.45, 1.0, 1.15);
+  // 2. Colossal Muscular Barrel Chest (Stops cleanly at y = 1.35)
+  const chestGeo = new THREE.CapsuleGeometry(0.30, 0.24, 18, 24);
+  chestGeo.scale(1.42, 1.0, 1.05);
   const chest = new THREE.Mesh(chestGeo, singletMat);
-  chest.position.set(0, 1.25, 0);
+  chest.position.set(0, 1.10, 0);
   chest.castShadow = true;
   group.add(chest);
 
   // Heavy Powerlifting Singlet Straps
-  [-0.24, 0.24].forEach((xSide) => {
-    const strapGeo = new THREE.CapsuleGeometry(0.045, 0.46, 8, 16);
+  [-0.20, 0.20].forEach((xSide) => {
+    const strapGeo = new THREE.CapsuleGeometry(0.036, 0.32, 8, 14);
     const strap = new THREE.Mesh(strapGeo, amberStripeMat);
-    strap.position.set(xSide, 1.25, -0.36);
+    strap.position.set(xSide, 1.12, -0.30);
     group.add(strap);
     accentMeshes.push(strap);
   });
 
-  // 3. Massive Muscular Neck
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.22, 0.18, 24), skinMat);
-  neck.position.set(0, 1.52, 0);
+  // 3. Defined Muscular Neck & Broad Heroic Head
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.20, 0.16, 24), skinMat);
+  neck.position.set(0, 1.45, 0);
   group.add(neck);
 
-  // Broad Strongman Head (Round jaw with masculine cheeks)
-  const headGeo = new THREE.SphereGeometry(0.32, 32, 26);
-  headGeo.scale(1.08, 1.05, 1.02);
+  const headGeo = new THREE.SphereGeometry(0.285, 32, 26);
+  headGeo.scale(1.05, 1.08, 1.02);
   const head = new THREE.Mesh(headGeo, skinMat);
-  head.position.set(0, 1.74, 0);
+  head.position.set(0, 1.70, 0);
   head.castShadow = true;
   group.add(head);
 
-  // Sculpted Jawline & Chin Beard (hugging jaw and chin cleanly)
-  const chinBeardGeo = new THREE.SphereGeometry(0.18, 20, 16);
-  chinBeardGeo.scale(1.25, 1.10, 0.85);
+  // Viking Jawline Chin Beard (Hugs lower jaw from y = 1.48 to 1.56)
+  const chinBeardGeo = new THREE.CapsuleGeometry(0.055, 0.24, 10, 16);
+  chinBeardGeo.rotateZ(Math.PI / 2);
   const chinBeard = new THREE.Mesh(chinBeardGeo, beardHairMat);
-  chinBeard.position.set(0, 1.56, -0.22);
+  chinBeard.position.set(0, 1.52, -0.22);
   group.add(chinBeard);
 
   // Sideburns connecting jaw to ears
-  [-0.26, 0.26].forEach((xSide) => {
-    const sideburn = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.16, 8, 12), beardHairMat);
-    sideburn.position.set(xSide, 1.66, -0.06);
+  [-0.24, 0.24].forEach((xSide) => {
+    const sideburn = new THREE.Mesh(new THREE.CapsuleGeometry(0.038, 0.12, 8, 12), beardHairMat);
+    sideburn.position.set(xSide, 1.64, -0.06);
     group.add(sideburn);
   });
 
   // Curled 3D Strongman Handlebar Mustache
-  const stacheGeo = new THREE.CapsuleGeometry(0.042, 0.22, 10, 16);
+  const stacheGeo = new THREE.CapsuleGeometry(0.032, 0.18, 8, 14);
   stacheGeo.rotateZ(Math.PI / 2);
   const mustache = new THREE.Mesh(stacheGeo, beardHairMat);
-  mustache.position.set(0, 1.66, -0.32);
+  mustache.position.set(0, 1.62, -0.27);
   group.add(mustache);
 
   // Broad Strongman Button Nose
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.048, 16, 14), skinMat);
-  nose.scale.set(1.1, 0.9, 1.2);
-  nose.position.set(0, 1.70, -0.32);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.042, 16, 14), skinMat);
+  nose.scale.set(1.0, 0.85, 1.15);
+  nose.position.set(0, 1.68, -0.27);
   group.add(nose);
 
-  group.add(createPixarExpressiveEyes(0x451a03, 0.078, 0.098, 0.12, 1.76, -0.29));
-  group.add(createCurvedEyebrows(0x451a03, 0.12, 1.84, -0.30, 0.26));
-  group.add(createSculptedHumanEars(skinMat, 0.32, 1.74));
+  group.add(createPixarExpressiveEyes(0x451a03, 0.076, 0.096, 0.11, 1.74, -0.265));
+  group.add(createCurvedEyebrows(0x451a03, 0.11, 1.83, -0.278, 0.22));
+  group.add(createSculptedHumanEars(skinMat, 0.29, 1.70));
 
   // Short Undercut Buzz Hair on Crown and Nape
   const hairTop = new THREE.Mesh(
-    new THREE.SphereGeometry(0.325, 24, 20, 0, Math.PI * 2, 0, Math.PI * 0.42),
+    new THREE.SphereGeometry(0.295, 24, 20, 0, Math.PI * 2, 0, Math.PI * 0.45),
     beardHairMat
   );
-  hairTop.position.set(0, 1.78, 0.04);
+  hairTop.position.set(0, 1.76, 0.03);
   group.add(hairTop);
 
   // 4. Tree-Trunk Heavyweight Legs & Iron-Toe Boots

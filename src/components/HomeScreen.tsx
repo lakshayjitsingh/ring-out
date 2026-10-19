@@ -6,6 +6,7 @@ import {
   createChampionMesh,
   type CreatedChampion,
 } from '../game/championModels';
+import { getEquippedSkin } from '../game/championSkins';
 import {
   Trophy,
   Swords,
@@ -157,7 +158,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       currentModelRef.current = null;
     }
 
-    const created = createChampionMesh(id);
+    const created = createChampionMesh(id, getEquippedSkin(id));
     currentModelRef.current = created;
     if (modelHolderRef.current) {
       modelHolderRef.current.add(created.group);
@@ -358,6 +359,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       if (currentModelRef.current) {
         const breathe = Math.sin(elapsedTime * 2.2) * 0.03;
         currentModelRef.current.group.position.y = breathe;
+
+        if (currentModelRef.current.floatingGroup) {
+          currentModelRef.current.floatingGroup.rotation.y = elapsedTime * 0.7;
+          currentModelRef.current.floatingGroup.position.y = Math.sin(elapsedTime * 2.2) * 0.04;
+        }
       }
 
       renderer.render(scene, camera);

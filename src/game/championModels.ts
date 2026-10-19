@@ -1,4 +1,22 @@
 import * as THREE from 'three';
+import {
+  getChampionSkinPalette,
+  buildPoseidonGodKingLegendary,
+  buildQuantumOverdriveLegendary,
+  buildSolarEclipseGoddessLegendary,
+  buildMagmaTitanDestroyerLegendary,
+  buildVoidPhantomKageLegendary,
+  buildRaijinThunderGodLegendary,
+  buildCyberHudVisor,
+  buildMechaExoShoulders,
+  buildValkyrieTiara,
+  buildGladiatorPlumeAndPauldron,
+  buildYetiFurMantle,
+  buildCyberRoninKabutoAndKatanas,
+  buildDemonOniMask,
+  buildCyberRacerAeroFins,
+  buildStealthNightVisionGoggles,
+} from './championSkinAccessories';
 
 export type ChampionId = 'leo' | 'kai' | 'nova' | 'titan' | 'kage' | 'bolt';
 
@@ -172,6 +190,7 @@ export interface CreatedChampion {
   accentMeshes: THREE.Mesh[];
   legs?: THREE.Group[];
   arms?: THREE.Group[];
+  floatingGroup?: THREE.Group;
 }
 
 // ======================================================================
@@ -453,21 +472,22 @@ function createCuteStylizedNoseAndMouth(
 // snapback cap, azure bomber vest over crisp white tee, athletic tape wraps,
 // cargo shorts, and skate high-tops.
 // ----------------------------------------------------------------------
-function createLeoMesh(): CreatedChampion {
+function createLeoMesh(skinId?: string): CreatedChampion {
   const group = new THREE.Group();
   const accentMeshes: THREE.Mesh[] = [];
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xfbd5b5, roughness: 0.55, metalness: 0.02 });
-  const hairMat = new THREE.MeshStandardMaterial({ color: 0x4a2511, roughness: 0.70, metalness: 0.0 });
-  const capMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55, metalness: 0.05 });
-  const jacketMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.40, metalness: 0.08 });
-  const jacketTrimMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.45, metalness: 0.08 });
-  const whiteClothMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.60, metalness: 0.03 });
-  const denimMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.72, metalness: 0.04 });
+  const pal = getChampionSkinPalette('leo', skinId);
+  const skinMat = new THREE.MeshStandardMaterial({ color: pal.skinColor, roughness: pal.roughness ?? 0.55, metalness: pal.metalness ?? 0.02 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: pal.hairColor, roughness: 0.70, metalness: 0.0 });
+  const capMat = new THREE.MeshStandardMaterial({ color: pal.jacketColor, roughness: 0.55, metalness: 0.05 });
+  const jacketMat = new THREE.MeshStandardMaterial({ color: pal.jacketColor, roughness: 0.40, metalness: pal.metalness ?? 0.08 });
+  const jacketTrimMat = new THREE.MeshStandardMaterial({ color: pal.jacketTrimColor, roughness: 0.45, metalness: 0.08 });
+  const whiteClothMat = new THREE.MeshStandardMaterial({ color: pal.teeColor, roughness: 0.60, metalness: 0.03 });
+  const denimMat = new THREE.MeshStandardMaterial({ color: pal.pantsColor, roughness: 0.72, metalness: 0.04 });
   const leatherMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.50, metalness: 0.10 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.90, roughness: 0.18 });
-  const goldGlowMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
-  const gloveMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.50, metalness: 0.15 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: pal.metalColor, metalness: 0.90, roughness: 0.18 });
+  const goldGlowMat = new THREE.MeshBasicMaterial({ color: pal.accentColor });
+  const gloveMat = new THREE.MeshStandardMaterial({ color: pal.gloveColor, roughness: 0.50, metalness: 0.15 });
 
   // 1. Contoured Pelvis & Leather Belt with Golden Buckle
   const pelvisGeo = new THREE.CapsuleGeometry(0.24, 0.22, 14, 22);
@@ -545,7 +565,7 @@ function createLeoMesh(): CreatedChampion {
   group.add(head);
 
   // Pixar Expressive Blue Eyes with Single Clean Eyebrows (NO double-eyebrow!)
-  group.add(createPixarExpressiveEyes(0x0284c7, 0.082, 0.108, 0.105, 1.74, -0.265));
+  group.add(createPixarExpressiveEyes(pal.eyeColor, 0.082, 0.108, 0.105, 1.74, -0.265));
   // Single, confident, cleanly defined arched brawler eyebrows
   group.add(createCurvedEyebrows(0x3e1d08, 0.100, 1.83, -0.278, 0.20));
   group.add(createCuteStylizedNoseAndMouth(skinMat, 0.09, 1.68, 1.60));
@@ -714,6 +734,18 @@ function createLeoMesh(): CreatedChampion {
     fistGroup.add(brawlerFist);
   });
 
+  let floatingGroup: THREE.Group | undefined;
+  if (skinId === 'leo_poseidon') {
+    floatingGroup = buildPoseidonGodKingLegendary(group, accentMeshes);
+  } else if (skinId === 'leo_cyber') {
+    buildCyberHudVisor(group, 0x00f5ff, 1.74);
+  } else if (skinId === 'leo_volcanic') {
+    const magmaPlate = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.22, 6), new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.8 }));
+    magmaPlate.position.set(-0.35, 1.40, 0);
+    group.add(magmaPlate);
+    accentMeshes.push(magmaPlate);
+  }
+
   return {
     group,
     bodyMesh: chest,
@@ -722,6 +754,7 @@ function createLeoMesh(): CreatedChampion {
     accentMeshes,
     legs: [legGroupL, legGroupR],
     arms: [armGroupL, armGroupR],
+    floatingGroup,
   };
 }
 
@@ -731,24 +764,25 @@ function createLeoMesh(): CreatedChampion {
 // modern DJ headphones with glowing rings, spiky black hair with cyan tips,
 // cyan side-stripe joggers, air-sole high-top sneakers.
 // ----------------------------------------------------------------------
-function createKaiMesh(): CreatedChampion {
+function createKaiMesh(skinId?: string): CreatedChampion {
   const group = new THREE.Group();
   const accentMeshes: THREE.Mesh[] = [];
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xfcd5b4, roughness: 0.55, metalness: 0.02 });
-  const hairDarkMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.70, metalness: 0.0 });
+  const pal = getChampionSkinPalette('kai', skinId);
+  const skinMat = new THREE.MeshStandardMaterial({ color: pal.skinColor, roughness: pal.roughness ?? 0.55, metalness: pal.metalness ?? 0.02 });
+  const hairDarkMat = new THREE.MeshStandardMaterial({ color: pal.hairColor, roughness: 0.70, metalness: 0.0 });
   const cyanNeonMat = new THREE.MeshStandardMaterial({
-    color: 0x00f5ff,
-    emissive: 0x00b4d8,
+    color: pal.jacketTrimColor,
+    emissive: pal.emissiveColor ?? pal.accentColor,
     emissiveIntensity: 0.45,
     roughness: 0.25,
     metalness: 0.15,
   });
-  const cyanGlowMat = new THREE.MeshBasicMaterial({ color: 0x00f5ff });
-  const hoodieCharcoalMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.60, metalness: 0.04 });
-  const joggersMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.70, metalness: 0.02 });
-  const whiteTrimMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.55, metalness: 0.05 });
-  const gloveMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.45, metalness: 0.20 });
+  const cyanGlowMat = new THREE.MeshBasicMaterial({ color: pal.accentColor });
+  const hoodieCharcoalMat = new THREE.MeshStandardMaterial({ color: pal.jacketColor, roughness: 0.60, metalness: pal.metalness ?? 0.04 });
+  const joggersMat = new THREE.MeshStandardMaterial({ color: pal.pantsColor, roughness: 0.70, metalness: 0.02 });
+  const whiteTrimMat = new THREE.MeshStandardMaterial({ color: pal.teeColor, roughness: 0.55, metalness: 0.05 });
+  const gloveMat = new THREE.MeshStandardMaterial({ color: pal.gloveColor, roughness: 0.45, metalness: 0.20 });
 
   // 1. Jogger Waist & Ribbed Hem
   const pelvisGeo = new THREE.CapsuleGeometry(0.24, 0.24, 14, 22);
@@ -827,7 +861,7 @@ function createKaiMesh(): CreatedChampion {
   head.castShadow = true;
   group.add(head);
 
-  group.add(createPixarExpressiveEyes(0xf59e0b, 0.082, 0.108, 0.105, 1.74, -0.265));
+  group.add(createPixarExpressiveEyes(pal.eyeColor, 0.082, 0.108, 0.105, 1.74, -0.265));
   group.add(createCurvedEyebrows(0x111827, 0.105, 1.83, -0.278, 0.24));
   group.add(createCuteStylizedNoseAndMouth(skinMat, 0.09, 1.68, 1.60));
   group.add(createSculptedHumanEars(skinMat, 0.28, 1.70));
@@ -962,6 +996,18 @@ function createKaiMesh(): CreatedChampion {
     fistGroup.add(fist);
   });
 
+  let floatingGroup: THREE.Group | undefined;
+  if (skinId === 'kai_quantum') {
+    floatingGroup = buildQuantumOverdriveLegendary(group, accentMeshes);
+  } else if (skinId === 'kai_mecha') {
+    buildMechaExoShoulders(group);
+  } else if (skinId === 'kai_inferno') {
+    const flameCrest = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.28, 6), new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xf97316, emissiveIntensity: 0.9 }));
+    flameCrest.position.set(0, 2.12, -0.05);
+    group.add(flameCrest);
+    accentMeshes.push(flameCrest);
+  }
+
   return {
     group,
     bodyMesh: chest,
@@ -970,6 +1016,7 @@ function createKaiMesh(): CreatedChampion {
     accentMeshes,
     legs: [legGroupL, legGroupR],
     arms: [armGroupL, armGroupR],
+    floatingGroup,
   };
 }
 
@@ -979,22 +1026,23 @@ function createKaiMesh(): CreatedChampion {
 // racerback sports crop top, high swinging magenta ponytail with golden tie,
 // amorous violet eyes, kickboxer combat boots, taped wraps.
 // ----------------------------------------------------------------------
-function createNovaMesh(): CreatedChampion {
+function createNovaMesh(skinId?: string): CreatedChampion {
   const group = new THREE.Group();
   const accentMeshes: THREE.Mesh[] = [];
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xfed7aa, roughness: 0.55, metalness: 0.02 });
-  const magentaHairMat = new THREE.MeshStandardMaterial({ color: 0xbe185d, roughness: 0.65, metalness: 0.05 });
-  const cropTopMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.55, metalness: 0.05 });
+  const pal = getChampionSkinPalette('nova', skinId);
+  const skinMat = new THREE.MeshStandardMaterial({ color: pal.skinColor, roughness: pal.roughness ?? 0.55, metalness: pal.metalness ?? 0.02 });
+  const magentaHairMat = new THREE.MeshStandardMaterial({ color: pal.hairColor, roughness: 0.65, metalness: 0.05 });
+  const cropTopMat = new THREE.MeshStandardMaterial({ color: pal.jacketColor, roughness: 0.55, metalness: pal.metalness ?? 0.05 });
   const roseTrimMat = new THREE.MeshStandardMaterial({
-    color: 0xf43f5e,
-    emissive: 0xe11d48,
+    color: pal.jacketTrimColor,
+    emissive: pal.emissiveColor ?? pal.accentColor,
     emissiveIntensity: 0.35,
     roughness: 0.35,
   });
-  const roseGlowMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
-  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.55 });
-  const goldRingMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.88, roughness: 0.18 });
+  const roseGlowMat = new THREE.MeshBasicMaterial({ color: pal.accentColor });
+  const whiteMat = new THREE.MeshStandardMaterial({ color: pal.teeColor, roughness: 0.55 });
+  const goldRingMat = new THREE.MeshStandardMaterial({ color: pal.metalColor, metalness: 0.88, roughness: 0.18 });
 
   // 1. High-Waisted Athletic Kickboxing Shorts
   const pelvisGeo = new THREE.CapsuleGeometry(0.22, 0.22, 14, 22);
@@ -1043,7 +1091,7 @@ function createNovaMesh(): CreatedChampion {
   head.castShadow = true;
   group.add(head);
 
-  group.add(createPixarExpressiveEyes(0xa855f7, 0.078, 0.102, 0.098, 1.72, -0.255));
+  group.add(createPixarExpressiveEyes(pal.eyeColor, 0.078, 0.102, 0.098, 1.72, -0.255));
   group.add(createCurvedEyebrows(0xbe185d, 0.098, 1.81, -0.268, 0.18));
   group.add(createCuteStylizedNoseAndMouth(skinMat, 0.082, 1.66, 1.58));
   group.add(createSculptedHumanEars(skinMat, 0.27, 1.68));
@@ -1166,6 +1214,15 @@ function createNovaMesh(): CreatedChampion {
     accentMeshes.push(fistGroup.children[0] as THREE.Mesh);
   });
 
+  let floatingGroup: THREE.Group | undefined;
+  if (skinId === 'nova_solar_eclipse') {
+    floatingGroup = buildSolarEclipseGoddessLegendary(group, accentMeshes);
+  } else if (skinId === 'nova_crimson_valkyrie') {
+    buildValkyrieTiara(group);
+  } else if (skinId === 'nova_cyberpunk') {
+    buildCyberHudVisor(group, 0xec4899, 1.72);
+  }
+
   return {
     group,
     bodyMesh: chest,
@@ -1174,6 +1231,7 @@ function createNovaMesh(): CreatedChampion {
     accentMeshes,
     legs: [legGroupL, legGroupR],
     arms: [armGroupL, armGroupR],
+    floatingGroup,
   };
 }
 
@@ -1183,21 +1241,22 @@ function createNovaMesh(): CreatedChampion {
 // huge sculpted Viking beard and mustache, golden championship belt,
 // heavy iron-toe lumberjack boots, boulder shoulders.
 // ----------------------------------------------------------------------
-function createTitanGorrMesh(): CreatedChampion {
+function createTitanGorrMesh(skinId?: string): CreatedChampion {
   const group = new THREE.Group();
   const accentMeshes: THREE.Mesh[] = [];
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.60, metalness: 0.02 });
-  const beardHairMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.72, metalness: 0.0 });
-  const singletMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.58, metalness: 0.05 });
+  const pal = getChampionSkinPalette('titan', skinId);
+  const skinMat = new THREE.MeshStandardMaterial({ color: pal.skinColor, roughness: pal.roughness ?? 0.60, metalness: pal.metalness ?? 0.02 });
+  const beardHairMat = new THREE.MeshStandardMaterial({ color: pal.hairColor, roughness: 0.72, metalness: 0.0 });
+  const singletMat = new THREE.MeshStandardMaterial({ color: pal.jacketColor, roughness: 0.58, metalness: pal.metalness ?? 0.05 });
   const amberStripeMat = new THREE.MeshStandardMaterial({
-    color: 0xf59e0b,
-    emissive: 0xd97706,
+    color: pal.jacketTrimColor,
+    emissive: pal.emissiveColor ?? pal.accentColor,
     emissiveIntensity: 0.35,
     roughness: 0.35,
   });
-  const leatherBeltMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.50, metalness: 0.10 });
-  const goldChampionMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.90, roughness: 0.18 });
+  const leatherBeltMat = new THREE.MeshStandardMaterial({ color: pal.teeColor, roughness: 0.50, metalness: 0.10 });
+  const goldChampionMat = new THREE.MeshStandardMaterial({ color: pal.metalColor, metalness: 0.90, roughness: 0.18 });
 
   // 1. Massive Pelvis & Championship Belt
   const pelvisGeo = new THREE.CapsuleGeometry(0.28, 0.22, 16, 24);
@@ -1281,7 +1340,7 @@ function createTitanGorrMesh(): CreatedChampion {
   nose.position.set(0, 1.68, -0.27);
   group.add(nose);
 
-  group.add(createPixarExpressiveEyes(0x451a03, 0.076, 0.096, 0.11, 1.74, -0.265));
+  group.add(createPixarExpressiveEyes(pal.eyeColor, 0.076, 0.096, 0.11, 1.74, -0.265));
   group.add(createCurvedEyebrows(0x451a03, 0.11, 1.83, -0.278, 0.22));
   group.add(createSculptedHumanEars(skinMat, 0.29, 1.70));
 
@@ -1374,6 +1433,15 @@ function createTitanGorrMesh(): CreatedChampion {
     fistGroup.add(fist);
   });
 
+  let floatingGroup: THREE.Group | undefined;
+  if (skinId === 'titan_magma_titan') {
+    floatingGroup = buildMagmaTitanDestroyerLegendary(group, accentMeshes);
+  } else if (skinId === 'titan_gladiator') {
+    buildGladiatorPlumeAndPauldron(group);
+  } else if (skinId === 'titan_yeti') {
+    buildYetiFurMantle(group);
+  }
+
   return {
     group,
     bodyMesh: chest,
@@ -1382,6 +1450,7 @@ function createTitanGorrMesh(): CreatedChampion {
     accentMeshes,
     legs: [legGroupL, legGroupR],
     arms: [armGroupL, armGroupR],
+    floatingGroup,
   };
 }
 
@@ -1390,22 +1459,23 @@ function createTitanGorrMesh(): CreatedChampion {
 // Wrapped ninja gi, jade fabric sash with dimensional knot, steel hitai-ate
 // plate with trailing physics ribbons, sharp green eyes, split-toe tabi boots.
 // ----------------------------------------------------------------------
-function createKageMesh(): CreatedChampion {
+function createKageMesh(skinId?: string): CreatedChampion {
   const group = new THREE.Group();
   const accentMeshes: THREE.Mesh[] = [];
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.55, metalness: 0.02 });
-  const ninjaBlackMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.60, metalness: 0.05 });
+  const pal = getChampionSkinPalette('kage', skinId);
+  const skinMat = new THREE.MeshStandardMaterial({ color: pal.skinColor, roughness: pal.roughness ?? 0.55, metalness: pal.metalness ?? 0.02 });
+  const ninjaBlackMat = new THREE.MeshStandardMaterial({ color: pal.jacketColor, roughness: 0.60, metalness: pal.metalness ?? 0.05 });
   const jadeMat = new THREE.MeshStandardMaterial({
-    color: 0x059669,
-    emissive: 0x047857,
+    color: pal.jacketTrimColor,
+    emissive: pal.emissiveColor ?? pal.accentColor,
     emissiveIntensity: 0.35,
     roughness: 0.40,
   });
-  const jadeGlowMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
-  const crimsonCordMat = new THREE.MeshStandardMaterial({ color: 0xbe123c, roughness: 0.60 });
-  const steelPlateMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.90, roughness: 0.18 });
-  const wrapMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.65 });
+  const jadeGlowMat = new THREE.MeshBasicMaterial({ color: pal.eyeColor });
+  const crimsonCordMat = new THREE.MeshStandardMaterial({ color: pal.teeColor, roughness: 0.60 });
+  const steelPlateMat = new THREE.MeshStandardMaterial({ color: pal.metalColor, metalness: 0.90, roughness: 0.18 });
+  const wrapMat = new THREE.MeshStandardMaterial({ color: pal.pantsColor, roughness: 0.65 });
 
   // 1. Shinobi Gi Trousers & Red Cord Belt
   const pelvisGeo = new THREE.CapsuleGeometry(0.24, 0.24, 14, 22);
@@ -1644,6 +1714,15 @@ function createKageMesh(): CreatedChampion {
     fistGroup.add(fist);
   });
 
+  let floatingGroup: THREE.Group | undefined;
+  if (skinId === 'kage_void_phantom') {
+    floatingGroup = buildVoidPhantomKageLegendary(group, accentMeshes);
+  } else if (skinId === 'kage_cyber_ronin') {
+    buildCyberRoninKabutoAndKatanas(group);
+  } else if (skinId === 'kage_demon_oni') {
+    buildDemonOniMask(group);
+  }
+
   return {
     group,
     bodyMesh: chest,
@@ -1652,6 +1731,7 @@ function createKageMesh(): CreatedChampion {
     accentMeshes,
     legs: [legGroupL, legGroupR],
     arms: [armGroupL, armGroupR],
+    floatingGroup,
   };
 }
 
@@ -1661,25 +1741,26 @@ function createKageMesh(): CreatedChampion {
 // forehead parkour goggles with orange-tinted lenses, cheek band-aid,
 // aerodynamic sprint sneakers with lightning tread.
 // ----------------------------------------------------------------------
-function createAxelBoltMesh(): CreatedChampion {
+function createAxelBoltMesh(skinId?: string): CreatedChampion {
   const group = new THREE.Group();
   const accentMeshes: THREE.Mesh[] = [];
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xfed7aa, roughness: 0.55, metalness: 0.02 });
+  const pal = getChampionSkinPalette('bolt', skinId);
+  const skinMat = new THREE.MeshStandardMaterial({ color: pal.skinColor, roughness: pal.roughness ?? 0.55, metalness: pal.metalness ?? 0.02 });
   const yellowJacketMat = new THREE.MeshStandardMaterial({
-    color: 0xeab308,
+    color: pal.jacketColor,
     roughness: 0.38,
-    metalness: 0.10,
+    metalness: pal.metalness ?? 0.10,
   });
-  const yellowGlowMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
-  const charcoalMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.60, metalness: 0.05 });
-  const blondeHairMat = new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.70, metalness: 0.0 });
+  const yellowGlowMat = new THREE.MeshBasicMaterial({ color: pal.accentColor });
+  const charcoalMat = new THREE.MeshStandardMaterial({ color: pal.pantsColor, roughness: 0.60, metalness: 0.05 });
+  const blondeHairMat = new THREE.MeshStandardMaterial({ color: pal.hairColor, roughness: 0.70, metalness: 0.0 });
   const goggleLensMat = new THREE.MeshStandardMaterial({
-    color: 0xf97316,
+    color: pal.accentColor,
     metalness: 0.88,
     roughness: 0.15,
   });
-  const whiteTrimMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.55 });
+  const whiteTrimMat = new THREE.MeshStandardMaterial({ color: pal.jacketTrimColor, roughness: 0.55 });
 
   // 1. Pelvis & Athletic Runner Shorts
   const pelvisGeo = new THREE.CapsuleGeometry(0.24, 0.22, 14, 22);
@@ -1726,7 +1807,7 @@ function createAxelBoltMesh(): CreatedChampion {
   head.castShadow = true;
   group.add(head);
 
-  group.add(createPixarExpressiveEyes(0xeab308, 0.082, 0.105, 0.105, 1.74, -0.265));
+  group.add(createPixarExpressiveEyes(pal.eyeColor, 0.082, 0.105, 0.105, 1.74, -0.265));
   group.add(createCurvedEyebrows(0xb45309, 0.105, 1.83, -0.278, 0.22));
   group.add(createCuteStylizedNoseAndMouth(skinMat, 0.09, 1.68, 1.60));
   group.add(createSculptedHumanEars(skinMat, 0.28, 1.70));
@@ -1846,6 +1927,15 @@ function createAxelBoltMesh(): CreatedChampion {
     fistGroup.add(fist);
   });
 
+  let floatingGroup: THREE.Group | undefined;
+  if (skinId === 'bolt_raijin') {
+    floatingGroup = buildRaijinThunderGodLegendary(group, accentMeshes);
+  } else if (skinId === 'bolt_cyber_racer') {
+    buildCyberRacerAeroFins(group);
+  } else if (skinId === 'bolt_stealth_operative') {
+    buildStealthNightVisionGoggles(group);
+  }
+
   return {
     group,
     bodyMesh: chest,
@@ -1854,23 +1944,24 @@ function createAxelBoltMesh(): CreatedChampion {
     accentMeshes,
     legs: [legGroupL, legGroupR],
     arms: [armGroupL, armGroupR],
+    floatingGroup,
   };
 }
 
-export function createChampionMesh(id: ChampionId): CreatedChampion {
+export function createChampionMesh(id: ChampionId, skinId?: string): CreatedChampion {
   switch (id) {
     case 'leo':
-      return createLeoMesh();
+      return createLeoMesh(skinId);
     case 'kai':
-      return createKaiMesh();
+      return createKaiMesh(skinId);
     case 'nova':
-      return createNovaMesh();
+      return createNovaMesh(skinId);
     case 'titan':
-      return createTitanGorrMesh();
+      return createTitanGorrMesh(skinId);
     case 'kage':
-      return createKageMesh();
+      return createKageMesh(skinId);
     case 'bolt':
     default:
-      return createAxelBoltMesh();
+      return createAxelBoltMesh(skinId);
   }
 }

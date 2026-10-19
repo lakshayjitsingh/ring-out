@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { sounds } from '../audio/soundManager';
 import confetti from 'canvas-confetti';
 import { createChampionMesh, CHAMPIONS, type ChampionId } from './championModels';
+import { getEquippedSkin, getChampionSkins } from './championSkins';
 
 export type CameraMode = 'third_person' | 'isometric' | 'close_action';
 export type RoundWinner = 'player' | 'bot' | 'draw';
@@ -34,6 +35,7 @@ interface Brawler {
   fists: THREE.Mesh[];
   legs?: THREE.Group[];
   arms?: THREE.Group[];
+  floatingGroup?: THREE.Group;
   pos: THREE.Vector3;
   vel: THREE.Vector3;
   targetAngle: number;
@@ -1578,7 +1580,7 @@ export class GameEngine {
 
   private setupCharacters() {
     // Player on south side
-    const pMesh = createChampionMesh(this.playerChampionId);
+    const pMesh = createChampionMesh(this.playerChampionId, getEquippedSkin(this.playerChampionId));
     pMesh.group.position.set(0, 0, 6);
     this.scene.add(pMesh.group);
 
@@ -1589,6 +1591,7 @@ export class GameEngine {
       fists: pMesh.fists,
       legs: pMesh.legs,
       arms: pMesh.arms,
+      floatingGroup: pMesh.floatingGroup,
       pos: pMesh.group.position,
       vel: new THREE.Vector3(0, 0, 0),
       targetAngle: 0,
@@ -1605,7 +1608,9 @@ export class GameEngine {
     };
 
     // Bot on north side
-    const bMesh = createChampionMesh(this.botChampionId);
+    const botSkins = getChampionSkins(this.botChampionId);
+    const botSkin = botSkins[Math.floor(Math.random() * botSkins.length)]?.id;
+    const bMesh = createChampionMesh(this.botChampionId, botSkin);
     bMesh.group.position.set(0, 0, -6);
     bMesh.group.rotation.y = Math.PI;
     this.scene.add(bMesh.group);
@@ -1617,6 +1622,7 @@ export class GameEngine {
       fists: bMesh.fists,
       legs: bMesh.legs,
       arms: bMesh.arms,
+      floatingGroup: bMesh.floatingGroup,
       pos: bMesh.group.position,
       vel: new THREE.Vector3(0, 0, 0),
       targetAngle: Math.PI,
@@ -1642,7 +1648,7 @@ export class GameEngine {
       const rotY = this.player.currentAngle;
       this.scene.remove(this.player.mesh);
 
-      const pMesh = createChampionMesh(id);
+      const pMesh = createChampionMesh(id, getEquippedSkin(id));
       pMesh.group.position.copy(pos);
       pMesh.group.rotation.y = rotY;
       this.scene.add(pMesh.group);
@@ -1653,6 +1659,7 @@ export class GameEngine {
       this.player.fists = pMesh.fists;
       this.player.legs = pMesh.legs;
       this.player.arms = pMesh.arms;
+      this.player.floatingGroup = pMesh.floatingGroup;
       this.player.pos = pMesh.group.position;
     }
   }
@@ -1666,7 +1673,9 @@ export class GameEngine {
       const rotY = this.bot.currentAngle;
       this.scene.remove(this.bot.mesh);
 
-      const bMesh = createChampionMesh(id);
+      const botSkins = getChampionSkins(id);
+      const botSkin = botSkins[Math.floor(Math.random() * botSkins.length)]?.id;
+      const bMesh = createChampionMesh(id, botSkin);
       bMesh.group.position.copy(pos);
       bMesh.group.rotation.y = rotY;
       this.scene.add(bMesh.group);
@@ -1677,6 +1686,7 @@ export class GameEngine {
       this.bot.fists = bMesh.fists;
       this.bot.legs = bMesh.legs;
       this.bot.arms = bMesh.arms;
+      this.bot.floatingGroup = bMesh.floatingGroup;
       this.bot.pos = bMesh.group.position;
     }
   }
@@ -2314,6 +2324,11 @@ export class GameEngine {
         b.fists[0].position.z = 0.3;
         b.fists[1].position.z = 0.3;
       }
+    }
+
+    if (b.floatingGroup) {
+      b.floatingGroup.rotation.y += dt * 0.8;
+      b.floatingGroup.position.y = Math.sin(this.elapsedTime * 2.2) * 0.04;
     }
   }
 

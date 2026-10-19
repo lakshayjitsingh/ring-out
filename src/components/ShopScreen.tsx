@@ -12,6 +12,7 @@ import confetti from 'canvas-confetti';
 import { sounds } from '../audio/soundManager';
 import { crazyGames } from '../game/crazyGamesSdk';
 import { CHAMPIONS, type ChampionId } from '../game/championModels';
+import { isSkinUnlocked, unlockSkin } from '../game/championSkins';
 
 interface ShopScreenProps {
   gold: number;
@@ -189,37 +190,119 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
     { id: 'bolt', cost: 2000, title: 'Lightning Axel', badge: 'Hyper Speed', color: '#eab308' },
   ];
 
-  // Placeholder skins for upcoming Trophy Road & Shop release
-  const upcomingSkins = [
+  const featuredVaultSkins = [
     {
-      name: 'Cyber Ronin Kage',
-      champion: 'Kage',
-      type: 'Diamond League Exclusive',
-      color: '#06b6d4',
-      badge: 'SKIN REWARD',
-    },
-    {
-      name: 'Colosseum Gladiator Gorr',
-      champion: 'Gorr',
-      type: 'Gold League Exclusive',
-      color: '#f59e0b',
-      badge: 'SKIN REWARD',
-    },
-    {
-      name: 'Neon Velocity Axel',
-      champion: 'Axel',
-      type: 'Master League Exclusive',
-      color: '#a855f7',
-      badge: 'SKIN REWARD',
-    },
-    {
-      name: 'Golden Sovereign Leo',
-      champion: 'Leo',
-      type: 'Grandmaster Apex Exclusive',
+      id: 'leo_poseidon',
+      championId: 'leo' as ChampionId,
+      name: 'Poseidon God-King Leo',
+      rarity: 'legendary' as const,
+      tagline: '👑 Mythic Sovereign of the Abyssal Ocean',
+      description: 'Floating golden sea crown, orbiting tidal pearls, royal scale armor!',
+      gemCost: 950,
       color: '#facc15',
-      badge: 'MYTHIC SKIN',
+      badge: 'LEGENDARY',
+    },
+    {
+      id: 'kai_quantum',
+      championId: 'kai' as ChampionId,
+      name: 'Quantum Overdrive Kai',
+      rarity: 'legendary' as const,
+      tagline: '👑 Hard-Light Tachyon Overdrive',
+      description: 'Twin floating holographic tachyon wings, spinning quantum pulse halo!',
+      gemCost: 950,
+      color: '#38bdf8',
+      badge: 'LEGENDARY',
+    },
+    {
+      id: 'nova_solar_eclipse',
+      championId: 'nova' as ChampionId,
+      name: 'Solar Eclipse Goddess Nova',
+      rarity: 'legendary' as const,
+      tagline: '👑 Coronal Flare Deity of the Sun',
+      description: 'Massive twin solar flare wings, coronal sun halo, orbiting sun flare orbs!',
+      gemCost: 950,
+      color: '#f59e0b',
+      badge: 'LEGENDARY',
+    },
+    {
+      id: 'titan_magma_titan',
+      championId: 'titan' as ChampionId,
+      name: 'Magma Titan Destroyer Gorr',
+      rarity: 'legendary' as const,
+      tagline: '👑 Primordial Volcanic Colossus',
+      description: 'Cracking molten magma core fissure, 3 orbiting basalt boulders, igneous horns!',
+      gemCost: 950,
+      color: '#ef4444',
+      badge: 'LEGENDARY',
+    },
+    {
+      id: 'kage_void_phantom',
+      championId: 'kage' as ChampionId,
+      name: 'Void Phantom Kage',
+      rarity: 'legendary' as const,
+      tagline: '👑 Spectral Singularity Shinobi',
+      description: '6 floating spectral obsidian blade wings, void singularity halo, shadow crown!',
+      gemCost: 950,
+      color: '#a855f7',
+      badge: 'LEGENDARY',
+    },
+    {
+      id: 'bolt_raijin',
+      championId: 'bolt' as ChampionId,
+      name: 'Thunder God Raijin Axel',
+      rarity: 'legendary' as const,
+      tagline: '👑 Mythic Sovereign of Celestial Thunder',
+      description: 'Ring of 6 floating Taiko thunder drums with golden lightning arcs, storm crown!',
+      gemCost: 950,
+      color: '#fde047',
+      badge: 'LEGENDARY',
+    },
+    {
+      id: 'kage_demon_oni',
+      championId: 'kage' as ChampionId,
+      name: 'Demon Oni Kage',
+      rarity: 'epic' as const,
+      tagline: 'Traditional Blood Oni Mask & Ivory Tusks',
+      description: 'Carved crimson demon oni mask with fangs, braided sacred shimenawa rope belt.',
+      gemCost: 400,
+      color: '#e11d48',
+      badge: 'EPIC SKIN',
+    },
+    {
+      id: 'titan_gladiator',
+      championId: 'titan' as ChampionId,
+      name: 'Colosseum Gladiator Gorr',
+      rarity: 'epic' as const,
+      tagline: 'Roman Crest Plume & Spiked Lion Pauldron',
+      description: 'Colossal bronze helmet with sweeping crimson horsehair crest plume.',
+      gemCost: 400,
+      color: '#d97706',
+      badge: 'EPIC SKIN',
     },
   ];
+
+  const handleDirectSkinUnlock = (skinId: string, gemCost: number, skinName: string) => {
+    if (isSkinUnlocked(skinId)) {
+      showToast(`${skinName} is already unlocked!`);
+      return;
+    }
+    if (gems < gemCost) {
+      sounds.playBump(0.8);
+      showToast(`Need ${gemCost} Gems to unlock ${skinName}!`);
+      return;
+    }
+    sounds.playVictory();
+    setGems((prev) => {
+      const next = prev - gemCost;
+      try {
+        localStorage.setItem('ringout_gems', String(next));
+      } catch {}
+      return next;
+    });
+    unlockSkin(skinId);
+    triggerCelebration();
+    showToast(`Unlocked ${skinName}! Equip it in Brawlers Locker. 🎉`);
+  };
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-gradient-to-b from-[#0284c7] via-[#38bdf8] to-[#7dd3fc] font-sans select-none text-white flex flex-col">
@@ -673,52 +756,79 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                 })}
               </div>
 
-              {/* Exclusive Skins Showcase: Placeholders as requested */}
+              {/* Featured Skins Vault Showcase */}
               <div className="mt-6 bg-slate-950/70 border-2 border-purple-500/40 rounded-3xl p-5 shadow-2xl">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-purple-300 flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-amber-300" />
-                      Exclusive League Skins (Under Production)
+                      Featured Skins Vault (Legendary & Epic)
                     </h3>
                     <p className="text-xs text-slate-300">
-                      Earned upon conquering Bronze, Silver, Gold, Diamond, Master, and Grandmaster leagues!
+                      Customize your champion with divine floating halos, wings, crowns, and mythic attire!
                     </p>
                   </div>
                   <span className="hidden sm:inline-block px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400 text-purple-200 text-[10px] font-black uppercase">
-                    TROPHY ROAD EXCLUSIVE
+                    SKINS VAULT
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {upcomingSkins.map((skin, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-black/40 border-2 border-dashed border-white/20 hover:border-white/40 rounded-2xl p-4 flex flex-col justify-between text-center relative group"
-                    >
-                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-white/10 text-[9px] font-mono text-amber-300 font-black border border-white/10">
-                        {skin.badge}
-                      </div>
+                  {featuredVaultSkins.map((skin) => {
+                    const isOwned = isSkinUnlocked(skin.id);
 
-                      <div className="py-4">
+                    return (
+                      <div
+                        key={skin.id}
+                        className={`bg-black/40 border-2 rounded-2xl p-4 flex flex-col justify-between text-center relative group transition-all ${
+                          skin.rarity === 'legendary'
+                            ? 'border-amber-400/50 hover:border-amber-300 shadow-[0_0_15px_rgba(250,204,21,0.2)]'
+                            : 'border-purple-500/40 hover:border-purple-400'
+                        }`}
+                      >
                         <div
-                          className="w-12 h-12 mx-auto rounded-2xl border-2 flex items-center justify-center text-xl shadow mb-2"
-                          style={{
-                            borderColor: skin.color,
-                            backgroundColor: `${skin.color}20`,
-                          }}
+                          className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-mono font-black border ${
+                            skin.rarity === 'legendary'
+                              ? 'bg-amber-500/30 text-amber-300 border-amber-400/60'
+                              : 'bg-purple-500/25 text-purple-300 border-purple-400/50'
+                          }`}
                         >
-                          🎨
+                          {skin.badge}
                         </div>
-                        <h4 className="text-xs font-black text-white">{skin.name}</h4>
-                        <div className="text-[10px] text-sky-200 font-semibold mt-0.5">{skin.type}</div>
-                      </div>
 
-                      <div className="py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                        Slot Reserved • In Production
+                        <div className="py-2">
+                          <div
+                            className="w-12 h-12 mx-auto rounded-2xl border-2 flex items-center justify-center text-xl shadow mb-2"
+                            style={{
+                              borderColor: skin.color,
+                              backgroundColor: `${skin.color}25`,
+                            }}
+                          >
+                            {skin.rarity === 'legendary' ? '👑' : '⚡'}
+                          </div>
+                          <h4 className="text-xs font-black text-white">{skin.name}</h4>
+                          <div className="text-[10px] text-sky-200 font-medium mt-0.5 line-clamp-1">{skin.tagline}</div>
+                          <div className="text-[9px] text-slate-400 mt-1 line-clamp-2">{skin.description}</div>
+                        </div>
+
+                        <div className="mt-2">
+                          {isOwned ? (
+                            <div className="py-2 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-black text-[11px] uppercase flex items-center justify-center gap-1">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" /> UNLOCKED
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleDirectSkinUnlock(skin.id, skin.gemCost, skin.name)}
+                              className="w-full py-2 bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl border border-amber-200 shadow active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <span>💎</span>
+                              <span>{skin.gemCost}</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

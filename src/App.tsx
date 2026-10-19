@@ -265,6 +265,8 @@ export function App() {
           selectedChampion={selectedChampion}
           trophies={trophies}
           gold={gold}
+          gems={gems}
+          setGems={setGems}
           onSelectChampion={handleSelectChampion}
           onBackToBattle={() => {
             setActiveScreen('home');

@@ -8,6 +8,14 @@ import {
   type CreatedChampion,
 } from '../game/championModels';
 import {
+  getChampionSkins,
+  getEquippedSkin,
+  setEquippedSkin,
+  isSkinUnlocked,
+  unlockSkin,
+  type ChampionSkin,
+} from '../game/championSkins';
+import {
   Swords,
   Check,
   Rotate3d,
@@ -17,6 +25,9 @@ import {
   Flame,
   Gauge,
   BatteryCharging,
+  Crown,
+  Unlock,
+  Gem,
 } from 'lucide-react';
 import { sounds } from '../audio/soundManager';
 
@@ -24,6 +35,8 @@ interface ChampionShowcaseProps {
   selectedChampion: ChampionId;
   trophies?: number;
   gold?: number;
+  gems?: number;
+  setGems?: React.Dispatch<React.SetStateAction<number>>;
   onSelectChampion: (id: ChampionId) => void;
   onBackToBattle: () => void;
 }
@@ -32,12 +45,28 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
   selectedChampion,
   trophies = 0,
   gold = 100,
+  gems = 50,
+  setGems,
   onSelectChampion,
   onBackToBattle,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeId, setActiveId] = useState<ChampionId>(selectedChampion);
   const activeChampion = CHAMPIONS[activeId];
+
+  // Skin Locker State
+  const [equippedSkinId, setEquippedSkinState] = useState<string>(() => getEquippedSkin(selectedChampion));
+  const [previewSkinId, setPreviewSkinId] = useState<string>(() => getEquippedSkin(selectedChampion));
+  const [, setSkinsVersion] = useState(0);
+  const [mobileTab, setMobileTab] = useState<'stats' | 'skins'>('stats');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((cur) => (cur === msg ? null : cur));
+    }, 2800);
+  };
 
   // Three.js refs
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -74,8 +103,9 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-    camera.position.set(-0.85, 1.35, 4.5);
-    camera.lookAt(-0.85, 1.05, 0);
+    const camX = container.clientWidth < 768 ? 0 : -0.22;
+    camera.position.set(camX, 1.35, 4.5);
+    camera.lookAt(camX, 1.05, 0);
 
     // 2. Renderer (transparent WebGL alpha canvas)
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -262,6 +292,11 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
       if (currentModelRef.current) {
         const breathe = Math.sin(elapsedTime * 2.2) * 0.03;
         currentModelRef.current.group.position.y = breathe;
+
+        if (currentModelRef.current.floatingGroup) {
+          currentModelRef.current.floatingGroup.rotation.y = elapsedTime * 0.7;
+          currentModelRef.current.floatingGroup.position.y = Math.sin(elapsedTime * 2.2) * 0.04;
+        }
       }
 
       renderer.render(scene, camera);
@@ -343,28 +378,40 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     };
   }, []);
 
-  // Update 3D Model when active champion changes
-  const loadChampion = (champId: ChampionId) => {
+  // Update 3D Model when active champion or skin changes
+  const loadChampion = (champId: ChampionId, skinId?: string) => {
     if (!modelHolderRef.current || !sceneRef.current) return;
 
     // Remove old model
     if (currentModelRef.current) {
       modelHolderRef.current.remove(currentModelRef.current.group);
+      currentModelRef.current.group.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) {
+          const m = obj as THREE.Mesh;
+          m.geometry?.dispose();
+          if (Array.isArray(m.material)) m.material.forEach((mat) => mat.dispose());
+          else m.material?.dispose();
+        }
+      });
+      currentModelRef.current = null;
     }
 
-    // Create fresh champion mesh
-    const champ = createChampionMesh(champId);
+    const effectiveSkin = skinId || getEquippedSkin(champId);
+    const champ = createChampionMesh(champId, effectiveSkin);
     currentModelRef.current = champ;
     modelHolderRef.current.add(champ.group);
     currentRotationYRef.current = Math.PI;
 
     // Update pedestal glow color
-    const info = CHAMPIONS[champId];
+    const skins = getChampionSkins(champId);
+    const skinInfo = skins.find((s) => s.id === effectiveSkin);
+    const glowHex = skinInfo?.glowColor ?? CHAMPIONS[champId].glowColor;
+
     if (pedestalRef.current) {
       pedestalRef.current.children.forEach((child) => {
         const mesh = child as THREE.Mesh;
         if (mesh.material && !(mesh.geometry instanceof THREE.CylinderGeometry)) {
-          (mesh.material as THREE.MeshBasicMaterial).color.setHex(info.glowColor);
+          (mesh.material as THREE.MeshBasicMaterial).color.setHex(glowHex);
         }
       });
     }
@@ -373,7 +420,46 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
   const handleSelectTab = (id: ChampionId) => {
     sounds.playBump(0.8);
     setActiveId(id);
-    loadChampion(id);
+    const eq = getEquippedSkin(id);
+    setEquippedSkinState(eq);
+    setPreviewSkinId(eq);
+    loadChampion(id, eq);
+  };
+
+  const handleSelectSkinPreview = (skin: ChampionSkin) => {
+    sounds.playBump(0.7);
+    setPreviewSkinId(skin.id);
+    loadChampion(activeId, skin.id);
+  };
+
+  const handleEquipSkin = (skin: ChampionSkin) => {
+    sounds.playVictory();
+    setEquippedSkin(activeId, skin.id);
+    setEquippedSkinState(skin.id);
+    showToast(`Equipped ${skin.name}! ✨`);
+  };
+
+  const handleUnlockSkin = (skin: ChampionSkin) => {
+    if (gems < skin.gemCost) {
+      sounds.playBump(0.8);
+      showToast(`Need ${skin.gemCost} Gems to unlock!`);
+      return;
+    }
+    sounds.playVictory();
+    if (setGems) {
+      setGems((prev) => {
+        const next = prev - skin.gemCost;
+        try {
+          localStorage.setItem('ringout_gems', String(next));
+        } catch {}
+        return next;
+      });
+    }
+    unlockSkin(skin.id);
+    setEquippedSkin(activeId, skin.id);
+    setEquippedSkinState(skin.id);
+    setSkinsVersion((v) => v + 1);
+    showToast(`Unlocked & Equipped ${skin.name}! 🎉`);
   };
 
   const handleEquip = () => {
@@ -388,6 +474,8 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
   };
 
   const isEquipped = selectedChampion === activeId;
+  const currentSkins = getChampionSkins(activeId);
+  const activePreviewSkin = currentSkins.find((s) => s.id === previewSkinId) || currentSkins[0];
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-gradient-to-b from-[#0284c7] via-[#38bdf8] to-[#7dd3fc] font-sans select-none text-white">
@@ -467,11 +555,45 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
           <span className="text-xs font-black text-amber-300 font-mono">🏆 {trophies.toLocaleString()}</span>
           <div className="w-px h-3.5 bg-white/30" />
           <span className="text-xs font-black text-yellow-300 font-mono">🪙 {gold.toLocaleString()}</span>
+          <div className="w-px h-3.5 bg-white/30" />
+          <span className="text-xs font-black text-cyan-300 font-mono">💎 {gems.toLocaleString()}</span>
         </div>
       </div>
 
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="absolute top-18 left-1/2 -translate-x-1/2 px-5 py-2.5 bg-slate-900/95 border-2 border-amber-400 text-amber-200 font-black text-xs uppercase tracking-wider rounded-2xl shadow-2xl z-50 animate-bounce flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-300" />
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Mobile Tab Switcher */}
+      <div className="absolute top-18 left-4 right-4 flex md:hidden items-center justify-center gap-2 z-30">
+        <button
+          onClick={() => setMobileTab('stats')}
+          className={`flex-1 py-2 rounded-xl text-xs font-black uppercase transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'stats'
+              ? 'bg-amber-400 text-slate-950 shadow-lg'
+              : 'bg-slate-900/80 text-white/80 border border-white/20 backdrop-blur-md'
+          }`}
+        >
+          <Flame className="w-3.5 h-3.5" /> Combat Stats
+        </button>
+        <button
+          onClick={() => setMobileTab('skins')}
+          className={`flex-1 py-2 rounded-xl text-xs font-black uppercase transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'skins'
+              ? 'bg-amber-400 text-slate-950 shadow-lg'
+              : 'bg-slate-900/80 text-white/80 border border-white/20 backdrop-blur-md'
+          }`}
+        >
+          <Crown className="w-3.5 h-3.5" /> Skins Vault (5)
+        </button>
+      </div>
+
       {/* LEFT CHAMPION INFO & REAL STATS CARD */}
-      <div className="absolute top-20 left-4 sm:left-6 max-w-sm pointer-events-auto z-20 hidden md:block animate-in slide-in-from-left duration-200">
+      <div className={`absolute top-28 md:top-20 left-4 sm:left-6 max-w-sm pointer-events-auto z-20 ${mobileTab === 'stats' ? 'block' : 'hidden'} md:block animate-in slide-in-from-left duration-200`}>
         <div className="bg-slate-900/80 backdrop-blur-xl border-2 border-white/20 rounded-3xl p-5 shadow-[0_16px_50px_rgba(0,0,0,0.5)]">
           <div className="flex items-center gap-2 mb-1.5">
             <span
@@ -602,6 +724,130 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
               </>
             )}
           </button>
+        </div>
+      </div>
+
+      {/* RIGHT CHAMPION SKINS VAULT (5 Skins + Default) */}
+      <div className={`absolute top-28 md:top-20 right-4 sm:right-6 w-80 sm:w-96 pointer-events-auto z-20 ${mobileTab === 'skins' ? 'block' : 'hidden'} md:block animate-in slide-in-from-right duration-200`}>
+        <div className="bg-slate-900/85 backdrop-blur-xl border-2 border-white/20 rounded-3xl p-5 shadow-[0_16px_50px_rgba(0,0,0,0.5)] flex flex-col max-h-[calc(100vh-190px)]">
+          <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-xl bg-amber-400/20 border border-amber-300/40 text-amber-300 shadow-sm">
+                <Crown className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                  Skins Vault ({currentSkins.length})
+                </h3>
+                <p className="text-[10px] text-amber-300 font-bold">2 Rare • 2 Epic • 1 Legendary</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono font-bold text-sky-200 bg-sky-500/20 px-2 py-0.5 rounded-full border border-sky-400/30">
+              3D Live Preview
+            </span>
+          </div>
+
+          {/* Scrollable list of 6 skins */}
+          <div className="space-y-2.5 overflow-y-auto pr-1 flex-1 [scrollbar-width:thin]">
+            {currentSkins.map((skin) => {
+              const isSelectedPreview = skin.id === previewSkinId;
+              const isSkinEquipped = skin.id === equippedSkinId;
+              const unlocked = isSkinUnlocked(skin.id);
+
+              return (
+                <div
+                  key={skin.id}
+                  onClick={() => handleSelectSkinPreview(skin)}
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
+                    isSelectedPreview
+                      ? 'bg-white/15 shadow-[0_0_15px_rgba(255,255,255,0.25)] scale-[1.01]'
+                      : 'bg-slate-950/60 hover:bg-white/10'
+                  }`}
+                  style={{
+                    borderColor: isSelectedPreview
+                      ? skin.rarity === 'legendary'
+                        ? '#facc15'
+                        : skin.rarity === 'epic'
+                        ? '#ec4899'
+                        : skin.rarity === 'rare'
+                        ? '#06b6d4'
+                        : '#ffffff'
+                      : 'rgba(255,255,255,0.1)',
+                  }}
+                >
+                  {/* Subtle Legendary Glow Backing */}
+                  {skin.rarity === 'legendary' && (
+                    <div className="absolute -right-8 -top-8 w-24 h-24 bg-gradient-to-br from-amber-400/25 to-yellow-500/10 rounded-full blur-xl pointer-events-none" />
+                  )}
+
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                          skin.rarity === 'legendary'
+                            ? 'bg-amber-500/30 text-amber-300 border-amber-400/60 shadow-[0_0_10px_rgba(250,204,21,0.5)] animate-pulse'
+                            : skin.rarity === 'epic'
+                            ? 'bg-purple-500/25 text-purple-300 border-purple-400/50'
+                            : skin.rarity === 'rare'
+                            ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400/50'
+                            : 'bg-slate-700/50 text-slate-300 border-white/20'
+                        }`}
+                      >
+                        {skin.rarity === 'legendary' ? '👑 LEGENDARY' : skin.badge}
+                      </span>
+                    </div>
+
+                    {isSkinEquipped ? (
+                      <span className="text-[10px] font-black text-emerald-400 flex items-center gap-1 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        <Check className="w-3 h-3 stroke-[3]" /> EQUIPPED
+                      </span>
+                    ) : unlocked ? (
+                      <span className="text-[10px] font-black text-sky-300 flex items-center gap-1 bg-sky-500/20 px-2 py-0.5 rounded-full border border-sky-500/30">
+                        <Unlock className="w-3 h-3" /> UNLOCKED
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono font-black text-yellow-300 flex items-center gap-1 bg-yellow-500/20 px-2 py-0.5 rounded-full border border-yellow-500/30">
+                        <Gem className="w-3 h-3 text-cyan-300" /> {skin.gemCost}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="text-xs font-black text-white group-hover:text-amber-200 transition-colors">
+                    {skin.name}
+                  </div>
+                  <div className="text-[10px] text-sky-200/90 font-medium line-clamp-1 mb-1">
+                    {skin.tagline}
+                  </div>
+                  <div className="text-[9px] text-slate-300 leading-tight line-clamp-2">
+                    {skin.description}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Action button for active preview skin */}
+          <div className="pt-3 border-t border-white/10 mt-3">
+            {activePreviewSkin.id === equippedSkinId ? (
+              <div className="w-full py-3 rounded-2xl bg-slate-800/80 border border-emerald-500/40 text-emerald-400 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2">
+                <Check className="w-4 h-4 stroke-[3]" /> Skin Equipped in Battle
+              </div>
+            ) : isSkinUnlocked(activePreviewSkin.id) ? (
+              <button
+                onClick={() => handleEquipSkin(activePreviewSkin)}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-2 border border-emerald-300"
+              >
+                <Check className="w-4 h-4 stroke-[3]" /> Equip {activePreviewSkin.name}
+              </button>
+            ) : (
+              <button
+                onClick={() => handleUnlockSkin(activePreviewSkin)}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-2 border border-amber-200"
+              >
+                <Gem className="w-4 h-4 text-slate-950" /> Unlock for {activePreviewSkin.gemCost} Gems
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

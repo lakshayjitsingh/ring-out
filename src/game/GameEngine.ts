@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { sounds } from '../audio/soundManager';
 import confetti from 'canvas-confetti';
-import { createChampionMesh, type ChampionId } from './championModels';
+import { createChampionMesh, CHAMPIONS, type ChampionId } from './championModels';
 
 export type CameraMode = 'third_person' | 'isometric' | 'close_action';
 export type RoundWinner = 'player' | 'bot' | 'draw';
@@ -54,7 +54,7 @@ export class GameEngine {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private clock: THREE.Clock;
+  private lastTime: number = 0;
 
   // Rounds & Match State
   private playerRoundWins = 0;
@@ -161,7 +161,7 @@ export class GameEngine {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(this.renderer.domElement);
 
-    this.clock = new THREE.Clock();
+    this.lastTime = performance.now();
 
     // 3. Environment & Lights (Tropical Sun, Ocean, Sky, Islands)
     this.setupLighting();
@@ -1932,7 +1932,9 @@ export class GameEngine {
   // Main Loop
   private loop = () => {
     this.animationId = requestAnimationFrame(this.loop);
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const now = performance.now();
+    const dt = Math.min((now - this.lastTime) * 0.001, 0.05);
+    this.lastTime = now;
 
     this.updateEnvironment(dt);
 
@@ -2504,7 +2506,8 @@ export class GameEngine {
       sounds.playDraw();
       this.spawnDashParticles(new THREE.Vector3(0, 0, 0), 0xffffff, 20);
     } else {
-      const winnerName = roundWinner === 'player' ? 'KAI' : 'SHADOWNINJA';
+      const winnerChampId = roundWinner === 'player' ? this.playerChampionId : this.botChampionId;
+      const winnerName = CHAMPIONS[winnerChampId]?.name?.toUpperCase() || (roundWinner === 'player' ? 'PLAYER' : 'OPPONENT');
       this.state.roundBannerText = `ROUND ${this.currentRound}: ${winnerName} WINS!`;
       this.state.roundBannerType = roundWinner;
       if (roundWinner === 'player') {

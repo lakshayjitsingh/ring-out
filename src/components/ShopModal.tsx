@@ -144,7 +144,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
     { id: 'kage', cost: 500, title: 'Shadow Shinobi', badge: 'Fast Agility' },
     { id: 'nova', cost: 800, title: 'Solar Duelist', badge: 'High Reach' },
     { id: 'titan', cost: 1200, title: 'Iron Juggernaut', badge: 'Super Heavy' },
-    { id: 'bolt', cost: 1500, title: 'Robo-Fox Prototype', badge: 'Ultra Burst' },
+    { id: 'bolt', cost: 1500, title: 'Lightning Axel', badge: 'Ultra Burst' },
   ];
 
   return (

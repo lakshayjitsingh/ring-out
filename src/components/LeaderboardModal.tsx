@@ -17,7 +17,7 @@ const GLOBAL_LEADERBOARD_DATA: LeaderboardEntry[] = [
   { rank: 2, name: 'ShadowStrike_IN', flag: '🇮🇳', trophies: 4760, championId: 'kage' },
   { rank: 3, name: 'Tokyo_Ghost', flag: '🇯🇵', trophies: 4620, championId: 'nova' },
   { rank: 4, name: 'AuraLord', flag: '🇬🇧', trophies: 4480, championId: 'leo' },
-  { rank: 5, name: 'CyberFox_99', flag: '🇩🇪', trophies: 4350, championId: 'bolt' },
+  { rank: 5, name: 'Axel_Runner99', flag: '🇩🇪', trophies: 4350, championId: 'bolt' },
   { rank: 6, name: 'Kaiser_Brawl', flag: '🇧🇷', trophies: 4210, championId: 'titan' },
   { rank: 7, name: 'NovaPrime', flag: '🇨🇦', trophies: 4090, championId: 'nova' },
   { rank: 8, name: 'Shinobi_X', flag: '🇰🇷', trophies: 3950, championId: 'kage' },
@@ -31,7 +31,7 @@ const GLOBAL_LEADERBOARD_DATA: LeaderboardEntry[] = [
   { rank: 16, name: 'Raptor_Strike', flag: '🇪🇸', trophies: 2980, championId: 'leo' },
   { rank: 17, name: 'Silent_Kunai', flag: '🇯🇵', trophies: 2850, championId: 'kage' },
   { rank: 18, name: 'Celestial_Sky', flag: '🇸🇬', trophies: 2720, championId: 'nova' },
-  { rank: 19, name: 'Omega_Mech', flag: '🇺🇸', trophies: 2590, championId: 'bolt' },
+  { rank: 19, name: 'Gorr_Crusher', flag: '🇺🇸', trophies: 2590, championId: 'titan' },
   { rank: 20, name: 'BrawlSensei', flag: '🇮🇳', trophies: 2470, championId: 'leo' },
 ];
 

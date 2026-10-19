@@ -151,7 +151,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     { trophies: 1500, rewardType: 'champion', rewardLabel: 'Titan Gorr Unlocked', championId: 'titan', claimed: false },
     { trophies: 2000, rewardType: 'box', rewardLabel: 'Mega Brawl Box', claimed: false },
     { trophies: 2600, rewardType: 'champion', rewardLabel: 'Kage Unlocked', championId: 'kage', claimed: false },
-    { trophies: 3500, rewardType: 'champion', rewardLabel: 'Bolt Robo-Fox', championId: 'bolt', claimed: false },
+    { trophies: 3500, rewardType: 'champion', rewardLabel: 'Axel Parkourist Unlocked', championId: 'bolt', claimed: false },
   ];
 
   // Helper to load champion into Three.js scene
@@ -274,11 +274,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     loadChampionModel(selectedChampion);
 
     let animationId = 0;
-    const clock = new THREE.Clock();
+    const startTime = performance.now();
 
     const animate = () => {
       animationId = requestAnimationFrame(animate);
-      clock.getDelta();
+      const elapsedTime = (performance.now() - startTime) * 0.001;
 
       if (!isDraggingRef.current) {
         currentRotationYRef.current += rotationVelocityRef.current;
@@ -293,7 +293,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       }
 
       if (currentModelRef.current) {
-        const breathe = Math.sin(clock.getElapsedTime() * 2.2) * 0.03;
+        const breathe = Math.sin(elapsedTime * 2.2) * 0.03;
         currentModelRef.current.group.position.y = breathe;
       }
 

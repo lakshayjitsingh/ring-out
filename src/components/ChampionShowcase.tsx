@@ -47,8 +47,8 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-    camera.position.set(0.48, 1.40, 4.6);
-    camera.lookAt(0.38, 1.05, 0);
+    camera.position.set(-0.85, 1.35, 4.5);
+    camera.lookAt(-0.85, 1.05, 0);
 
     // 2. Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -154,13 +154,13 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     // Load initial champion
     loadChampion(activeId);
 
-    // 6. Animation loop
+    // 6. Animation loop using performance.now() (zero Clock deprecation warning)
     let animationId = 0;
-    const clock = new THREE.Clock();
+    const startTime = performance.now();
 
     const animate = () => {
       animationId = requestAnimationFrame(animate);
-      clock.getDelta();
+      const elapsedTime = (performance.now() - startTime) * 0.001;
 
       // Only rotate when dragged by user; stays stationary when idle as requested
       if (!isDraggingRef.current) {
@@ -177,7 +177,7 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
 
       // Subtle breathing float on hero pose (no walking/jumping)
       if (currentModelRef.current) {
-        const breathe = Math.sin(clock.getElapsedTime() * 2.2) * 0.03;
+        const breathe = Math.sin(elapsedTime * 2.2) * 0.03;
         currentModelRef.current.group.position.y = breathe;
       }
 
@@ -324,7 +324,7 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
         >
           <ArrowLeft className="w-5 h-5 text-cyan-400 group-hover:-translate-x-1 transition-transform" />
           <span className="text-sm font-black tracking-wider uppercase text-cyan-300">
-            Arena Battle
+            Back to Lobby
           </span>
         </button>
 
@@ -428,7 +428,7 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
 
       {/* BOTTOM CHAMPION ROSTER CAROUSEL */}
       <div className="absolute bottom-6 left-4 right-4 flex flex-col items-center pointer-events-auto z-20">
-        <div className="w-full max-w-4xl bg-slate-900/85 backdrop-blur-xl border border-slate-700/80 rounded-3xl p-3 shadow-2xl flex items-center justify-between gap-2 overflow-x-auto">
+        <div className="w-full max-w-4xl bg-slate-900/85 backdrop-blur-xl border border-slate-700/80 rounded-3xl p-3 shadow-2xl flex items-center justify-between gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {CHAMPION_LIST.map((champ) => {
             const isActive = champ.id === activeId;
             const isChampEquipped = champ.id === selectedChampion;

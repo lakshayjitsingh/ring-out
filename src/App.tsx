@@ -40,6 +40,7 @@ export function App() {
       setGameState(newState);
     });
     engineRef.current = engine;
+    engine.setPlayerChampion(selectedChampion);
     (window as unknown as { __gameEngine: GameEngine }).__gameEngine = engine;
 
     return () => {
@@ -80,18 +81,20 @@ export function App() {
   const [botChampion, setBotChampion] = useState<ChampionId>('kage');
 
   const handleStartStory = () => {
-    engineRef.current?.resetMatch();
+    engineRef.current?.setPlayerChampion(selectedChampion);
     engineRef.current?.setBotChampion('kage');
+    engineRef.current?.resetMatch();
     setBotChampion('kage');
     setActiveScreen('battle');
   };
 
   const handleStartPvP = () => {
-    engineRef.current?.resetMatch();
+    engineRef.current?.setPlayerChampion(selectedChampion);
     const rivalChamps: ChampionId[] = ['titan', 'nova', 'bolt', 'kai', 'kage'];
     const filtered = rivalChamps.filter((c) => c !== selectedChampion);
     const rival = filtered[Math.floor(Math.random() * filtered.length)] || 'kage';
     engineRef.current?.setBotChampion(rival);
+    engineRef.current?.resetMatch();
     setBotChampion(rival);
     setActiveScreen('battle');
   };

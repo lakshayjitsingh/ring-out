@@ -16,7 +16,7 @@ interface ArenaInfo {
 const ARENAS: ArenaInfo[] = [
   { id: 1, name: 'Emerald Isles', trophyRange: '0 - 400 🏆', minTrophies: 0, themeColor: 'from-emerald-600 to-teal-800', bannerBg: 'bg-emerald-950/80 border-emerald-400' },
   { id: 2, name: 'Volcanic Crucible', trophyRange: '400 - 900 🏆', minTrophies: 400, themeColor: 'from-amber-600 to-rose-900', bannerBg: 'bg-amber-950/80 border-amber-400' },
-  { id: 3, name: 'Cyber Citadel', trophyRange: '900 - 1,600 🏆', minTrophies: 900, themeColor: 'from-cyan-600 to-blue-900', bannerBg: 'bg-cyan-950/80 border-cyan-400' },
+  { id: 3, name: 'Metro Rooftops', trophyRange: '900 - 1,600 🏆', minTrophies: 900, themeColor: 'from-cyan-600 to-blue-900', bannerBg: 'bg-cyan-950/80 border-cyan-400' },
   { id: 4, name: 'Solar Peaks', trophyRange: '1,600 - 2,400 🏆', minTrophies: 1600, themeColor: 'from-purple-600 to-indigo-950', bannerBg: 'bg-purple-950/80 border-purple-400' },
   { id: 5, name: 'Master Colosseum', trophyRange: '2,400+ 🏆', minTrophies: 2400, themeColor: 'from-amber-400 to-yellow-700', bannerBg: 'bg-yellow-950/80 border-yellow-300' },
 ];
@@ -41,10 +41,10 @@ const ROAD_STEPS: RoadStep[] = [
   { trophies: 900, arenaId: 3, rewardType: 'champion', rewardLabel: 'Titan Gorr', championId: 'titan', icon: '🦍' },
   { trophies: 1100, arenaId: 3, rewardType: 'chest', rewardLabel: 'Mega Brawl Chest', amount: 150, icon: '🎁' },
   { trophies: 1350, arenaId: 3, rewardType: 'gold', rewardLabel: '1,000 Gold', amount: 1000, icon: '🪙' },
-  { trophies: 1600, arenaId: 4, rewardType: 'champion', rewardLabel: 'Nova (Solar Duelist)', championId: 'nova', icon: '☀️' },
+  { trophies: 1600, arenaId: 4, rewardType: 'champion', rewardLabel: 'Nova (Valkyrie Boxer)', championId: 'nova', icon: '🥊' },
   { trophies: 1900, arenaId: 4, rewardType: 'gems', rewardLabel: '200 Gems', amount: 200, icon: '💎' },
   { trophies: 2200, arenaId: 4, rewardType: 'chest', rewardLabel: 'Royal Crown Vault', amount: 300, icon: '👑' },
-  { trophies: 2500, arenaId: 5, rewardType: 'champion', rewardLabel: 'Bolt Robo-Fox Prototype', championId: 'bolt', icon: '🦊' },
+  { trophies: 2500, arenaId: 5, rewardType: 'champion', rewardLabel: 'Axel (Lightning Parkourist)', championId: 'bolt', icon: '⚡' },
   { trophies: 3000, arenaId: 5, rewardType: 'chest', rewardLabel: 'Legendary Master Core', amount: 500, icon: '🌟' },
 ];
 

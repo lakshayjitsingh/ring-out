@@ -31,10 +31,6 @@ export function App() {
     winner: null,
     cameraMode: 'third_person',
     warningText: null,
-    playerSkillCooldown: 0,
-    playerSkillMaxCooldown: 7,
-    isPlayerSkillActive: false,
-    playerChampionId: 'leo',
   });
 
   useEffect(() => {
@@ -61,10 +57,6 @@ export function App() {
     engineRef.current?.triggerDash(aimX, aimZ);
   };
 
-  const handleSpecialSkill = () => {
-    engineRef.current?.triggerSpecialSkill(true);
-  };
-
   const handleAimChange = (isAiming: boolean, aimX?: number, aimZ?: number) => {
     engineRef.current?.setAim(isAiming, aimX, aimZ);
   };
@@ -85,9 +77,12 @@ export function App() {
     engineRef.current?.resetMatch();
   };
 
+  const [botChampion, setBotChampion] = useState<ChampionId>('kage');
+
   const handleStartStory = () => {
     engineRef.current?.resetMatch();
     engineRef.current?.setBotChampion('kage');
+    setBotChampion('kage');
     setActiveScreen('battle');
   };
 
@@ -97,6 +92,7 @@ export function App() {
     const filtered = rivalChamps.filter((c) => c !== selectedChampion);
     const rival = filtered[Math.floor(Math.random() * filtered.length)] || 'kage';
     engineRef.current?.setBotChampion(rival);
+    setBotChampion(rival);
     setActiveScreen('battle');
   };
 
@@ -112,9 +108,9 @@ export function App() {
         <BattleHUD
           state={gameState}
           selectedChampion={selectedChampion}
+          botChampion={botChampion}
           onOpenShowcase={() => setActiveScreen('home')}
           onDash={handleDash}
-          onSpecialSkill={handleSpecialSkill}
           onAimChange={handleAimChange}
           onJoystickMove={handleJoystickMove}
           onCameraChange={handleCameraChange}

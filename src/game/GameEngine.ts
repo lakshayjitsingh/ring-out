@@ -1,13 +1,7 @@
 import * as THREE from 'three';
 import { sounds } from '../audio/soundManager';
 import confetti from 'canvas-confetti';
-import {
-  createChampionMesh,
-  type ChampionId,
-  CHAMPIONS,
-  animateChampion,
-  type CreatedChampion,
-} from './championModels';
+import { createChampionMesh, type ChampionId } from './championModels';
 
 export type CameraMode = 'third_person' | 'isometric' | 'close_action';
 export type RoundWinner = 'player' | 'bot' | 'draw';
@@ -31,10 +25,6 @@ export interface GameState {
   winner: 'player' | 'bot' | 'draw' | null;
   cameraMode: CameraMode;
   warningText: string | null;
-  playerSkillCooldown: number;
-  playerSkillMaxCooldown: number;
-  isPlayerSkillActive: boolean;
-  playerChampionId: ChampionId;
 }
 
 interface Brawler {
@@ -42,9 +32,8 @@ interface Brawler {
   bodyMesh: THREE.Mesh;
   coreMesh: THREE.Mesh;
   fists: THREE.Mesh[];
-  legs?: THREE.Object3D[];
-  arms?: THREE.Object3D[];
-  champData?: CreatedChampion;
+  legs?: THREE.Group[];
+  arms?: THREE.Group[];
   pos: THREE.Vector3;
   vel: THREE.Vector3;
   targetAngle: number;
@@ -123,20 +112,6 @@ export class GameEngine {
   private keys: { [key: string]: boolean } = {};
   private spaceKeyHeld = false;
 
-  // Trophy Scaling & Bot AI
-  public playerTrophies: number = 1250;
-
-  // Active Special Skill State
-  private playerSkillCooldownTimer: number = 0;
-  private botSkillCooldownTimer: number = 0;
-  private playerSkillActiveTimer: number = 0;
-  private botSkillActiveTimer: number = 0;
-  private isPlayerInvulnerable: boolean = false;
-  private isBotInvulnerable: boolean = false;
-  private playerShieldMesh: THREE.Mesh | null = null;
-  private botShieldMesh: THREE.Mesh | null = null;
-  private activeVortex: { pos: THREE.Vector3; timer: number; mesh: THREE.Mesh; casterIsPlayer: boolean } | null = null;
-
   // Game flow
   public state: GameState;
   private onStateChange: (state: GameState) => void;
@@ -167,10 +142,6 @@ export class GameEngine {
       winner: null,
       cameraMode: 'third_person',
       warningText: null,
-      playerSkillCooldown: 0,
-      playerSkillMaxCooldown: CHAMPIONS[this.playerChampionId]?.skill?.cooldown ?? 7,
-      isPlayerSkillActive: false,
-      playerChampionId: this.playerChampionId,
     };
 
     // 1. Three.js Scene & Camera (Chapter 1: Emerald Isles Tropical Daylight)
@@ -187,7 +158,7 @@ export class GameEngine {
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(this.renderer.domElement);
 
     this.clock = new THREE.Clock();
@@ -1618,7 +1589,6 @@ export class GameEngine {
       fists: pMesh.fists,
       legs: pMesh.legs,
       arms: pMesh.arms,
-      champData: pMesh,
       pos: pMesh.group.position,
       vel: new THREE.Vector3(0, 0, 0),
       targetAngle: 0,
@@ -1647,7 +1617,6 @@ export class GameEngine {
       fists: bMesh.fists,
       legs: bMesh.legs,
       arms: bMesh.arms,
-      champData: bMesh,
       pos: bMesh.group.position,
       vel: new THREE.Vector3(0, 0, 0),
       targetAngle: Math.PI,
@@ -1667,9 +1636,6 @@ export class GameEngine {
   public setPlayerChampion(id: ChampionId) {
     if (this.playerChampionId === id && this.player) return;
     this.playerChampionId = id;
-    this.state.playerChampionId = id;
-    this.state.playerSkillMaxCooldown = CHAMPIONS[id]?.skill?.cooldown ?? 7;
-    this.playerSkillCooldownTimer = 0;
 
     if (this.player && this.player.mesh) {
       const pos = this.player.pos.clone();
@@ -1687,10 +1653,8 @@ export class GameEngine {
       this.player.fists = pMesh.fists;
       this.player.legs = pMesh.legs;
       this.player.arms = pMesh.arms;
-      this.player.champData = pMesh;
       this.player.pos = pMesh.group.position;
     }
-    this.onStateChange({ ...this.state });
   }
 
   public setBotChampion(id: ChampionId) {
@@ -1713,13 +1677,8 @@ export class GameEngine {
       this.bot.fists = bMesh.fists;
       this.bot.legs = bMesh.legs;
       this.bot.arms = bMesh.arms;
-      this.bot.champData = bMesh;
       this.bot.pos = bMesh.group.position;
     }
-  }
-
-  public setPlayerTrophies(trophies: number) {
-    this.playerTrophies = trophies;
   }
 
   // Input Handling
@@ -1729,8 +1688,6 @@ export class GameEngine {
       this.spaceKeyHeld = true;
       // Start aiming in current movement direction
       this.setAim(true);
-    } else if (e.code === 'KeyE' || e.code === 'KeyQ') {
-      this.triggerSpecialSkill(true);
     }
   };
 
@@ -1970,221 +1927,6 @@ export class GameEngine {
       this.scene.add(p);
       this.particles.push({ mesh: p, life: 0, maxLife: 0.35, vel });
     }
-  }
-
-  private spawnShockwave(pos: THREE.Vector3, colorHex: number) {
-    const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
-    ringGeo.rotateX(-Math.PI / 2);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: colorHex,
-      transparent: true,
-      opacity: 0.95,
-      side: THREE.DoubleSide,
-    });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.position.set(pos.x, 0.08, pos.z);
-    this.scene.add(ring);
-    this.particles.push({
-      mesh: ring,
-      life: 0,
-      maxLife: 0.65,
-      vel: new THREE.Vector3(0, 0, 0),
-    });
-
-    // Expanding spark burst
-    for (let i = 0; i < 18; i++) {
-      const geo = new THREE.SphereGeometry(0.14, 6, 6);
-      const mat = new THREE.MeshBasicMaterial({ color: colorHex });
-      const p = new THREE.Mesh(geo, mat);
-      p.position.set(pos.x, 0.2, pos.z);
-      const ang = (i / 18) * Math.PI * 2;
-      const spd = 7 + Math.random() * 5;
-      const vel = new THREE.Vector3(Math.cos(ang) * spd, 1.5 + Math.random() * 2, Math.sin(ang) * spd);
-      this.scene.add(p);
-      this.particles.push({ mesh: p, life: 0, maxLife: 0.5, vel });
-    }
-  }
-
-  private spawnShieldDome(brawler: Brawler, isPlayer: boolean) {
-    if (isPlayer && this.playerShieldMesh) {
-      this.scene.remove(this.playerShieldMesh);
-    } else if (!isPlayer && this.botShieldMesh) {
-      this.scene.remove(this.botShieldMesh);
-    }
-
-    const domeGeo = new THREE.IcosahedronGeometry(1.65, 2);
-    const domeMat = new THREE.MeshBasicMaterial({
-      color: 0xf59e0b,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.85,
-    });
-    const dome = new THREE.Mesh(domeGeo, domeMat);
-    dome.position.copy(brawler.pos);
-    dome.position.y += 1.0;
-    this.scene.add(dome);
-
-    if (isPlayer) {
-      this.playerShieldMesh = dome;
-    } else {
-      this.botShieldMesh = dome;
-    }
-  }
-
-  private spawnGravityVortex(pos: THREE.Vector3, casterIsPlayer: boolean) {
-    if (this.activeVortex) {
-      this.scene.remove(this.activeVortex.mesh);
-    }
-    const vGeo = new THREE.TorusGeometry(1.4, 0.22, 12, 32);
-    vGeo.rotateX(Math.PI / 2);
-    const vMat = new THREE.MeshBasicMaterial({
-      color: 0xf43f5e,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.9,
-    });
-    const vMesh = new THREE.Mesh(vGeo, vMat);
-    vMesh.position.copy(pos);
-    this.scene.add(vMesh);
-    this.activeVortex = {
-      pos: pos.clone(),
-      timer: 2.4,
-      mesh: vMesh,
-      casterIsPlayer,
-    };
-  }
-
-  public triggerSpecialSkill(isPlayer: boolean = true) {
-    if (this.state.isGameOver || this.state.isPaused || this.state.countdown > 0) return;
-
-    const brawler = isPlayer ? this.player : this.bot;
-    const rival = isPlayer ? this.bot : this.player;
-    const champId = isPlayer ? this.playerChampionId : this.botChampionId;
-
-    if (brawler.isKnockedOut || !brawler.isGrounded) return;
-
-    if (isPlayer) {
-      if (this.playerSkillCooldownTimer > 0) return;
-      const skill = CHAMPIONS[champId].skill;
-      this.playerSkillCooldownTimer = skill.cooldown;
-      this.playerSkillActiveTimer = 2.5;
-      this.state.isPlayerSkillActive = true;
-    } else {
-      if (this.botSkillCooldownTimer > 0) return;
-      const skill = CHAMPIONS[champId].skill;
-      this.botSkillCooldownTimer = skill.cooldown;
-      this.botSkillActiveTimer = 2.5;
-    }
-
-    // Execute character-specific active skill
-    switch (champId) {
-      case 'leo': {
-        // Mega Ground Slam: Radial shockwave blowing rivals off the turf
-        this.triggerScreenShake(0.35, 0.85);
-        sounds.playBump(2.6);
-        this.spawnShockwave(brawler.pos, 0x10b981);
-
-        const dx = rival.pos.x - brawler.pos.x;
-        const dz = rival.pos.z - brawler.pos.z;
-        const dist = Math.hypot(dx, dz);
-        if (dist < 7.0 && dist > 0.01) {
-          const force = (1 - dist / 7.5) * 22 + 6;
-          const nx = dx / dist;
-          const nz = dz / dist;
-          rival.vel.x += nx * force;
-          rival.vel.z += nz * force;
-          this.spawnDashParticles(rival.pos, 0x10b981, 14);
-        }
-        break;
-      }
-
-      case 'kage': {
-        // Shadow Blink: Teleports 5m forward through emerald smoke
-        sounds.playDash(100);
-        this.spawnDashParticles(brawler.pos, 0x34d399, 22);
-
-        const facingX = -Math.sin(brawler.currentAngle);
-        const facingZ = -Math.cos(brawler.currentAngle);
-        let targetX = brawler.pos.x + facingX * 5.0;
-        let targetZ = brawler.pos.z + facingZ * 5.0;
-
-        // Keep inside arena boundary
-        const targetDist = Math.hypot(targetX, targetZ);
-        if (targetDist > this.currentRadius - 1.0) {
-          const scale = (this.currentRadius - 1.5) / targetDist;
-          targetX *= scale;
-          targetZ *= scale;
-        }
-
-        brawler.pos.x = targetX;
-        brawler.pos.z = targetZ;
-        brawler.vel.set(0, 0, 0);
-
-        this.spawnDashParticles(brawler.pos, 0x34d399, 22);
-        this.triggerScreenShake(0.15, 0.4);
-        break;
-      }
-
-      case 'titan': {
-        // Iron Barrier: Impenetrable kinetic armor for 3s
-        sounds.playBump(2.2);
-        if (isPlayer) {
-          this.isPlayerInvulnerable = true;
-          this.playerSkillActiveTimer = 3.0;
-        } else {
-          this.isBotInvulnerable = true;
-          this.botSkillActiveTimer = 3.0;
-        }
-        this.spawnShieldDome(brawler, isPlayer);
-        break;
-      }
-
-      case 'bolt': {
-        // Overcharge Surge: Hyper electric speed burst
-        sounds.playDash(100);
-        brawler.chargePercent = 100;
-        const facingX = -Math.sin(brawler.currentAngle);
-        const facingZ = -Math.cos(brawler.currentAngle);
-        brawler.vel.x = facingX * 26;
-        brawler.vel.z = facingZ * 26;
-        brawler.isDashing = true;
-        brawler.dashTimer = 0.4;
-        brawler.dashPowerPercent = 100;
-        this.spawnDashParticles(brawler.pos, 0xeab308, 20);
-        this.triggerScreenShake(0.2, 0.5);
-        break;
-      }
-
-      case 'nova': {
-        // Gravity Vortex: Spawns cosmic singularity pulling rival in
-        sounds.playWarning();
-        this.spawnGravityVortex(new THREE.Vector3(0, 0.5, 0), isPlayer);
-        break;
-      }
-
-      case 'kai':
-      default: {
-        // Sonic Shockwave: Blasts cone forward
-        sounds.playBump(2.4);
-        this.spawnShockwave(brawler.pos, 0x00f5ff);
-        const facingX = -Math.sin(brawler.currentAngle);
-        const facingZ = -Math.cos(brawler.currentAngle);
-        const toRivalX = rival.pos.x - brawler.pos.x;
-        const toRivalZ = rival.pos.z - brawler.pos.z;
-        const dist = Math.hypot(toRivalX, toRivalZ);
-        if (dist < 7.0 && dist > 0.01) {
-          const dot = (facingX * toRivalX + facingZ * toRivalZ) / dist;
-          if (dot > 0.35) {
-            rival.vel.x += (toRivalX / dist) * 18;
-            rival.vel.z += (toRivalZ / dist) * 18;
-            this.spawnDashParticles(rival.pos, 0x00f5ff, 16);
-          }
-        }
-        break;
-      }
-    }
-
-    this.onStateChange({ ...this.state });
   }
 
   // Main Loop
@@ -2464,83 +2206,6 @@ export class GameEngine {
       }
     }
 
-    // 9. Update Special Skill Cooldowns & Timers
-    if (this.playerSkillCooldownTimer > 0) {
-      this.playerSkillCooldownTimer = Math.max(0, this.playerSkillCooldownTimer - dt);
-      this.state.playerSkillCooldown = this.playerSkillCooldownTimer;
-    }
-    if (this.botSkillCooldownTimer > 0) {
-      this.botSkillCooldownTimer = Math.max(0, this.botSkillCooldownTimer - dt);
-    }
-
-    if (this.playerSkillActiveTimer > 0) {
-      this.playerSkillActiveTimer -= dt;
-      if (this.playerSkillActiveTimer <= 0) {
-        this.isPlayerInvulnerable = false;
-        this.state.isPlayerSkillActive = false;
-        if (this.playerShieldMesh) {
-          this.scene.remove(this.playerShieldMesh);
-          this.playerShieldMesh = null;
-        }
-      }
-    }
-
-    if (this.botSkillActiveTimer > 0) {
-      this.botSkillActiveTimer -= dt;
-      if (this.botSkillActiveTimer <= 0) {
-        this.isBotInvulnerable = false;
-        if (this.botShieldMesh) {
-          this.scene.remove(this.botShieldMesh);
-          this.botShieldMesh = null;
-        }
-      }
-    }
-
-    // Position Shield Domes with fighters
-    if (this.playerShieldMesh) {
-      this.playerShieldMesh.position.copy(this.player.pos);
-      this.playerShieldMesh.position.y += 1.0;
-      this.playerShieldMesh.rotation.y += dt * 3.5;
-    }
-    if (this.botShieldMesh) {
-      this.botShieldMesh.position.copy(this.bot.pos);
-      this.botShieldMesh.position.y += 1.0;
-      this.botShieldMesh.rotation.y += dt * 3.5;
-    }
-
-    // Process Gravity Vortex
-    if (this.activeVortex) {
-      this.activeVortex.timer -= dt;
-      this.activeVortex.mesh.rotation.y += dt * 8.0;
-      const targetBrawler = this.activeVortex.casterIsPlayer ? this.bot : this.player;
-
-      if (targetBrawler.isGrounded && !targetBrawler.isKnockedOut) {
-        const vx = this.activeVortex.pos.x - targetBrawler.pos.x;
-        const vz = this.activeVortex.pos.z - targetBrawler.pos.z;
-        const vdist = Math.hypot(vx, vz);
-        if (vdist > 0.1 && vdist < 10) {
-          targetBrawler.vel.x += (vx / vdist) * 9.5 * dt;
-          targetBrawler.vel.z += (vz / vdist) * 9.5 * dt;
-        }
-      }
-
-      if (this.activeVortex.timer <= 0) {
-        this.scene.remove(this.activeVortex.mesh);
-        this.spawnShockwave(this.activeVortex.pos, 0xf43f5e);
-        sounds.playBump(2.2);
-        this.triggerScreenShake(0.3, 0.7);
-        const targetBrawler = this.activeVortex.casterIsPlayer ? this.bot : this.player;
-        const vx = targetBrawler.pos.x - this.activeVortex.pos.x;
-        const vz = targetBrawler.pos.z - this.activeVortex.pos.z;
-        const vdist = Math.hypot(vx, vz);
-        if (vdist < 6.0) {
-          targetBrawler.vel.x += (vx / Math.max(0.1, vdist)) * 20;
-          targetBrawler.vel.z += (vz / Math.max(0.1, vdist)) * 20;
-        }
-        this.activeVortex = null;
-      }
-    }
-
     this.onStateChange({ ...this.state });
   }
 
@@ -2643,51 +2308,26 @@ export class GameEngine {
         b.fists[1].position.z = 0.3;
       }
     }
-
-    // Call procedural sine-wave animation for high-poly character rigs
-    if (b.champData) {
-      animateChampion(b.champData, this.elapsedTime, isWalking, b.isDashing);
-    }
   }
 
   private updateBotAI(dt: number) {
     if (this.bot.isKnockedOut || !this.bot.isGrounded) return;
 
-    const trophies = this.playerTrophies;
-    const isBeginner = trophies < 300;
-    const isIntermediate = trophies >= 300 && trophies < 800;
-    const isMaster = trophies >= 800;
-
-    // 1. Trophy-scaled power charge speed
-    const chargeSpeed = isBeginner ? 22 : isIntermediate ? 34 : 44;
+    // Bot continuous power charge
     if (!this.bot.isDashing) {
-      this.bot.chargePercent = Math.min(100, this.bot.chargePercent + dt * chargeSpeed);
+      this.bot.chargePercent = Math.min(100, this.bot.chargePercent + dt * 34);
     }
 
-    // 2. Targeting vector (Beginners wander with jitter; Masters lead predicted velocity)
-    let targetX = this.player.pos.x;
-    let targetZ = this.player.pos.z;
-
-    if (isMaster) {
-      targetX += this.player.vel.x * 0.22;
-      targetZ += this.player.vel.z * 0.22;
-    } else if (isBeginner) {
-      targetX += Math.sin(this.elapsedTime * 1.8) * 1.8;
-      targetZ += Math.cos(this.elapsedTime * 1.5) * 1.8;
-    }
-
-    const dx = targetX - this.bot.pos.x;
-    const dz = targetZ - this.bot.pos.z;
+    const dx = this.player.pos.x - this.bot.pos.x;
+    const dz = this.player.pos.z - this.bot.pos.z;
     const distToPlayer = Math.hypot(dx, dz);
 
     let steerX = dx / Math.max(0.1, distToPlayer);
     let steerZ = dz / Math.max(0.1, distToPlayer);
 
-    // 3. Smart Edge Braking (Safety margin scales with trophy rank)
+    // Smart Edge Braking: If bot is getting close to the boundary, steer hard back toward center!
     const botDistToCenter = Math.hypot(this.bot.pos.x, this.bot.pos.z);
-    const safeZoneRatio = isBeginner ? 0.82 : isIntermediate ? 0.65 : 0.52;
-    const safeZone = this.currentRadius * safeZoneRatio;
-
+    const safeZone = this.currentRadius * 0.65;
     if (botDistToCenter > safeZone) {
       const toCenterX = -this.bot.pos.x / Math.max(0.1, botDistToCenter);
       const toCenterZ = -this.bot.pos.z / Math.max(0.1, botDistToCenter);
@@ -2696,27 +2336,8 @@ export class GameEngine {
       steerZ = steerZ * (1 - brakeWeight) + toCenterZ * brakeWeight;
     }
 
-    // 4. Tactical Special Skill Activation for Bot
-    if (this.botSkillCooldownTimer <= 0) {
-      if (isMaster) {
-        // Counter-skills when player charges or is within slam radius
-        if (this.player.isDashing && distToPlayer < 5.0) {
-          this.triggerSpecialSkill(false);
-        } else if (distToPlayer < 4.2 && Math.random() < 0.05) {
-          this.triggerSpecialSkill(false);
-        }
-      } else if (isIntermediate) {
-        if (distToPlayer < 4.5 && Math.random() < 0.02) {
-          this.triggerSpecialSkill(false);
-        }
-      }
-    }
-
-    // 5. Bot Executes Power Dash
-    const dashChargeThreshold = isBeginner ? 85 : isIntermediate ? 60 : 50;
-    const dashDistThreshold = isBeginner ? 3.4 : 4.5;
-
-    if (distToPlayer < dashDistThreshold && botDistToCenter < safeZone && this.bot.chargePercent >= dashChargeThreshold && !this.bot.isDashing) {
+    // Bot executes power dash when in range and sufficiently charged (>= 60%)
+    if (distToPlayer < 4.2 && botDistToCenter < safeZone && this.bot.chargePercent >= 60 && !this.bot.isDashing) {
       const bRatio = this.bot.chargePercent / 100;
       this.bot.isDashing = true;
       this.bot.dashTimer = 0.16 + bRatio * 0.14;
@@ -2753,25 +2374,14 @@ export class GameEngine {
       this.bot.pos.x += nx * overlap * 0.5;
       this.bot.pos.z += nz * overlap * 0.5;
 
-      // Elastic knockback impulse - dynamically scaled by exact charge percentage & invulnerability!
+      // Elastic knockback impulse - dynamically scaled by exact charge percentage!
       let pImpulse = 8;
       let bImpulse = 8;
 
-      if (this.isPlayerInvulnerable) {
-        // Player has Iron Barrier active: immune to knockback, blasts bot away!
-        pImpulse = 0;
-        bImpulse = 26;
-        sounds.playBump(2.6);
-        this.triggerScreenShake(0.3, 0.7);
-      } else if (this.isBotInvulnerable) {
-        // Bot has Iron Barrier active
-        bImpulse = 0;
-        pImpulse = 26;
-        sounds.playBump(2.6);
-        this.triggerScreenShake(0.3, 0.7);
-      } else if (this.player.isDashing && !this.bot.isDashing) {
+      if (this.player.isDashing && !this.bot.isDashing) {
         // Player landed power dash!
         const pRatio = Math.max(0.1, this.player.dashPowerPercent / 100);
+        // 40% -> 18.8, 50% -> 21.0, 100% -> 32.0 (noticeable power differences!)
         bImpulse = 10 + pRatio * 22;
         pImpulse = 3.5;
         this.triggerScreenShake(0.1 + pRatio * 0.3, 0.2 + pRatio * 0.6);

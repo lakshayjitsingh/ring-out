@@ -5,55 +5,52 @@ import {
   type ChampionId,
   createChampionMesh,
   type CreatedChampion,
-  animateChampion,
 } from '../game/championModels';
 import {
   Trophy,
   Swords,
+  BookOpen,
   Settings,
+  Play,
   RotateCcw,
   X,
   ChevronRight,
   Volume2,
-  Gift,
-  Globe,
-  Users,
-  Sparkles,
+  Lock,
+  Star,
 } from 'lucide-react';
 import { sounds } from '../audio/soundManager';
 import { crazyGames } from '../game/crazyGamesSdk';
 import { ShopModal } from './ShopModal';
-import { DailyRewardsModal } from './DailyRewardsModal';
-import { TrophyRoadModal } from './TrophyRoadModal';
-import { LeaderboardModal } from './LeaderboardModal';
-import { TeamCodeModal } from './TeamCodeModal';
 
 interface HomeScreenProps {
   selectedChampion: ChampionId;
   onSelectChampion?: (id: ChampionId) => void;
   onOpenBrawlers: () => void;
-  onStartStoryMatch?: () => void;
+  onStartStoryMatch: () => void;
   onStartPvPMatch: () => void;
+}
+
+interface TrophyMilestone {
+  trophies: number;
+  rewardType: 'gold' | 'champion' | 'gems' | 'box';
+  rewardLabel: string;
+  amount?: number;
+  championId?: ChampionId;
+  claimed: boolean;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   selectedChampion,
   onOpenBrawlers,
+  onStartStoryMatch,
   onStartPvPMatch,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeChampion = CHAMPIONS[selectedChampion];
 
-  // User Profile & Currencies (Persisted in localStorage)
-  const [trophies, _setTrophies] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('ringout_trophies');
-      return saved ? parseInt(saved, 10) : 1250;
-    } catch {
-      return 1250;
-    }
-  });
-
+  // User Profile & Currencies (Persisted)
+  const [trophies, _setTrophies] = useState(1250);
   const [gold, setGold] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('ringout_gold');
@@ -62,7 +59,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       return 840;
     }
   });
-
   const [gems, setGems] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('ringout_gems');
@@ -71,7 +67,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       return 150;
     }
   });
-
   const [playerLevel] = useState(5);
   const [unlockedChampions, setUnlockedChampions] = useState<ChampionId[]>(() => {
     try {
@@ -82,29 +77,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   });
 
-  // Modal State
+  // Modals
   const [isTrophyRoadOpen, setIsTrophyRoadOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);
-  const [isDailyRewardsOpen, setIsDailyRewardsOpen] = useState(false);
-  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
-  const [isTeamCodeOpen, setIsTeamCodeOpen] = useState(false);
-
-  // Matchmaking State
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [matchmakingCountdown, setMatchmakingCountdown] = useState(3);
   const [soundMuted, setSoundMuted] = useState(!sounds.enabled);
 
-  // Check if Daily Reward is claimable today
-  const [hasDailyRewardReady, setHasDailyRewardReady] = useState(() => {
-    try {
-      const lastClaim = localStorage.getItem('ringout_daily_last_claim_date');
-      const today = new Date().toISOString().slice(0, 10);
-      return lastClaim !== today;
-    } catch {
-      return true;
-    }
-  });
+  // Bottom Navigation Active Tab
+  const [activeTab, setActiveTab] = useState<'home' | 'brawlers' | 'story' | 'trophy' | 'shop'>('home');
 
   // CrazyGames SDK Init
   useEffect(() => {
@@ -129,7 +111,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       } catch {}
       return next;
     });
-    setHasDailyRewardReady(false);
   };
 
   const handleUnlockChampion = (id: ChampionId, cost: number) => {
@@ -159,7 +140,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const rotationVelocityRef = useRef(0);
   const currentRotationYRef = useRef(Math.PI);
 
-  // Helper to load champion model into Three.js scene
+  // Trophy Road Milestones
+  const milestones: TrophyMilestone[] = [
+    { trophies: 50, rewardType: 'gold', rewardLabel: '50 Gold', amount: 50, claimed: true },
+    { trophies: 150, rewardType: 'champion', rewardLabel: 'Kai Unlocked', championId: 'kai', claimed: true },
+    { trophies: 300, rewardType: 'gems', rewardLabel: '20 Gems', amount: 20, claimed: true },
+    { trophies: 500, rewardType: 'gold', rewardLabel: '200 Gold', amount: 200, claimed: true },
+    { trophies: 800, rewardType: 'champion', rewardLabel: 'Nova Unlocked', championId: 'nova', claimed: true },
+    { trophies: 1100, rewardType: 'box', rewardLabel: 'Big Brawl Box', claimed: true },
+    { trophies: 1500, rewardType: 'champion', rewardLabel: 'Titan Gorr Unlocked', championId: 'titan', claimed: false },
+    { trophies: 2000, rewardType: 'box', rewardLabel: 'Mega Brawl Box', claimed: false },
+    { trophies: 2600, rewardType: 'champion', rewardLabel: 'Kage Unlocked', championId: 'kage', claimed: false },
+    { trophies: 3500, rewardType: 'champion', rewardLabel: 'Bolt Robo-Fox', championId: 'bolt', claimed: false },
+  ];
+
+  // Helper to load champion into Three.js scene
   const loadChampionModel = (id: ChampionId) => {
     if (currentModelRef.current) {
       if (modelHolderRef.current) {
@@ -201,7 +196,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(renderer.domElement);
 
     // Studio Lighting
@@ -297,9 +292,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         pedestalRef.current.rotation.y = currentRotationYRef.current * 0.4;
       }
 
-      // Smooth sine-wave idle breathing & sway
       if (currentModelRef.current) {
-        animateChampion(currentModelRef.current, clock.getElapsedTime(), false, false);
+        const breathe = Math.sin(clock.getElapsedTime() * 2.2) * 0.03;
+        currentModelRef.current.group.position.y = breathe;
       }
 
       renderer.render(scene, camera);
@@ -325,93 +320,88 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length > 0) handleStart(e.touches[0].clientX);
     };
-
     const onPointerMove = (e: PointerEvent) => handleMove(e.clientX);
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length > 0) handleMove(e.touches[0].clientX);
     };
-
-    const onEnd = () => {
+    const handleUp = () => {
       isDraggingRef.current = false;
     };
 
-    window.addEventListener('pointerup', onEnd);
-    window.addEventListener('touchend', onEnd);
     container.addEventListener('pointerdown', onPointerDown);
-    container.addEventListener('pointermove', onPointerMove);
     container.addEventListener('touchstart', onTouchStart, { passive: true });
-    container.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('touchmove', onTouchMove);
+    window.addEventListener('touchend', handleUp);
 
     const handleResize = () => {
-      if (!container) return;
-      camera.aspect = container.clientWidth / container.clientHeight;
+      if (!containerRef.current) return;
+      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     };
     window.addEventListener('resize', handleResize);
 
     return () => {
       cancelAnimationFrame(animationId);
-      window.removeEventListener('pointerup', onEnd);
-      window.removeEventListener('touchend', onEnd);
       window.removeEventListener('resize', handleResize);
       container.removeEventListener('pointerdown', onPointerDown);
-      container.removeEventListener('pointermove', onPointerMove);
       container.removeEventListener('touchstart', onTouchStart);
-      container.removeEventListener('touchmove', onTouchMove);
-
-      if (renderer.domElement.parentElement) {
-        renderer.domElement.parentElement.removeChild(renderer.domElement);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', handleUp);
+      renderer.dispose();
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
       }
     };
-  }, []);
-
-  // Update champion mesh when selectedChampion changes
-  useEffect(() => {
-    loadChampionModel(selectedChampion);
   }, [selectedChampion]);
 
-  // Matchmaking Launch Sequence
-  const handleLaunchBattle = () => {
+  // Handle Online PvP Matchmaking Flow
+  const handleLaunchPvP = () => {
     sounds.playBump(1.0);
     setIsMatchmaking(true);
     setMatchmakingCountdown(3);
 
-    const interval = window.setInterval(() => {
+    const interval = setInterval(() => {
       setMatchmakingCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
           setIsMatchmaking(false);
-          sounds.playBump(1.8);
           onStartPvPMatch();
           return 0;
         }
-        sounds.playWarning();
+        sounds.playBump(0.6);
         return prev - 1;
       });
-    }, 900);
+    }, 800);
+  };
+
+  const handleLaunchStory = () => {
+    sounds.playBump(1.2);
+    onStartStoryMatch();
   };
 
   const toggleSound = () => {
-    const nextState = soundMuted;
-    setSoundMuted(!nextState);
-    sounds.enabled = nextState;
-    if (nextState) sounds.playBump(0.8);
+    const next = !sounds.enabled;
+    sounds.enabled = next;
+    setSoundMuted(!next);
+    if (next) sounds.playBump(1.0);
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans select-none">
-      {/* 1. 3D BACKGROUND TURNTABLE CANVAS */}
-      <div
-        ref={containerRef}
-        className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-0"
-      />
+    <div className="relative w-screen h-screen overflow-hidden bg-[#060913] select-none text-white font-sans">
+      {/* 1. 3D HERO TURNTABLE BACKGROUND STAGE */}
+      <div ref={containerRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-0" />
 
-      {/* Atmospheric Vignette & Radial Horizon */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(6,9,19,0.7)_80%,rgba(6,9,19,0.98)_100%)] z-10" />
+      {/* Atmospheric Vignette & Radial Light */}
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(6,9,19,0.7)_85%,rgba(6,9,19,0.95)_100%)] z-10" />
 
       {/* 2. TOP HEADER HUD (Profile, Trophy Road Bar, Currencies, Settings) */}
       <div className="absolute top-0 left-0 right-0 p-3 sm:p-5 flex items-center justify-between z-30 pointer-events-none">
+        
         {/* Left: Player Profile Pill */}
         <div className="pointer-events-auto flex items-center gap-2.5 bg-gradient-to-r from-[#0288d1]/80 to-[#01579b]/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border-2 border-[#81d4fa]/60 shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_3px_rgba(255,255,255,0.4)]">
           <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 border-2 border-white flex items-center justify-center shadow-md">
@@ -430,13 +420,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         </div>
 
-        {/* Center: Trophy Road Progress Pill (Clickable -> Opens Clash Royale Trophy Road Modal) */}
+        {/* Center: Trophy Road Progress Pill (Clickable) */}
         <div
           onClick={() => {
             sounds.playBump(0.8);
             setIsTrophyRoadOpen(true);
           }}
-          className="pointer-events-auto cursor-pointer group flex items-center gap-2 bg-gradient-to-b from-[#29b6f6]/85 via-[#0288d1]/85 to-[#01579b]/85 backdrop-blur-md px-4 py-1.5 rounded-full border-2 border-[#81d4fa]/70 shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
+          className="pointer-events-auto cursor-pointer group flex items-center gap-2 bg-gradient-to-b from-[#29b6f6]/80 via-[#0288d1]/80 to-[#01579b]/80 backdrop-blur-md px-4 py-1.5 rounded-full border-2 border-[#81d4fa]/70 shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
         >
           <div className="w-8 h-8 rounded-full bg-gradient-to-b from-amber-400 to-yellow-600 border border-amber-200 flex items-center justify-center shadow">
             <Trophy className="w-4 h-4 text-white drop-shadow" />
@@ -450,11 +440,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 Trophy Road
               </span>
             </div>
-            {/* Stepped Progress Bar */}
+            {/* Mini Progress Bar to 1500 */}
             <div className="w-24 sm:w-32 h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/20 mt-0.5">
               <div
                 className="h-full bg-gradient-to-r from-amber-400 to-yellow-300 rounded-full"
-                style={{ width: `${Math.min(100, (trophies / 3000) * 100)}%` }}
+                style={{ width: `${Math.min(100, (trophies / 1500) * 100)}%` }}
               />
             </div>
           </div>
@@ -513,66 +503,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* 3. LEFT SIDE COLUMN: QUICK ACCESS (DAILY REWARDS & LEADERBOARD) */}
-      <div className="absolute left-4 top-24 sm:top-28 flex flex-col gap-3 z-30 pointer-events-auto">
-        {/* Daily Rewards Button */}
-        <button
-          onClick={() => {
-            sounds.playBump(0.8);
-            setIsDailyRewardsOpen(true);
-          }}
-          className="relative group flex items-center gap-2.5 bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-slate-900/90 hover:from-purple-800 hover:to-indigo-800 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border-2 border-purple-400/60 shadow-[0_6px_20px_rgba(0,0,0,0.6)] hover:scale-105 active:scale-95 transition-all text-left cursor-pointer"
-        >
-          {hasDailyRewardReady && (
-            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 border-2 border-white animate-bounce shadow-md" />
-          )}
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-rose-500 border border-yellow-200 flex items-center justify-center shadow">
-            <Gift className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="text-[11px] font-black uppercase text-amber-300 tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-400" /> Daily Reward
-            </div>
-            <div className="text-[10px] text-purple-200 font-bold">
-              7–14 Day Streak
-            </div>
-          </div>
-        </button>
-
-        {/* Global Leaderboard Button */}
-        <button
-          onClick={() => {
-            sounds.playBump(0.8);
-            setIsLeaderboardOpen(true);
-          }}
-          className="group flex items-center gap-2.5 bg-gradient-to-r from-amber-950/90 via-slate-900/90 to-slate-900/90 hover:from-amber-900 hover:to-slate-800 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border-2 border-amber-400/60 shadow-[0_6px_20px_rgba(0,0,0,0.6)] hover:scale-105 active:scale-95 transition-all text-left cursor-pointer"
-        >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-600 border border-amber-200 flex items-center justify-center shadow">
-            <Globe className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="text-[11px] font-black uppercase text-yellow-300 tracking-wider">
-              Leaderboard
-            </div>
-            <div className="text-[10px] text-amber-200 font-bold">
-              Global Top 100
-            </div>
-          </div>
-        </button>
-      </div>
-
-      {/* 4. CENTER HERO BADGE & CHANGE HERO BUTTON */}
-      <div className="absolute bottom-40 sm:bottom-36 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-20 pointer-events-auto text-center">
-        {/* Active Hero Pill */}
+      {/* 3. CENTER HERO BADGE & CHANGE HERO BUTTON */}
+      <div className="absolute bottom-28 sm:bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 z-20 pointer-events-auto text-center">
+        {/* Hero Identity Pill */}
         <div className="bg-gradient-to-b from-[#0288d1]/80 to-[#01579b]/80 backdrop-blur-md px-6 py-2 rounded-full border-2 border-[#81d4fa]/70 shadow-[0_6px_20px_rgba(0,0,0,0.6),inset_0_1px_4px_rgba(255,255,255,0.4)]">
           <div className="text-base sm:text-lg font-black tracking-widest uppercase text-white drop-shadow">
             {activeChampion.name}
           </div>
-          <div className="text-[10px] sm:text-xs font-bold text-sky-200 uppercase tracking-wider flex items-center gap-1.5 justify-center">
-            <span>{activeChampion.skill.icon}</span>
-            <span>{activeChampion.title}</span>
-            <span>•</span>
-            <span>{activeChampion.archetype}</span>
+          <div className="text-[10px] sm:text-xs font-bold text-sky-200 uppercase tracking-wider">
+            {activeChampion.title} • {activeChampion.archetype}
           </div>
         </div>
 
@@ -582,90 +521,169 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             sounds.playBump(0.8);
             onOpenBrawlers();
           }}
-          className="px-4 py-1.5 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] hover:from-[#fef08a] hover:to-[#f59e0b] text-[#78350f] font-black text-[11px] uppercase tracking-wider rounded-full border-2 border-[#fef08a] shadow-[0_3px_0_#b45309,0_5px_12px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-[0_1px_0_#b45309] transition-all flex items-center gap-1.5 cursor-pointer"
+          className="px-5 py-2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] hover:from-[#fef08a] hover:to-[#f59e0b] text-[#78350f] font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-[#fef08a] shadow-[0_4px_0_#b45309,0_6px_14px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-[0_1px_0_#b45309] transition-all flex items-center gap-1.5 cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5 stroke-[3]" />
           <span>Change Champion</span>
         </button>
       </div>
 
-      {/* 5. EXACTLY 2 BATTLE ACTION BUTTONS (BATTLE 1v1 & TEAM CODE) */}
-      <div className="absolute bottom-20 sm:bottom-18 left-1/2 -translate-x-1/2 flex items-center gap-3 sm:gap-4 z-20 pointer-events-auto">
-        {/* Button 1: Prominent BATTLE 1v1 */}
-        <button
-          onClick={handleLaunchBattle}
-          className="group relative px-8 sm:px-12 py-3.5 sm:py-4 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] hover:from-[#fef08a] hover:to-[#f59e0b] text-[#78350f] font-black text-base sm:text-lg uppercase tracking-wider rounded-3xl border-3 border-[#fef08a] shadow-[0_6px_0_#b45309,0_12px_24px_rgba(245,158,11,0.5)] active:translate-y-1 active:shadow-[0_2px_0_#b45309] transition-all flex items-center gap-3 cursor-pointer"
-        >
-          <div className="w-8 h-8 rounded-xl bg-amber-900/30 border border-amber-950/20 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-            <Swords className="w-5 h-5 text-[#78350f] stroke-[2.8]" />
+      {/* 4. LEFT WING: STORY MODE (NON-BOXY ARCADE FLOATING CARD) */}
+      <div className="absolute left-3 sm:left-6 lg:left-10 top-1/2 -translate-y-1/2 w-60 sm:w-68 lg:w-76 z-20 pointer-events-auto">
+        <div className="relative bg-gradient-to-b from-[#29b6f6]/90 via-[#0288d1]/90 to-[#01579b]/90 border-4 border-[#81d4fa] rounded-[32px] pt-12 sm:pt-14 px-4 sm:px-5 pb-5 shadow-[0_16px_50px_rgba(0,0,0,0.8),inset_0_2px_8px_rgba(255,255,255,0.4)] backdrop-blur-md text-center transition-transform hover:scale-[1.02]">
+          {/* Top Glossy Golden-Amber Ribbon */}
+          <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-6 py-1 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
+            <span className="text-xs sm:text-sm font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 stroke-[2.5]" /> Story Mode
+            </span>
           </div>
-          <div className="text-left">
-            <div className="leading-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-              BATTLE
-            </div>
-            <div className="text-[10px] text-amber-950/90 font-bold tracking-normal uppercase">
-              1v1 Ranked Match (+30 🏆)
-            </div>
-          </div>
-        </button>
 
-        {/* Button 2: TEAM CODE (Play with friends) */}
-        <button
-          onClick={() => {
-            sounds.playBump(0.8);
-            setIsTeamCodeOpen(true);
-          }}
-          className="group relative px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-sm sm:text-base uppercase tracking-wider rounded-3xl border-3 border-sky-200 shadow-[0_6px_0_#075985,0_12px_24px_rgba(2,132,199,0.5)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center gap-2.5 cursor-pointer"
-        >
-          <div className="w-8 h-8 rounded-xl bg-sky-950/40 border border-sky-200/40 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-            <Users className="w-5 h-5 text-white stroke-[2.8]" />
-          </div>
-          <div className="text-left">
-            <div className="leading-tight drop-shadow">
-              TEAM CODE
+          {/* Chapter Artwork Preview Capsule */}
+          <div className="bg-black/40 border border-white/15 rounded-2xl p-3 mb-3 shadow-inner text-left">
+            <div className="flex items-center justify-between text-[10px] text-emerald-300 font-black uppercase tracking-wider mb-1">
+              <span>Chapter 1</span>
+              <span className="flex items-center gap-0.5 text-amber-300">
+                <Star className="w-3 h-3 fill-amber-300" />
+                <Star className="w-3 h-3 fill-amber-300" />
+                <Star className="w-3 h-3 text-slate-500" />
+              </span>
             </div>
-            <div className="text-[10px] text-sky-100 font-bold tracking-normal uppercase">
-              Play With Friends
+            <div className="text-sm font-black text-white drop-shadow">
+              Emerald Isles
+            </div>
+            <div className="text-[11px] text-sky-200 font-semibold mt-0.5 leading-tight">
+              Stage 1: Beach Scout Duel
             </div>
           </div>
-        </button>
+
+          {/* Stage Info Pills */}
+          <div className="flex items-center justify-center gap-2 mb-3.5 text-[10px] font-black uppercase text-sky-100">
+            <span className="px-2.5 py-1 rounded-full bg-black/40 border border-sky-300/30">
+              Reward: 120 🪙
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-black/40 border border-sky-300/30">
+              3 Rounds
+            </span>
+          </div>
+
+          {/* Play Story Mode 3D Action Button */}
+          <button
+            onClick={handleLaunchStory}
+            className="w-full py-3 sm:py-3.5 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_5px_0_#365314,0_8px_16px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-[0_2px_0_#365314] transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Play className="w-4 h-4 fill-white" />
+            <span>PLAY STORY</span>
+          </button>
+        </div>
       </div>
 
-      {/* 6. BOTTOM NAVIGATION DOCK (EXACTLY 3 SECTIONS: HOME, CHARACTERS, SHOP) */}
-      <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-        <div className="flex items-center gap-2 sm:gap-4 bg-gradient-to-b from-[#0288d1]/90 to-[#01579b]/90 backdrop-blur-md px-4 sm:px-6 py-2 rounded-full border-2 border-[#81d4fa]/60 shadow-[0_10px_30px_rgba(0,0,0,0.7),inset_0_1px_3px_rgba(255,255,255,0.4)]">
-          {/* Section 1: Home */}
+      {/* 5. RIGHT WING: ONLINE PVP MODE (NON-BOXY ARCADE FLOATING CARD) */}
+      <div className="absolute right-3 sm:right-6 lg:right-10 top-1/2 -translate-y-1/2 w-60 sm:w-68 lg:w-76 z-20 pointer-events-auto">
+        <div className="relative bg-gradient-to-b from-[#29b6f6]/90 via-[#0288d1]/90 to-[#01579b]/90 border-4 border-[#81d4fa] rounded-[32px] pt-12 sm:pt-14 px-4 sm:px-5 pb-5 shadow-[0_16px_50px_rgba(0,0,0,0.8),inset_0_2px_8px_rgba(255,255,255,0.4)] backdrop-blur-md text-center transition-transform hover:scale-[1.02]">
+          {/* Top Glossy Golden-Amber Ribbon */}
+          <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-6 py-1 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
+            <span className="text-xs sm:text-sm font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] flex items-center gap-1.5">
+              <Swords className="w-3.5 h-3.5 stroke-[2.5]" /> Online PvP
+            </span>
+          </div>
+
+          {/* Ranked Duel Preview Capsule */}
+          <div className="bg-black/40 border border-white/15 rounded-2xl p-3 mb-3 shadow-inner text-left">
+            <div className="flex items-center justify-between text-[10px] text-cyan-300 font-black uppercase tracking-wider mb-1">
+              <span>Ranked 1v1</span>
+              <span className="text-amber-300 font-mono font-black">+30 🏆</span>
+            </div>
+            <div className="text-sm font-black text-white drop-shadow flex items-center gap-1.5">
+              <span>Emerald Ring Duel</span>
+            </div>
+            <div className="text-[11px] text-sky-200 font-semibold mt-0.5 leading-tight">
+              Best of 5 rounds • Global Matchmaking
+            </div>
+          </div>
+
+          {/* Stakes Info Pills */}
+          <div className="flex items-center justify-center gap-2 mb-3.5 text-[10px] font-black uppercase text-sky-100">
+            <span className="px-2.5 py-1 rounded-full bg-black/40 border border-sky-300/30">
+              Win: +30 🏆
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-black/40 border border-rose-400/30 text-rose-300">
+              Loss: -10 🏆
+            </span>
+          </div>
+
+          {/* Find Match 3D Action Button */}
           <button
-            className="px-4 sm:px-5 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-md border border-[#bef264] cursor-pointer"
+            onClick={handleLaunchPvP}
+            className="w-full py-3 sm:py-3.5 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_5px_0_#075985,0_8px_16px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-[0_2px_0_#075985] transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>HOME</span>
+            <Swords className="w-4 h-4 stroke-[2.5]" />
+            <span>FIND MATCH</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 6. BOTTOM NAVIGATION DOCK (Home, Brawlers, Story, Trophy Road, Shop) */}
+      <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+        <div className="flex items-center gap-1.5 sm:gap-3 bg-gradient-to-b from-[#0288d1]/90 to-[#01579b]/90 backdrop-blur-md px-3 sm:px-5 py-2 rounded-full border-2 border-[#81d4fa]/60 shadow-[0_10px_30px_rgba(0,0,0,0.7),inset_0_1px_3px_rgba(255,255,255,0.4)]">
+          {/* Tab 1: Home */}
+          <button
+            onClick={() => setActiveTab('home')}
+            className={`px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+              activeTab === 'home'
+                ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-md border border-[#bef264]'
+                : 'text-sky-200 hover:text-white'
+            }`}
+          >
+            <span>Home</span>
           </button>
 
-          {/* Section 2: Characters */}
+          {/* Tab 2: Brawlers */}
           <button
             onClick={() => {
               sounds.playBump(0.6);
               onOpenBrawlers();
             }}
-            className="px-4 sm:px-5 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-200 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+            className="px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-200 hover:text-white transition-all cursor-pointer"
           >
-            <span>CHARACTERS</span>
+            <span>Brawlers</span>
           </button>
 
-          {/* Section 3: Shop */}
+          {/* Tab 3: Shop */}
           <button
             onClick={() => {
               sounds.playBump(0.6);
               setIsShopOpen(true);
             }}
-            className="px-4 sm:px-5 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-300 hover:text-white bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border border-amber-300/50 hover:border-amber-200 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+            className="px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-300 hover:text-white bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border border-amber-300/50 hover:border-amber-200 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
           >
-            <span>🛒 SHOP</span>
+            <span>🛒 Shop</span>
+          </button>
+
+          {/* Tab 4: Trophy Road */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsTrophyRoadOpen(true);
+            }}
+            className="px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-200 hover:text-white transition-all cursor-pointer"
+          >
+            <span>Trophies</span>
+          </button>
+
+          {/* Tab 5: Settings */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsSettingsOpen(true);
+            }}
+            className="px-3.5 sm:px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-200 hover:text-white transition-all cursor-pointer"
+          >
+            <span>Settings</span>
           </button>
         </div>
       </div>
 
-      {/* 7. MATCHMAKING RADAR OVERLAY (1v1 RANKED) */}
+      {/* 7. MATCHMAKING RADAR OVERLAY (ONLINE PVP) */}
       {isMatchmaking && (
         <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="relative w-full max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
@@ -686,7 +704,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             <div className="text-lg font-black text-white drop-shadow mb-1">
-              FINDING OPPONENT
+              SEARCHING FOR BRAWLER
             </div>
             <div className="text-xs text-sky-200 font-semibold mb-4">
               Estimated wait: {matchmakingCountdown}s • Arena: Emerald Isles
@@ -696,23 +714,128 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               onClick={() => setIsMatchmaking(false)}
               className="px-6 py-2 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#7f1d1d] transition-all cursor-pointer"
             >
-              Cancel
+              Cancel Matchmaking
             </button>
           </div>
         </div>
       )}
 
-      {/* 8. SETTINGS MODAL */}
+      {/* 8. TROPHY ROAD MODAL (MATCHING THEME, NON-BOXY) */}
+      {isTrophyRoadOpen && (
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150 max-h-[85vh] flex flex-col">
+            {/* Top Glossy Ribbon */}
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
+              <span className="text-lg font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-[#78350f] fill-[#78350f]" /> TROPHY ROAD
+              </span>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setIsTrophyRoadOpen(false)}
+              className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
+              title="Close"
+            >
+              <X className="w-5 h-5 stroke-[3]" />
+            </button>
+
+            {/* Trophy Summary Header */}
+            <div className="bg-black/30 border border-white/10 rounded-2xl p-3 mb-4 flex items-center justify-between">
+              <div className="text-left">
+                <div className="text-[10px] text-sky-200 font-bold uppercase tracking-wider">
+                  Current Rating
+                </div>
+                <div className="text-xl font-black text-amber-300 drop-shadow flex items-center gap-1.5">
+                  <Trophy className="w-5 h-5 fill-amber-300 text-amber-300" /> {trophies.toLocaleString()}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] text-sky-200 font-bold uppercase tracking-wider">
+                  Next Milestone
+                </div>
+                <div className="text-sm font-black text-white">
+                  1,500 🏆 • Titan Gorr
+                </div>
+              </div>
+            </div>
+
+            {/* Scrollable Milestone Progression Track */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-left">
+              {milestones.map((m, idx) => {
+                const isReached = trophies >= m.trophies;
+                return (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all ${
+                      isReached
+                        ? 'bg-gradient-to-r from-[#02568f]/90 to-[#013f6b]/90 border-lime-300/60 shadow-md'
+                        : 'bg-[#013f6b]/60 border-sky-400/30 opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 font-black shadow ${
+                          isReached
+                            ? 'bg-gradient-to-b from-amber-400 to-yellow-500 border-amber-200 text-slate-950'
+                            : 'bg-slate-800 border-slate-600 text-slate-400'
+                        }`}
+                      >
+                        <Trophy className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black uppercase tracking-wider text-amber-300 font-mono">
+                          {m.trophies} 🏆
+                        </div>
+                        <div className="text-sm font-black text-white">
+                          {m.rewardLabel}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      {m.claimed ? (
+                        <span className="px-3 py-1 rounded-full bg-lime-500/20 border border-lime-400 text-lime-300 text-xs font-black uppercase">
+                          Claimed
+                        </span>
+                      ) : isReached ? (
+                        <button
+                          onClick={() => {
+                            sounds.playBump(1.0);
+                            m.claimed = true;
+                            if (m.amount && m.rewardType === 'gold') setGold((g) => g + m.amount!);
+                            if (m.amount && m.rewardType === 'gems') setGems((g) => g + m.amount!);
+                          }}
+                          className="px-4 py-1.5 bg-gradient-to-b from-[#a3e635] to-[#65a30d] text-white font-black text-xs uppercase rounded-xl border border-lime-200 shadow-md active:translate-y-0.5 cursor-pointer"
+                        >
+                          Claim
+                        </button>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full bg-slate-800/80 border border-slate-600 text-slate-400 text-xs font-bold flex items-center gap-1">
+                          <Lock className="w-3 h-3" /> Locked
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. SETTINGS MODAL (AUDIO & PRESETS) */}
       {isSettingsOpen && (
         <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-14 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
             {/* Top Glossy Ribbon */}
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-8 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
-              <span className="text-base font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
+              <span className="text-lg font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
                 SETTINGS
               </span>
             </div>
 
+            {/* Close Button */}
             <button
               onClick={() => setIsSettingsOpen(false)}
               className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
@@ -760,44 +883,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
               {/* Version & Build Info */}
               <div className="bg-black/40 rounded-2xl p-3 text-center border border-white/10">
-                <div className="text-xs font-black text-white">Ring Out 3D</div>
-                <div className="text-[10px] text-sky-300 font-mono mt-0.5">CrazyGames Edition • Chapter 1: Emerald Isles</div>
+                <div className="text-xs font-black text-white">Ring Out: Chapter 1</div>
+                <div className="text-[10px] text-sky-300 font-mono mt-0.5">Version 1.0.4 • Emerald Isles</div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 9. MODALS: CLASH ROYALE TROPHY ROAD, DAILY REWARDS, LEADERBOARD, TEAM CODE, SHOP */}
-      <TrophyRoadModal
-        isOpen={isTrophyRoadOpen}
-        onClose={() => setIsTrophyRoadOpen(false)}
-        playerTrophies={trophies}
-        onAddGold={handleAddGold}
-        onAddGems={handleAddGems}
-        onUnlockChampion={handleUnlockChampion}
-      />
-
-      <DailyRewardsModal
-        isOpen={isDailyRewardsOpen}
-        onClose={() => setIsDailyRewardsOpen(false)}
-        onAddGold={handleAddGold}
-        onAddGems={handleAddGems}
-      />
-
-      <LeaderboardModal
-        isOpen={isLeaderboardOpen}
-        onClose={() => setIsLeaderboardOpen(false)}
-        playerTrophies={trophies}
-        playerChampion={selectedChampion}
-      />
-
-      <TeamCodeModal
-        isOpen={isTeamCodeOpen}
-        onClose={() => setIsTeamCodeOpen(false)}
-        onStartMatch={() => onStartPvPMatch()}
-      />
-
+      {/* 8. 3D ARCADE SHOP MODAL (GEMS, REWARDED ADS, XSOLLA PACKS, CHAMPIONS) */}
       <ShopModal
         isOpen={isShopOpen}
         onClose={() => setIsShopOpen(false)}

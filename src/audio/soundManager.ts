@@ -131,6 +131,27 @@ class SoundManager {
     });
   }
 
+  // Fight battle start horn/fanfare
+  playFight() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    const freqs = [220, 330, 440];
+    freqs.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+      gain.gain.setValueAtTime(0.35 * this.volume, this.ctx.currentTime + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.08 + 0.3);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(this.ctx.currentTime + idx * 0.08);
+      osc.stop(this.ctx.currentTime + idx * 0.08 + 0.32);
+    });
+  }
+
   // Chime for gems, purchases, and rewards
   playLevelUp() {
     this.playVictory();

@@ -22,12 +22,16 @@ import { sounds } from '../audio/soundManager';
 
 interface ChampionShowcaseProps {
   selectedChampion: ChampionId;
+  trophies?: number;
+  gold?: number;
   onSelectChampion: (id: ChampionId) => void;
   onBackToBattle: () => void;
 }
 
 export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
   selectedChampion,
+  trophies = 0,
+  gold = 100,
   onSelectChampion,
   onBackToBattle,
 }) => {
@@ -142,24 +146,131 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     modelHolderRef.current = modelHolder;
     scene.add(modelHolder);
 
-    // Warm Sunny Daylight Motes (Gold & Cyan Sparkling Sunlight Particles)
-    const motesGeo = new THREE.BufferGeometry();
-    const moteCount = 180;
-    const motePos = new Float32Array(moteCount * 3);
-    for (let i = 0; i < moteCount * 3; i += 3) {
-      motePos[i] = (Math.random() - 0.5) * 16;
-      motePos[i + 1] = Math.random() * 7;
-      motePos[i + 2] = (Math.random() - 0.5) * 16;
-    }
-    motesGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
-    const motesMat = new THREE.PointsMaterial({
-      color: 0xffedd5,
-      size: 0.08,
+    // 1. Procedural Living Ocean Plane (Moving Waves)
+    const oceanGeo = new THREE.PlaneGeometry(80, 80, 48, 48);
+    oceanGeo.rotateX(-Math.PI / 2);
+    const oceanMat = new THREE.MeshStandardMaterial({
+      color: 0x0284c7, // Tropical azure water
+      roughness: 0.16,
+      metalness: 0.22,
       transparent: true,
-      opacity: 0.65,
+      opacity: 0.94,
     });
-    const motes = new THREE.Points(motesGeo, motesMat);
-    scene.add(motes);
+    const oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+    oceanMesh.position.y = -0.32;
+    scene.add(oceanMesh);
+
+    // 2. Multi-tier Sea Foam Ripple Rings around Pedestal
+    const surfRings: { mesh: THREE.Mesh; pulseSpeed: number }[] = [];
+    [
+      { r: 1.95, opacity: 0.45, speed: 2.2 },
+      { r: 2.30, opacity: 0.30, speed: 1.8 },
+      { r: 2.70, opacity: 0.18, speed: 1.4 },
+    ].forEach((spec) => {
+      const ringGeo = new THREE.RingGeometry(spec.r - 0.04, spec.r + 0.04, 48);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: spec.opacity,
+        side: THREE.DoubleSide,
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.y = -0.16;
+      scene.add(ring);
+      surfRings.push({ mesh: ring, pulseSpeed: spec.speed });
+    });
+
+    // 3. Distant Tropical Islands with Palm Silhouettes
+    const islandGroup = new THREE.Group();
+    const isleMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 });
+    const palmCanopyMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.70 });
+    const palmTrunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.90 });
+
+    // Island 1 (Left background mountain ridge)
+    const isle1Geo = new THREE.ConeGeometry(5.5, 4.5, 8);
+    isle1Geo.scale(1.8, 0.7, 1.2);
+    const isle1 = new THREE.Mesh(isle1Geo, isleMat);
+    isle1.position.set(-16, 0.5, -22);
+    islandGroup.add(isle1);
+
+    // Island 2 (Right background lush ridge)
+    const isle2Geo = new THREE.ConeGeometry(7.0, 5.0, 8);
+    isle2Geo.scale(2.0, 0.65, 1.4);
+    const isle2 = new THREE.Mesh(isle2Geo, isleMat);
+    isle2.position.set(18, 0.8, -25);
+    islandGroup.add(isle2);
+
+    // Palm tree clusters on islands
+    [[-14, 2.6, -21], [-17, 2.2, -20], [16, 2.9, -24], [20, 2.4, -23]].forEach(([px, py, pz]) => {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.2, 6), palmTrunkMat);
+      trunk.position.set(px, py + 0.6, pz);
+      trunk.rotation.z = (Math.random() - 0.5) * 0.2;
+      islandGroup.add(trunk);
+      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.6, 6), palmCanopyMat);
+      crown.position.set(px, py + 1.3, pz);
+      islandGroup.add(crown);
+    });
+    scene.add(islandGroup);
+
+    // 4. Drifting 3D Fluffy Low-Poly Clouds
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.95,
+      transparent: true,
+      opacity: 0.92,
+    });
+    const cloudsData: { group: THREE.Group; speed: number }[] = [];
+    [[-14, 4.2, -16, 0.35], [2, 5.0, -18, 0.22], [16, 3.8, -14, 0.28]].forEach(([cx, cy, cz, speed]) => {
+      const c = new THREE.Group();
+      c.position.set(cx, cy, cz);
+      const p1 = new THREE.Mesh(new THREE.SphereGeometry(1.2, 12, 10), cloudMat);
+      c.add(p1);
+      const p2 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 10, 8), cloudMat);
+      p2.position.set(0.9, -0.2, 0.1);
+      c.add(p2);
+      const p3 = new THREE.Mesh(new THREE.SphereGeometry(0.85, 10, 8), cloudMat);
+      p3.position.set(-0.85, -0.25, 0.15);
+      c.add(p3);
+      const p4 = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 8), cloudMat);
+      p4.position.set(0.3, 0.5, 0);
+      c.add(p4);
+      scene.add(c);
+      cloudsData.push({ group: c, speed: speed as number });
+    });
+
+    // 5. Drifting Tropical Foliage & Petals
+    const leafCount = 35;
+    const leafGeo = new THREE.PlaneGeometry(0.16, 0.09);
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: 0x86efac,
+      side: THREE.DoubleSide,
+      roughness: 0.5,
+    });
+    const petalMat = new THREE.MeshStandardMaterial({
+      color: 0xfef08a,
+      side: THREE.DoubleSide,
+      roughness: 0.5,
+    });
+    const foliageList: { mesh: THREE.Mesh; rotSpeed: { x: number; y: number; z: number }; floatSpeed: number; swayAmp: number; seed: number }[] = [];
+    const foliageGroup = new THREE.Group();
+    for (let i = 0; i < leafCount; i++) {
+      const mesh = new THREE.Mesh(leafGeo, i % 2 === 0 ? leafMat : petalMat);
+      mesh.position.set(
+        (Math.random() - 0.5) * 14,
+        Math.random() * 5 + 0.2,
+        (Math.random() - 0.5) * 12
+      );
+      foliageGroup.add(mesh);
+      foliageList.push({
+        mesh,
+        rotSpeed: { x: (Math.random() - 0.5) * 0.03, y: (Math.random() - 0.5) * 0.04, z: (Math.random() - 0.5) * 0.02 },
+        floatSpeed: 0.007 + Math.random() * 0.010,
+        swayAmp: 0.015 + Math.random() * 0.02,
+        seed: Math.random() * Math.PI * 2,
+      });
+    }
+    scene.add(foliageGroup);
 
     // Load initial champion
     loadChampion(activeId);
@@ -171,6 +282,47 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     const animate = () => {
       animationId = requestAnimationFrame(animate);
       const elapsedTime = (performance.now() - startTime) * 0.001;
+
+      // Dynamic Ocean Waves Vertex Animation
+      const pos = oceanGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const u = pos.getX(i);
+        const v = pos.getY(i);
+        const wave = Math.sin(u * 0.25 + elapsedTime * 1.8) * Math.cos(v * 0.25 + elapsedTime * 1.4) * 0.10
+                   + Math.sin(u * 0.5 + v * 0.3 + elapsedTime * 2.2) * 0.04;
+        pos.setZ(i, wave);
+      }
+      pos.needsUpdate = true;
+
+      // Pulse Pedestal Foam Rings
+      surfRings.forEach((sr) => {
+        const s = 1.0 + Math.sin(elapsedTime * sr.pulseSpeed) * 0.04;
+        sr.mesh.scale.set(s, s, 1);
+      });
+
+      // Drift 3D Clouds smoothly across the sky
+      cloudsData.forEach((cloud) => {
+        cloud.group.position.x += cloud.speed * 0.012;
+        if (cloud.group.position.x > 26) {
+          cloud.group.position.x = -26;
+        }
+      });
+
+      // Flutter 3D Tropical Leaves & Petals in the sea breeze
+      foliageList.forEach((f) => {
+        f.mesh.position.y -= f.floatSpeed;
+        f.mesh.position.x += Math.sin(elapsedTime * 1.5 + f.seed) * f.swayAmp;
+        f.mesh.position.z += Math.cos(elapsedTime * 1.2 + f.seed) * (f.swayAmp * 0.7);
+        f.mesh.rotation.x += f.rotSpeed.x;
+        f.mesh.rotation.y += f.rotSpeed.y;
+        f.mesh.rotation.z += f.rotSpeed.z;
+
+        if (f.mesh.position.y < 0.0) {
+          f.mesh.position.y = 5.2;
+          f.mesh.position.x = (Math.random() - 0.5) * 14;
+          f.mesh.position.z = (Math.random() - 0.5) * 12;
+        }
+      });
 
       // Only rotate when dragged by user; stays stationary when idle as requested
       if (!isDraggingRef.current) {
@@ -361,9 +513,9 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
 
         {/* Currency / Trophies */}
         <div className="flex items-center gap-2 bg-[#0284c7]/85 backdrop-blur-md px-3.5 py-2 rounded-2xl border-2 border-white/40 shadow-xl">
-          <span className="text-xs font-black text-amber-300 font-mono">🏆 2,450</span>
+          <span className="text-xs font-black text-amber-300 font-mono">🏆 {trophies.toLocaleString()}</span>
           <div className="w-px h-3.5 bg-white/30" />
-          <span className="text-xs font-black text-yellow-300 font-mono">🪙 1,280</span>
+          <span className="text-xs font-black text-yellow-300 font-mono">🪙 {gold.toLocaleString()}</span>
         </div>
       </div>
 

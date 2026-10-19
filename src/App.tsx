@@ -75,20 +75,110 @@ export function App() {
   };
 
   const handleRestart = () => {
+    hasProcessedGameOverRef.current = false;
     engineRef.current?.resetMatch();
   };
 
+  // User Profile & Currencies (Persisted across entire App - Starts at 0 for beginners)
+  const [trophies, setTrophies] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('ringout_trophies');
+      if (saved !== null) {
+        // If it was the old hardcoded 1250, reset to 0 for beginners as requested!
+        if (saved === '1250') {
+          localStorage.setItem('ringout_trophies', '0');
+          return 0;
+        }
+        const val = parseInt(saved, 10);
+        return isNaN(val) ? 0 : val;
+      }
+    } catch {}
+    return 0;
+  });
+
+  const [gold, setGold] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('ringout_gold');
+      return saved ? parseInt(saved, 10) : 100;
+    } catch {
+      return 100;
+    }
+  });
+
+  const [gems, setGems] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('ringout_gems');
+      return saved ? parseInt(saved, 10) : 50;
+    } catch {
+      return 50;
+    }
+  });
+
+  // Track match completion to reward / deduct trophies once per game
+  const hasProcessedGameOverRef = useRef(false);
+
+  useEffect(() => {
+    if (gameState.isGameOver) {
+      if (!hasProcessedGameOverRef.current) {
+        hasProcessedGameOverRef.current = true;
+        if (gameState.winner === 'player') {
+          const deltaTrophies = 30;
+          const deltaGold = 120;
+          setTrophies((prev) => {
+            const next = prev + deltaTrophies;
+            try {
+              localStorage.setItem('ringout_trophies', String(next));
+            } catch {}
+            return next;
+          });
+          setGold((prev) => {
+            const next = prev + deltaGold;
+            try {
+              localStorage.setItem('ringout_gold', String(next));
+            } catch {}
+            return next;
+          });
+        } else if (gameState.winner === 'bot') {
+          const deltaTrophies = 10;
+          const deltaGold = 25;
+          setTrophies((prev) => {
+            const next = Math.max(0, prev - deltaTrophies);
+            try {
+              localStorage.setItem('ringout_trophies', String(next));
+            } catch {}
+            return next;
+          });
+          setGold((prev) => {
+            const next = prev + deltaGold;
+            try {
+              localStorage.setItem('ringout_gold', String(next));
+            } catch {}
+            return next;
+          });
+        }
+      }
+    } else {
+      hasProcessedGameOverRef.current = false;
+    }
+  }, [gameState.isGameOver, gameState.winner]);
+
   const [botChampion, setBotChampion] = useState<ChampionId>('kage');
 
-  const handleStartStory = () => {
+  // 1v1 Private Code Room Match Flow
+  const handleStartCodeRoom = (_roomCode: string, _isHost: boolean) => {
+    hasProcessedGameOverRef.current = false;
     engineRef.current?.setPlayerChampion(selectedChampion);
-    engineRef.current?.setBotChampion('kage');
+    const rivalChamps: ChampionId[] = ['kage', 'titan', 'nova', 'bolt', 'kai'];
+    const filtered = rivalChamps.filter((c) => c !== selectedChampion);
+    const rival = filtered[Math.floor(Math.random() * filtered.length)] || 'kage';
+    engineRef.current?.setBotChampion(rival);
     engineRef.current?.resetMatch();
-    setBotChampion('kage');
+    setBotChampion(rival);
     setActiveScreen('battle');
   };
 
   const handleStartPvP = () => {
+    hasProcessedGameOverRef.current = false;
     engineRef.current?.setPlayerChampion(selectedChampion);
     const rivalChamps: ChampionId[] = ['titan', 'nova', 'bolt', 'kai', 'kage'];
     const filtered = rivalChamps.filter((c) => c !== selectedChampion);
@@ -112,6 +202,7 @@ export function App() {
           state={gameState}
           selectedChampion={selectedChampion}
           botChampion={botChampion}
+          trophies={trophies}
           onOpenShowcase={() => setActiveScreen('home')}
           onDash={handleDash}
           onAimChange={handleAimChange}
@@ -126,9 +217,15 @@ export function App() {
       {activeScreen === 'home' && (
         <HomeScreen
           selectedChampion={selectedChampion}
+          trophies={trophies}
+          setTrophies={setTrophies}
+          gold={gold}
+          setGold={setGold}
+          gems={gems}
+          setGems={setGems}
           onSelectChampion={handleSelectChampion}
           onOpenBrawlers={() => setActiveScreen('brawlers')}
-          onStartStoryMatch={handleStartStory}
+          onStartCodeRoomMatch={handleStartCodeRoom}
           onStartPvPMatch={handleStartPvP}
         />
       )}
@@ -137,6 +234,8 @@ export function App() {
       {activeScreen === 'brawlers' && (
         <ChampionShowcase
           selectedChampion={selectedChampion}
+          trophies={trophies}
+          gold={gold}
           onSelectChampion={handleSelectChampion}
           onBackToBattle={() => {
             setActiveScreen('home');

@@ -9,14 +9,17 @@ import {
 import {
   Trophy,
   Swords,
-  BookOpen,
+  Users,
   Settings,
   Play,
   X,
   ChevronRight,
   Volume2,
   Lock,
-  Star,
+  Copy,
+  Check,
+  KeyRound,
+  Sparkles,
 } from 'lucide-react';
 import { sounds } from '../audio/soundManager';
 import { crazyGames } from '../game/crazyGamesSdk';
@@ -25,9 +28,15 @@ import { LeaderboardModal } from './LeaderboardModal';
 
 interface HomeScreenProps {
   selectedChampion: ChampionId;
+  trophies: number;
+  setTrophies?: React.Dispatch<React.SetStateAction<number>>;
+  gold: number;
+  setGold: React.Dispatch<React.SetStateAction<number>>;
+  gems: number;
+  setGems: React.Dispatch<React.SetStateAction<number>>;
   onSelectChampion?: (id: ChampionId) => void;
   onOpenBrawlers: () => void;
-  onStartStoryMatch: () => void;
+  onStartCodeRoomMatch: (roomCode: string, isHost: boolean) => void;
   onStartPvPMatch: () => void;
 }
 
@@ -42,38 +51,37 @@ interface TrophyMilestone {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   selectedChampion,
+  trophies,
+  gold,
+  setGold,
+  gems,
+  setGems,
   onOpenBrawlers,
-  onStartStoryMatch,
+  onStartCodeRoomMatch,
   onStartPvPMatch,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeChampion = CHAMPIONS[selectedChampion];
 
-  // User Profile & Currencies (Persisted)
-  const [trophies, _setTrophies] = useState(1250);
-  const [gold, setGold] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('ringout_gold');
-      return saved ? parseInt(saved, 10) : 840;
-    } catch {
-      return 840;
-    }
-  });
-  const [gems, setGems] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('ringout_gems');
-      return saved ? parseInt(saved, 10) : 150;
-    } catch {
-      return 150;
-    }
-  });
-  const [playerLevel] = useState(5);
+  // Dynamic Player Level based on real trophies (Starts at 1 for beginner)
+  const playerLevel = Math.max(1, Math.floor(trophies / 250) + 1);
+
   const [unlockedChampions, setUnlockedChampions] = useState<ChampionId[]>(() => {
     try {
       const saved = localStorage.getItem('ringout_unlocked_champions');
       return saved ? JSON.parse(saved) : ['leo', 'bolt', 'kai'];
     } catch {
       return ['leo', 'bolt', 'kai'];
+    }
+  });
+
+  // Track claimed milestones in localStorage
+  const [claimedMilestones, setClaimedMilestones] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem('ringout_claimed_milestones');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
   });
 
@@ -85,6 +93,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [matchmakingCountdown, setMatchmakingCountdown] = useState(3);
   const [soundMuted, setSoundMuted] = useState(!sounds.enabled);
+
+  // 1v1 Private Code Room Modal State
+  const [isCodeRoomOpen, setIsCodeRoomOpen] = useState(false);
+  const [codeRoomMode, setCodeRoomMode] = useState<'create' | 'join'>('create');
+  const [roomCode, setRoomCode] = useState(() => 'RING-' + Math.floor(100 + Math.random() * 900));
+  const [inputRoomCode, setInputRoomCode] = useState('');
+  const [copiedCode, setCopiedCode] = useState(false);
 
   // Bottom Navigation Active Tab
   const [activeTab, setActiveTab] = useState<'home' | 'brawlers' | 'shop' | 'leaderboard'>('home');
@@ -141,18 +156,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const rotationVelocityRef = useRef(0);
   const currentRotationYRef = useRef(Math.PI);
 
-  // Trophy Road Milestones
+  // Trophy Road Milestones (Starts unlocked based on real trophies)
   const milestones: TrophyMilestone[] = [
-    { trophies: 50, rewardType: 'gold', rewardLabel: '50 Gold', amount: 50, claimed: true },
-    { trophies: 150, rewardType: 'champion', rewardLabel: 'Kai Unlocked', championId: 'kai', claimed: true },
-    { trophies: 300, rewardType: 'gems', rewardLabel: '20 Gems', amount: 20, claimed: true },
-    { trophies: 500, rewardType: 'gold', rewardLabel: '200 Gold', amount: 200, claimed: true },
-    { trophies: 800, rewardType: 'champion', rewardLabel: 'Nova Unlocked', championId: 'nova', claimed: true },
-    { trophies: 1100, rewardType: 'box', rewardLabel: 'Big Brawl Box', claimed: true },
-    { trophies: 1500, rewardType: 'champion', rewardLabel: 'Titan Gorr Unlocked', championId: 'titan', claimed: false },
-    { trophies: 2000, rewardType: 'box', rewardLabel: 'Mega Brawl Box', claimed: false },
-    { trophies: 2600, rewardType: 'champion', rewardLabel: 'Kage Unlocked', championId: 'kage', claimed: false },
-    { trophies: 3500, rewardType: 'champion', rewardLabel: 'Axel Parkourist Unlocked', championId: 'bolt', claimed: false },
+    { trophies: 50, rewardType: 'gold', rewardLabel: '50 Gold', amount: 50, claimed: claimedMilestones.includes(50) },
+    { trophies: 150, rewardType: 'champion', rewardLabel: 'Kai Unlocked', championId: 'kai', claimed: claimedMilestones.includes(150) },
+    { trophies: 300, rewardType: 'gems', rewardLabel: '20 Gems', amount: 20, claimed: claimedMilestones.includes(300) },
+    { trophies: 500, rewardType: 'gold', rewardLabel: '200 Gold', amount: 200, claimed: claimedMilestones.includes(500) },
+    { trophies: 800, rewardType: 'champion', rewardLabel: 'Nova Unlocked', championId: 'nova', claimed: claimedMilestones.includes(800) },
+    { trophies: 1100, rewardType: 'box', rewardLabel: 'Big Brawl Box', claimed: claimedMilestones.includes(1100) },
+    { trophies: 1500, rewardType: 'champion', rewardLabel: 'Titan Gorr Unlocked', championId: 'titan', claimed: claimedMilestones.includes(1500) },
+    { trophies: 2000, rewardType: 'box', rewardLabel: 'Mega Brawl Box', claimed: claimedMilestones.includes(2000) },
+    { trophies: 2600, rewardType: 'champion', rewardLabel: 'Kage Unlocked', championId: 'kage', claimed: claimedMilestones.includes(2600) },
+    { trophies: 3500, rewardType: 'champion', rewardLabel: 'Axel Parkourist Unlocked', championId: 'bolt', claimed: claimedMilestones.includes(3500) },
   ];
 
   // Helper to load champion into Three.js scene
@@ -272,24 +287,131 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     modelHolderRef.current = modelHolder;
     scene.add(modelHolder);
 
-    // Warm Sunny Daylight Motes (Gold & Cyan Sparkling Sunlight Particles)
-    const motesGeo = new THREE.BufferGeometry();
-    const moteCount = 180;
-    const motePos = new Float32Array(moteCount * 3);
-    for (let i = 0; i < moteCount * 3; i += 3) {
-      motePos[i] = (Math.random() - 0.5) * 16;
-      motePos[i + 1] = Math.random() * 7;
-      motePos[i + 2] = (Math.random() - 0.5) * 16;
-    }
-    motesGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
-    const motesMat = new THREE.PointsMaterial({
-      color: 0xffedd5,
-      size: 0.08,
+    // 1. Procedural Living Ocean Plane (Moving Waves)
+    const oceanGeo = new THREE.PlaneGeometry(80, 80, 48, 48);
+    oceanGeo.rotateX(-Math.PI / 2);
+    const oceanMat = new THREE.MeshStandardMaterial({
+      color: 0x0284c7, // Tropical azure water
+      roughness: 0.16,
+      metalness: 0.22,
       transparent: true,
-      opacity: 0.65,
+      opacity: 0.94,
     });
-    const motes = new THREE.Points(motesGeo, motesMat);
-    scene.add(motes);
+    const oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+    oceanMesh.position.y = -0.32;
+    scene.add(oceanMesh);
+
+    // 2. Multi-tier Sea Foam Ripple Rings around Pedestal
+    const surfRings: { mesh: THREE.Mesh; pulseSpeed: number }[] = [];
+    [
+      { r: 1.95, opacity: 0.45, speed: 2.2 },
+      { r: 2.30, opacity: 0.30, speed: 1.8 },
+      { r: 2.70, opacity: 0.18, speed: 1.4 },
+    ].forEach((spec) => {
+      const ringGeo = new THREE.RingGeometry(spec.r - 0.04, spec.r + 0.04, 48);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: spec.opacity,
+        side: THREE.DoubleSide,
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.y = -0.16;
+      scene.add(ring);
+      surfRings.push({ mesh: ring, pulseSpeed: spec.speed });
+    });
+
+    // 3. Distant Tropical Islands with Palm Silhouettes
+    const islandGroup = new THREE.Group();
+    const isleMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 });
+    const palmCanopyMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.70 });
+    const palmTrunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.90 });
+
+    // Island 1 (Left background mountain ridge)
+    const isle1Geo = new THREE.ConeGeometry(5.5, 4.5, 8);
+    isle1Geo.scale(1.8, 0.7, 1.2);
+    const isle1 = new THREE.Mesh(isle1Geo, isleMat);
+    isle1.position.set(-16, 0.5, -22);
+    islandGroup.add(isle1);
+
+    // Island 2 (Right background lush ridge)
+    const isle2Geo = new THREE.ConeGeometry(7.0, 5.0, 8);
+    isle2Geo.scale(2.0, 0.65, 1.4);
+    const isle2 = new THREE.Mesh(isle2Geo, isleMat);
+    isle2.position.set(18, 0.8, -25);
+    islandGroup.add(isle2);
+
+    // Palm tree clusters on islands
+    [[-14, 2.6, -21], [-17, 2.2, -20], [16, 2.9, -24], [20, 2.4, -23]].forEach(([px, py, pz]) => {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.2, 6), palmTrunkMat);
+      trunk.position.set(px, py + 0.6, pz);
+      trunk.rotation.z = (Math.random() - 0.5) * 0.2;
+      islandGroup.add(trunk);
+      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.6, 6), palmCanopyMat);
+      crown.position.set(px, py + 1.3, pz);
+      islandGroup.add(crown);
+    });
+    scene.add(islandGroup);
+
+    // 4. Drifting 3D Fluffy Low-Poly Clouds
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.95,
+      transparent: true,
+      opacity: 0.92,
+    });
+    const cloudsData: { group: THREE.Group; speed: number }[] = [];
+    [[-14, 4.2, -16, 0.35], [2, 5.0, -18, 0.22], [16, 3.8, -14, 0.28]].forEach(([cx, cy, cz, speed]) => {
+      const c = new THREE.Group();
+      c.position.set(cx, cy, cz);
+      const p1 = new THREE.Mesh(new THREE.SphereGeometry(1.2, 12, 10), cloudMat);
+      c.add(p1);
+      const p2 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 10, 8), cloudMat);
+      p2.position.set(0.9, -0.2, 0.1);
+      c.add(p2);
+      const p3 = new THREE.Mesh(new THREE.SphereGeometry(0.85, 10, 8), cloudMat);
+      p3.position.set(-0.85, -0.25, 0.15);
+      c.add(p3);
+      const p4 = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 8), cloudMat);
+      p4.position.set(0.3, 0.5, 0);
+      c.add(p4);
+      scene.add(c);
+      cloudsData.push({ group: c, speed: speed as number });
+    });
+
+    // 5. Drifting Tropical Foliage & Petals (Replacing static square star dots!)
+    const leafCount = 35;
+    const leafGeo = new THREE.PlaneGeometry(0.16, 0.09);
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: 0x86efac,
+      side: THREE.DoubleSide,
+      roughness: 0.5,
+    });
+    const petalMat = new THREE.MeshStandardMaterial({
+      color: 0xfef08a,
+      side: THREE.DoubleSide,
+      roughness: 0.5,
+    });
+    const foliageList: { mesh: THREE.Mesh; rotSpeed: { x: number; y: number; z: number }; floatSpeed: number; swayAmp: number; seed: number }[] = [];
+    const foliageGroup = new THREE.Group();
+    for (let i = 0; i < leafCount; i++) {
+      const mesh = new THREE.Mesh(leafGeo, i % 2 === 0 ? leafMat : petalMat);
+      mesh.position.set(
+        (Math.random() - 0.5) * 14,
+        Math.random() * 5 + 0.2,
+        (Math.random() - 0.5) * 12
+      );
+      foliageGroup.add(mesh);
+      foliageList.push({
+        mesh,
+        rotSpeed: { x: (Math.random() - 0.5) * 0.03, y: (Math.random() - 0.5) * 0.04, z: (Math.random() - 0.5) * 0.02 },
+        floatSpeed: 0.007 + Math.random() * 0.010,
+        swayAmp: 0.015 + Math.random() * 0.02,
+        seed: Math.random() * Math.PI * 2,
+      });
+    }
+    scene.add(foliageGroup);
 
     loadChampionModel(selectedChampion);
 
@@ -299,6 +421,44 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     const animate = () => {
       animationId = requestAnimationFrame(animate);
       const elapsedTime = (performance.now() - startTime) * 0.001;
+
+      // 1. Dynamic Ocean Waves Vertex Animation
+      const pos = oceanGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const u = pos.getX(i);
+        const v = pos.getY(i);
+        const wave = Math.sin(u * 0.25 + elapsedTime * 1.8) * Math.cos(v * 0.25 + elapsedTime * 1.4) * 0.10
+                   + Math.sin(u * 0.5 + v * 0.3 + elapsedTime * 2.2) * 0.04;
+        pos.setZ(i, wave);
+      }
+      pos.needsUpdate = true;
+
+      // 2. Pulse Pedestal Foam Rings
+      surfRings.forEach((sr) => {
+        const s = 1.0 + Math.sin(elapsedTime * sr.pulseSpeed) * 0.04;
+        sr.mesh.scale.set(s, s, 1);
+      });
+
+      // 3. Drift 3D Clouds smoothly across the sky
+      cloudsData.forEach((cloud) => {
+        cloud.group.position.x += cloud.speed * 0.012;
+        if (cloud.group.position.x > 26) {
+          cloud.group.position.x = -26;
+        }
+      });
+
+      // 4. Flutter 3D Tropical Leaves & Petals in the breeze
+      foliageList.forEach((leaf) => {
+        leaf.mesh.position.y -= leaf.floatSpeed;
+        leaf.mesh.position.x += Math.sin(elapsedTime * 1.5 + leaf.seed) * leaf.swayAmp;
+        leaf.mesh.rotation.x += leaf.rotSpeed.x;
+        leaf.mesh.rotation.y += leaf.rotSpeed.y;
+        leaf.mesh.rotation.z += leaf.rotSpeed.z;
+        if (leaf.mesh.position.y < -0.2) {
+          leaf.mesh.position.y = 5.2;
+          leaf.mesh.position.x = (Math.random() - 0.5) * 14;
+        }
+      });
 
       if (!isDraggingRef.current) {
         currentRotationYRef.current += rotationVelocityRef.current;
@@ -399,10 +559,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     }, 800);
   };
 
-  const handleLaunchStory = () => {
-    sounds.playBump(1.2);
-    onStartStoryMatch();
-  };
 
   const toggleSound = () => {
     const next = !sounds.enabled;
@@ -548,52 +704,61 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </button>
       </div>
 
-      {/* 4. LEFT WING: STORY MODE (NON-BOXY ARCADE FLOATING CARD) */}
+      {/* 4. LEFT WING: 1V1 CODE ROOM (DUEL A FRIEND WITH PRIVATE ROOM CODE) */}
       <div className="absolute left-3 sm:left-6 lg:left-10 top-1/2 -translate-y-1/2 w-60 sm:w-68 lg:w-76 z-20 pointer-events-auto">
         <div className="relative bg-gradient-to-b from-[#29b6f6]/90 via-[#0288d1]/90 to-[#01579b]/90 border-4 border-[#81d4fa] rounded-[32px] pt-12 sm:pt-14 px-4 sm:px-5 pb-5 shadow-[0_16px_50px_rgba(0,0,0,0.8),inset_0_2px_8px_rgba(255,255,255,0.4)] backdrop-blur-md text-center transition-transform hover:scale-[1.02]">
           {/* Top Glossy Golden-Amber Ribbon */}
           <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-6 py-1 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
             <span className="text-xs sm:text-sm font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 stroke-[2.5]" /> Story Mode
+              <Users className="w-3.5 h-3.5 stroke-[2.5]" /> 1v1 Code Room
             </span>
           </div>
 
-          {/* Chapter Artwork Preview Capsule */}
+          {/* Code Room Details Capsule */}
           <div className="bg-black/40 border border-white/15 rounded-2xl p-3 mb-3 shadow-inner text-left">
-            <div className="flex items-center justify-between text-[10px] text-emerald-300 font-black uppercase tracking-wider mb-1">
-              <span>Chapter 1</span>
-              <span className="flex items-center gap-0.5 text-amber-300">
-                <Star className="w-3 h-3 fill-amber-300" />
-                <Star className="w-3 h-3 fill-amber-300" />
-                <Star className="w-3 h-3 text-slate-500" />
+            <div className="flex items-center justify-between text-[10px] text-amber-300 font-black uppercase tracking-wider mb-1">
+              <span>Private Duel</span>
+              <span className="flex items-center gap-1 text-sky-200 font-mono">
+                <KeyRound className="w-3 h-3 text-amber-300" /> Room Code
               </span>
             </div>
             <div className="text-sm font-black text-white drop-shadow">
-              Emerald Isles
+              Play With Friend
             </div>
             <div className="text-[11px] text-sky-200 font-semibold mt-0.5 leading-tight">
-              Stage 1: Beach Scout Duel
+              Create a custom code or enter friend's room
             </div>
           </div>
 
-          {/* Stage Info Pills */}
-          <div className="flex items-center justify-center gap-2 mb-3.5 text-[10px] font-black uppercase text-sky-100">
-            <span className="px-2.5 py-1 rounded-full bg-black/40 border border-sky-300/30">
-              Reward: 120 🪙
-            </span>
-            <span className="px-2.5 py-1 rounded-full bg-black/40 border border-sky-300/30">
-              3 Rounds
-            </span>
-          </div>
+          {/* Action Buttons: Create Room & Join Room */}
+          <div className="space-y-2">
+            <button
+              onClick={() => {
+                sounds.playBump(0.8);
+                setCodeRoomMode('create');
+                setRoomCode('RING-' + Math.floor(100 + Math.random() * 900));
+                setCopiedCode(false);
+                setIsCodeRoomOpen(true);
+              }}
+              className="w-full py-2.5 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_4px_0_#365314,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_2px_0_#365314] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 fill-white" />
+              <span>CREATE ROOM</span>
+            </button>
 
-          {/* Play Story Mode 3D Action Button */}
-          <button
-            onClick={handleLaunchStory}
-            className="w-full py-3 sm:py-3.5 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_5px_0_#365314,0_8px_16px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-[0_2px_0_#365314] transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Play className="w-4 h-4 fill-white" />
-            <span>PLAY STORY</span>
-          </button>
+            <button
+              onClick={() => {
+                sounds.playBump(0.8);
+                setCodeRoomMode('join');
+                setInputRoomCode('');
+                setIsCodeRoomOpen(true);
+              }}
+              className="w-full py-2.5 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_3px_0_#075985,0_5px_12px_rgba(0,0,0,0.4)] active:translate-y-0.5 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>JOIN WITH CODE</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -811,9 +976,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         <button
                           onClick={() => {
                             sounds.playBump(1.0);
-                            m.claimed = true;
-                            if (m.amount && m.rewardType === 'gold') setGold((g) => g + m.amount!);
-                            if (m.amount && m.rewardType === 'gems') setGems((g) => g + m.amount!);
+                            setClaimedMilestones((prev) => {
+                              const next = [...prev, m.trophies];
+                              try {
+                                localStorage.setItem('ringout_claimed_milestones', JSON.stringify(next));
+                              } catch {}
+                              return next;
+                            });
+                            if (m.amount && m.rewardType === 'gold') handleAddGold(m.amount);
+                            if (m.amount && m.rewardType === 'gems') handleAddGems(m.amount);
+                            if (m.championId && m.rewardType === 'champion') {
+                              setUnlockedChampions((prev) => {
+                                if (prev.includes(m.championId!)) return prev;
+                                const next = [...prev, m.championId!];
+                                try {
+                                  localStorage.setItem('ringout_unlocked_champions', JSON.stringify(next));
+                                } catch {}
+                                return next;
+                              });
+                            }
                           }}
                           className="px-4 py-1.5 bg-gradient-to-b from-[#a3e635] to-[#65a30d] text-white font-black text-xs uppercase rounded-xl border border-lime-200 shadow-md active:translate-y-0.5 cursor-pointer"
                         >
@@ -919,6 +1100,173 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         playerTrophies={trophies}
         playerChampion={selectedChampion}
       />
+
+      {/* 10. 1V1 CODE ROOM MODAL (PLAY WITH FRIEND) */}
+      {isCodeRoomOpen && (
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-14 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+            {/* Top Glossy Ribbon */}
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-8 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
+              <span className="text-sm font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] flex items-center gap-2">
+                <Users className="w-4 h-4 stroke-[2.5]" /> 1V1 CODE ROOM
+              </span>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setIsCodeRoomOpen(false)}
+              className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
+              title="Close"
+            >
+              <X className="w-5 h-5 stroke-[3]" />
+            </button>
+
+            {/* Mode Switcher Tabs */}
+            <div className="flex bg-[#013f6b]/80 p-1 rounded-2xl border border-sky-300/30 mb-5">
+              <button
+                onClick={() => {
+                  sounds.playBump(0.6);
+                  setCodeRoomMode('create');
+                }}
+                className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  codeRoomMode === 'create'
+                    ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow border border-[#bef264]'
+                    : 'text-sky-200 hover:text-white'
+                }`}
+              >
+                Create Room
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playBump(0.6);
+                  setCodeRoomMode('join');
+                }}
+                className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  codeRoomMode === 'join'
+                    ? 'bg-gradient-to-b from-[#38bdf8] to-[#0284c7] text-white shadow border border-[#7dd3fc]'
+                    : 'text-sky-200 hover:text-white'
+                }`}
+              >
+                Join with Code
+              </button>
+            </div>
+
+            {codeRoomMode === 'create' ? (
+              <div className="space-y-4">
+                <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-4 shadow-inner">
+                  <div className="text-[11px] font-black uppercase tracking-wider text-amber-300 mb-1">
+                    Your Generated Room Code
+                  </div>
+                  <div className="text-3xl sm:text-4xl font-mono font-black tracking-widest text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] my-2">
+                    {roomCode}
+                  </div>
+                  <div className="text-xs text-sky-200 font-semibold">
+                    Share this code with your friend. When they enter it, you'll duel 1v1!
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      sounds.playBump(0.6);
+                      navigator.clipboard?.writeText(roomCode);
+                      setCopiedCode(true);
+                      setTimeout(() => setCopiedCode(false), 2000);
+                    }}
+                    className="flex-1 py-2.5 bg-white/15 hover:bg-white/25 border-2 border-white/30 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    {copiedCode ? (
+                      <>
+                        <Check className="w-4 h-4 text-lime-400 stroke-[3]" />
+                        <span className="text-lime-300 font-black">COPIED!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>COPY CODE</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      sounds.playBump(0.6);
+                      setRoomCode('RING-' + Math.floor(100 + Math.random() * 900));
+                    }}
+                    className="px-4 py-2.5 bg-white/10 hover:bg-white/20 border-2 border-white/20 text-sky-200 hover:text-white font-black text-xs uppercase rounded-2xl transition-all cursor-pointer"
+                    title="Generate New Code"
+                  >
+                    🎲 NEW
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    sounds.playFight();
+                    setIsCodeRoomOpen(false);
+                    onStartCodeRoomMatch(roomCode, true);
+                  }}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#a3e635] via-[#65a30d] to-[#4d7c0f] hover:from-[#bef264] hover:to-[#65a30d] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-lime-200 shadow-[0_5px_0_#365314,0_8px_16px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-[0_1px_0_#365314] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>START PRIVATE DUEL</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-4 shadow-inner text-left">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-amber-300 block mb-1.5">
+                    Enter Friend's Room Code
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={inputRoomCode}
+                      onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. RING-482"
+                      maxLength={12}
+                      className="w-full bg-[#013f6b] text-white placeholder-sky-300/40 font-mono font-black text-center text-xl sm:text-2xl py-3 px-4 rounded-xl border-2 border-sky-300/50 focus:border-amber-400 focus:outline-none tracking-widest uppercase shadow-inner"
+                    />
+                  </div>
+                  <div className="text-[11px] text-sky-200 font-semibold mt-2 text-center">
+                    Ask your friend for their 6-digit room code to join their custom match!
+                  </div>
+                </div>
+
+                {/* Quick Test Demo Codes */}
+                <div className="flex items-center justify-center gap-2 text-xs">
+                  <span className="text-sky-300 text-[10px] uppercase font-bold">Quick Sample:</span>
+                  <button
+                    onClick={() => setInputRoomCode('RING-777')}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-mono text-[11px] font-black border border-white/20 cursor-pointer"
+                  >
+                    RING-777
+                  </button>
+                  <button
+                    onClick={() => setInputRoomCode('RING-999')}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-mono text-[11px] font-black border border-white/20 cursor-pointer"
+                  >
+                    RING-999
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const code = inputRoomCode.trim() || 'RING-777';
+                    sounds.playFight();
+                    setIsCodeRoomOpen(false);
+                    onStartCodeRoomMatch(code, false);
+                  }}
+                  className="w-full py-3.5 bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#0369a1] hover:from-[#7dd3fc] hover:to-[#0284c7] text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-sky-200 shadow-[0_5px_0_#075985,0_8px_16px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-[0_1px_0_#075985] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                >
+                  <Swords className="w-4 h-4 stroke-[2.5]" />
+                  <span>JOIN & ENTER ARENA</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

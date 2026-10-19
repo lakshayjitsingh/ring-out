@@ -53,6 +53,7 @@ interface BattleHUDProps {
   state: GameState;
   selectedChampion?: ChampionId;
   botChampion?: ChampionId;
+  trophies?: number;
   onOpenShowcase?: () => void;
   onDash: (aimX?: number, aimZ?: number) => void;
   onAimChange: (isAiming: boolean, aimX?: number, aimZ?: number) => void;
@@ -66,6 +67,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   state,
   selectedChampion,
   botChampion,
+  trophies = 0,
   onOpenShowcase,
   onDash,
   onAimChange,
@@ -943,7 +945,8 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                 <div className="grid grid-cols-3 gap-2 bg-black/40 border border-white/10 rounded-2xl p-3 my-4 shadow-inner">
                   <div>
                     <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Trophies</div>
-                    <div className="text-base sm:text-lg font-black text-amber-400 drop-shadow">+35 🏆</div>
+                    <div className="text-base sm:text-lg font-black text-amber-400 drop-shadow">+30 🏆</div>
+                    <div className="text-[10px] text-amber-300 font-bold">Total: {trophies} 🏆</div>
                   </div>
                   <div>
                     <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Gold</div>
@@ -1000,6 +1003,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   <div>
                     <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Trophies</div>
                     <div className="text-base sm:text-lg font-black text-rose-400 drop-shadow">-10 🏆</div>
+                    <div className="text-[10px] text-rose-300 font-bold">Total: {trophies} 🏆</div>
                   </div>
                   <div>
                     <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Gold</div>

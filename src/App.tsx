@@ -3,13 +3,14 @@ import { GameEngine, type GameState, type CameraMode } from './game/GameEngine';
 import { BattleHUD } from './components/BattleHUD';
 import { ChampionShowcase } from './components/ChampionShowcase';
 import { HomeScreen } from './components/HomeScreen';
+import { ShopScreen } from './components/ShopScreen';
 import { type ChampionId } from './game/championModels';
 
 export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
 
-  const [activeScreen, setActiveScreen] = useState<'home' | 'brawlers' | 'battle'>('home');
+  const [activeScreen, setActiveScreen] = useState<'home' | 'brawlers' | 'shop' | 'battle'>('home');
   const [selectedChampion, setSelectedChampion] = useState<ChampionId>('leo');
 
   const [gameState, setGameState] = useState<GameState>({
@@ -113,6 +114,33 @@ export function App() {
       return 50;
     }
   });
+
+  const [unlockedChampions, setUnlockedChampions] = useState<ChampionId[]>(() => {
+    try {
+      const saved = localStorage.getItem('ringout_unlocked_champions');
+      return saved ? JSON.parse(saved) : ['leo', 'bolt', 'kai'];
+    } catch {
+      return ['leo', 'bolt', 'kai'];
+    }
+  });
+
+  const handleUnlockChampion = (id: ChampionId, cost: number) => {
+    setGems((prev) => {
+      const next = Math.max(0, prev - cost);
+      try {
+        localStorage.setItem('ringout_gems', String(next));
+      } catch {}
+      return next;
+    });
+    setUnlockedChampions((prev) => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      try {
+        localStorage.setItem('ringout_unlocked_champions', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Track match completion to reward / deduct trophies once per game
   const hasProcessedGameOverRef = useRef(false);
@@ -225,6 +253,7 @@ export function App() {
           setGems={setGems}
           onSelectChampion={handleSelectChampion}
           onOpenBrawlers={() => setActiveScreen('brawlers')}
+          onOpenShop={() => setActiveScreen('shop')}
           onStartCodeRoomMatch={handleStartCodeRoom}
           onStartPvPMatch={handleStartPvP}
         />
@@ -240,6 +269,20 @@ export function App() {
           onBackToBattle={() => {
             setActiveScreen('home');
           }}
+        />
+      )}
+
+      {/* 4. Dedicated Full-Page Brawl Shop (3 Divisions, 4K Tropical Backdrop, 2.5D Parallax) */}
+      {activeScreen === 'shop' && (
+        <ShopScreen
+          gold={gold}
+          gems={gems}
+          trophies={trophies}
+          setGold={setGold}
+          setGems={setGems}
+          unlockedChampions={unlockedChampions}
+          onUnlockChampion={handleUnlockChampion}
+          onBackToHome={() => setActiveScreen('home')}
         />
       )}
     </div>

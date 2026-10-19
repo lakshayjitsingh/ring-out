@@ -15,7 +15,6 @@ import {
   X,
   ChevronRight,
   Volume2,
-  Lock,
   Copy,
   Check,
   KeyRound,
@@ -23,8 +22,8 @@ import {
 } from 'lucide-react';
 import { sounds } from '../audio/soundManager';
 import { crazyGames } from '../game/crazyGamesSdk';
-import { ShopModal } from './ShopModal';
 import { LeaderboardModal } from './LeaderboardModal';
+import { TrophyRoadModal } from './TrophyRoadModal';
 
 interface HomeScreenProps {
   selectedChampion: ChampionId;
@@ -36,17 +35,9 @@ interface HomeScreenProps {
   setGems: React.Dispatch<React.SetStateAction<number>>;
   onSelectChampion?: (id: ChampionId) => void;
   onOpenBrawlers: () => void;
+  onOpenShop: () => void;
   onStartCodeRoomMatch: (roomCode: string, isHost: boolean) => void;
   onStartPvPMatch: () => void;
-}
-
-interface TrophyMilestone {
-  trophies: number;
-  rewardType: 'gold' | 'champion' | 'gems' | 'box';
-  rewardLabel: string;
-  amount?: number;
-  championId?: ChampionId;
-  claimed: boolean;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -57,6 +48,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   gems,
   setGems,
   onOpenBrawlers,
+  onOpenShop,
   onStartCodeRoomMatch,
   onStartPvPMatch,
 }) => {
@@ -66,7 +58,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // Dynamic Player Level based on real trophies (Starts at 1 for beginner)
   const playerLevel = Math.max(1, Math.floor(trophies / 250) + 1);
 
-  const [unlockedChampions, setUnlockedChampions] = useState<ChampionId[]>(() => {
+  const [, setUnlockedChampions] = useState<ChampionId[]>(() => {
     try {
       const saved = localStorage.getItem('ringout_unlocked_champions');
       return saved ? JSON.parse(saved) : ['leo', 'bolt', 'kai'];
@@ -88,7 +80,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // Modals
   const [isTrophyRoadOpen, setIsTrophyRoadOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isShopOpen, setIsShopOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isMatchmaking, setIsMatchmaking] = useState(false);
   const [matchmakingCountdown, setMatchmakingCountdown] = useState(3);
@@ -100,9 +91,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [roomCode, setRoomCode] = useState(() => 'RING-' + Math.floor(100 + Math.random() * 900));
   const [inputRoomCode, setInputRoomCode] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
-
-  // Bottom Navigation Active Tab
-  const [activeTab, setActiveTab] = useState<'home' | 'brawlers' | 'shop' | 'leaderboard'>('home');
 
   // Interactive 2.5D Camera Parallax Offset
   const [parallaxOffset, setParallaxOffset] = useState({ x: 0, y: 0 });
@@ -142,23 +130,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     });
   };
 
-  const handleUnlockChampion = (id: ChampionId, cost: number) => {
-    setGems((prev) => {
-      const next = Math.max(0, prev - cost);
-      try {
-        localStorage.setItem('ringout_gems', String(next));
-      } catch {}
-      return next;
-    });
-    setUnlockedChampions((prev) => {
-      const next = [...prev, id];
-      try {
-        localStorage.setItem('ringout_unlocked_champions', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
   // Three.js Turntable Refs
   const sceneRef = useRef<THREE.Scene | null>(null);
   const modelHolderRef = useRef<THREE.Group | null>(null);
@@ -168,20 +139,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const prevMouseXRef = useRef(0);
   const rotationVelocityRef = useRef(0);
   const currentRotationYRef = useRef(Math.PI);
-
-  // Trophy Road Milestones (Starts unlocked based on real trophies)
-  const milestones: TrophyMilestone[] = [
-    { trophies: 50, rewardType: 'gold', rewardLabel: '50 Gold', amount: 50, claimed: claimedMilestones.includes(50) },
-    { trophies: 150, rewardType: 'champion', rewardLabel: 'Kai Unlocked', championId: 'kai', claimed: claimedMilestones.includes(150) },
-    { trophies: 300, rewardType: 'gems', rewardLabel: '20 Gems', amount: 20, claimed: claimedMilestones.includes(300) },
-    { trophies: 500, rewardType: 'gold', rewardLabel: '200 Gold', amount: 200, claimed: claimedMilestones.includes(500) },
-    { trophies: 800, rewardType: 'champion', rewardLabel: 'Nova Unlocked', championId: 'nova', claimed: claimedMilestones.includes(800) },
-    { trophies: 1100, rewardType: 'box', rewardLabel: 'Big Brawl Box', claimed: claimedMilestones.includes(1100) },
-    { trophies: 1500, rewardType: 'champion', rewardLabel: 'Titan Gorr Unlocked', championId: 'titan', claimed: claimedMilestones.includes(1500) },
-    { trophies: 2000, rewardType: 'box', rewardLabel: 'Mega Brawl Box', claimed: claimedMilestones.includes(2000) },
-    { trophies: 2600, rewardType: 'champion', rewardLabel: 'Kage Unlocked', championId: 'kage', claimed: claimedMilestones.includes(2600) },
-    { trophies: 3500, rewardType: 'champion', rewardLabel: 'Axel Parkourist Unlocked', championId: 'bolt', claimed: claimedMilestones.includes(3500) },
-  ];
 
   // Helper to load champion into Three.js scene
   const loadChampionModel = (id: ChampionId) => {
@@ -531,44 +488,65 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* 1. 3D HERO TURNTABLE BACKGROUND STAGE (Transparent WebGL layer over the matte backdrop) */}
       <div ref={containerRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-10" />
 
-      {/* 2. TOP HEADER HUD (Profile & Trophy Road unified at TOP-LEFT, Currencies & Settings at TOP-RIGHT) */}
+      {/* 2. TOP HEADER HUD (Profile & Trophy Road + Rankings at TOP-LEFT, Currencies & Settings at TOP-RIGHT) */}
       <div className="absolute top-0 left-0 right-0 p-3 sm:p-5 flex items-center justify-between z-30 pointer-events-none">
         
-        {/* Top-Left: Unified Player Profile & Trophy Road (Clickable -> Opens Trophy Road) */}
-        <div
-          onClick={() => {
-            sounds.playBump(0.8);
-            setIsTrophyRoadOpen(true);
-          }}
-          className="pointer-events-auto cursor-pointer group flex items-center gap-3 bg-gradient-to-r from-[#0288d1]/90 via-[#01579b]/90 to-[#0284c7]/90 backdrop-blur-md px-3.5 py-2 rounded-2xl border-2 border-[#81d4fa]/70 shadow-[0_6px_20px_rgba(0,0,0,0.35),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
-          title="Open Trophy Road"
-        >
-          {/* Avatar with level badge */}
-          <div className="relative w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-white flex items-center justify-center shadow-md">
-            <Trophy className="w-5 h-5 text-amber-900 drop-shadow" />
-            <span className="absolute -bottom-1 -right-1 bg-sky-500 border border-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow text-white">
-              {playerLevel}
-            </span>
+        {/* Top-Left: Unified Player Profile & Trophy Road + Rankings Button */}
+        <div className="flex items-center gap-2 pointer-events-auto">
+          {/* Trophy Road Card */}
+          <div
+            onClick={() => {
+              sounds.playBump(0.8);
+              setIsTrophyRoadOpen(true);
+            }}
+            className="cursor-pointer group flex items-center gap-2.5 sm:gap-3 bg-gradient-to-r from-[#0288d1]/90 via-[#01579b]/90 to-[#0284c7]/90 backdrop-blur-md px-3 sm:px-3.5 py-2 rounded-2xl border-2 border-[#81d4fa]/70 shadow-[0_6px_20px_rgba(0,0,0,0.35),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
+            title="Open Trophy Road"
+          >
+            {/* Avatar with level badge */}
+            <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-white flex items-center justify-center shadow-md">
+              <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-900 drop-shadow" />
+              <span className="absolute -bottom-1 -right-1 bg-sky-500 border border-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow text-white">
+                {playerLevel}
+              </span>
+            </div>
+
+            <div className="text-left">
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-base font-black text-amber-300 drop-shadow">
+                  {trophies.toLocaleString()} 🏆
+                </span>
+                <span className="text-[9px] sm:text-[10px] text-sky-200 font-bold uppercase tracking-wider">
+                  TROPHY ROAD
+                </span>
+              </div>
+              {/* Progress Bar towards 500/1000/1500 milestone */}
+              <div className="w-20 sm:w-32 h-2 bg-black/50 rounded-full overflow-hidden border border-white/20 mt-1">
+                <div
+                  className="h-full bg-gradient-to-r from-amber-400 to-yellow-300 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, (trophies / 500) * 100)}%` }}
+                />
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-sky-200 group-hover:translate-x-0.5 transition-transform ml-0.5 hidden sm:block" />
           </div>
 
-          <div className="text-left">
-            <div className="flex items-center gap-2">
-              <span className="text-sm sm:text-base font-black text-amber-300 drop-shadow">
-                {trophies.toLocaleString()} 🏆
-              </span>
-              <span className="text-[10px] text-sky-200 font-bold uppercase tracking-wider">
-                TROPHY ROAD
-              </span>
+          {/* Rankings / Leaderboard Button Directly Next to Trophy Road */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.8);
+              setIsLeaderboardOpen(true);
+            }}
+            className="cursor-pointer group flex items-center gap-2 bg-gradient-to-r from-amber-500/90 via-orange-500/90 to-amber-600/90 hover:from-amber-400 hover:to-orange-500 backdrop-blur-md px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-2xl border-2 border-yellow-200/80 shadow-[0_6px_20px_rgba(0,0,0,0.35),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
+            title="Global Leaderboard & Rankings"
+          >
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-950/40 border border-yellow-200/50 flex items-center justify-center shadow">
+              <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-200 fill-yellow-300" />
             </div>
-            {/* Progress Bar towards 1500 milestone */}
-            <div className="w-28 sm:w-36 h-2 bg-black/50 rounded-full overflow-hidden border border-white/20 mt-1">
-              <div
-                className="h-full bg-gradient-to-r from-amber-400 to-yellow-300 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(100, (trophies / 1500) * 100)}%` }}
-              />
+            <div className="text-left hidden sm:block">
+              <span className="text-[9px] font-bold text-amber-100 uppercase tracking-wider block">LEADERBOARD</span>
+              <span className="text-xs font-black text-white drop-shadow">RANKINGS 👑</span>
             </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-sky-200 group-hover:translate-x-0.5 transition-transform ml-0.5" />
+          </button>
         </div>
 
         {/* Right: Currencies & Settings Gear */}
@@ -577,7 +555,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <button
             onClick={() => {
               sounds.playBump(0.6);
-              setIsShopOpen(true);
+              onOpenShop();
             }}
             className="flex items-center gap-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-400/50 hover:border-yellow-300 shadow-inner cursor-pointer active:scale-95 transition-all group"
             title="Open Shop for Gold"
@@ -595,7 +573,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <button
             onClick={() => {
               sounds.playBump(0.6);
-              setIsShopOpen(true);
+              onOpenShop();
             }}
             className="flex items-center gap-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-emerald-400/50 hover:border-emerald-300 shadow-inner cursor-pointer active:scale-95 transition-all group"
             title="Open Shop for Gems"
@@ -763,17 +741,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* 6. BOTTOM NAVIGATION DOCK (Home, Brawlers, Story, Trophy Road, Shop) */}
+      {/* 6. BOTTOM NAVIGATION DOCK (Home, Brawlers, Shop) */}
       <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
         <div className="flex items-center gap-2 sm:gap-3 bg-gradient-to-b from-[#0288d1]/90 to-[#01579b]/90 backdrop-blur-md px-4 sm:px-6 py-2 rounded-full border-2 border-[#81d4fa]/70 shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(255,255,255,0.4)]">
           {/* Tab 1: Home (Active) */}
           <button
-            onClick={() => setActiveTab('home')}
-            className={`px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider cursor-pointer ${
-              activeTab === 'home'
-                ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-md border border-[#bef264]'
-                : 'text-sky-100 hover:text-white hover:bg-white/10'
-            }`}
+            onClick={() => sounds.playBump(0.5)}
+            className="px-5 py-2 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-md border border-[#bef264] cursor-pointer"
           >
             <span>🏠 Home</span>
           </button>
@@ -784,31 +758,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               sounds.playBump(0.6);
               onOpenBrawlers();
             }}
-            className="px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-100 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+            className="px-5 py-2 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-100 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
           >
             <span>🥊 Brawlers</span>
           </button>
 
-          {/* Tab 3: Shop */}
+          {/* Tab 3: Shop (Opens full dedicated Shop section) */}
           <button
             onClick={() => {
               sounds.playBump(0.6);
-              setIsShopOpen(true);
+              onOpenShop();
             }}
-            className="px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-300 hover:text-white bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border border-amber-300/50 hover:border-amber-200 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+            className="px-5 py-2 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-300 hover:text-white bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border border-amber-300/50 hover:border-amber-200 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
           >
             <span>🛒 Shop</span>
-          </button>
-
-          {/* Tab 4: Leaderboard */}
-          <button
-            onClick={() => {
-              sounds.playBump(0.6);
-              setIsLeaderboardOpen(true);
-            }}
-            className="px-4 py-1.5 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-100 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-          >
-            <span>🏆 Rankings</span>
           </button>
         </div>
       </div>
@@ -850,125 +813,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       )}
 
-      {/* 8. TROPHY ROAD MODAL (MATCHING THEME, NON-BOXY) */}
-      {isTrophyRoadOpen && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-xl bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150 max-h-[85vh] flex flex-col">
-            {/* Top Glossy Ribbon */}
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
-              <span className="text-lg font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-[#78350f] fill-[#78350f]" /> TROPHY ROAD
-              </span>
-            </div>
-
-            {/* Close Button */}
-            <button
-              onClick={() => setIsTrophyRoadOpen(false)}
-              className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
-              title="Close"
-            >
-              <X className="w-5 h-5 stroke-[3]" />
-            </button>
-
-            {/* Trophy Summary Header */}
-            <div className="bg-black/30 border border-white/10 rounded-2xl p-3 mb-4 flex items-center justify-between">
-              <div className="text-left">
-                <div className="text-[10px] text-sky-200 font-bold uppercase tracking-wider">
-                  Current Rating
-                </div>
-                <div className="text-xl font-black text-amber-300 drop-shadow flex items-center gap-1.5">
-                  <Trophy className="w-5 h-5 fill-amber-300 text-amber-300" /> {trophies.toLocaleString()}
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-[10px] text-sky-200 font-bold uppercase tracking-wider">
-                  Next Milestone
-                </div>
-                <div className="text-sm font-black text-white">
-                  1,500 🏆 • Titan Gorr
-                </div>
-              </div>
-            </div>
-
-            {/* Scrollable Milestone Progression Track */}
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-left">
-              {milestones.map((m, idx) => {
-                const isReached = trophies >= m.trophies;
-                return (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all ${
-                      isReached
-                        ? 'bg-gradient-to-r from-[#02568f]/90 to-[#013f6b]/90 border-lime-300/60 shadow-md'
-                        : 'bg-[#013f6b]/60 border-sky-400/30 opacity-70'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 font-black shadow ${
-                          isReached
-                            ? 'bg-gradient-to-b from-amber-400 to-yellow-500 border-amber-200 text-slate-950'
-                            : 'bg-slate-800 border-slate-600 text-slate-400'
-                        }`}
-                      >
-                        <Trophy className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-black uppercase tracking-wider text-amber-300 font-mono">
-                          {m.trophies} 🏆
-                        </div>
-                        <div className="text-sm font-black text-white">
-                          {m.rewardLabel}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      {m.claimed ? (
-                        <span className="px-3 py-1 rounded-full bg-lime-500/20 border border-lime-400 text-lime-300 text-xs font-black uppercase">
-                          Claimed
-                        </span>
-                      ) : isReached ? (
-                        <button
-                          onClick={() => {
-                            sounds.playBump(1.0);
-                            setClaimedMilestones((prev) => {
-                              const next = [...prev, m.trophies];
-                              try {
-                                localStorage.setItem('ringout_claimed_milestones', JSON.stringify(next));
-                              } catch {}
-                              return next;
-                            });
-                            if (m.amount && m.rewardType === 'gold') handleAddGold(m.amount);
-                            if (m.amount && m.rewardType === 'gems') handleAddGems(m.amount);
-                            if (m.championId && m.rewardType === 'champion') {
-                              setUnlockedChampions((prev) => {
-                                if (prev.includes(m.championId!)) return prev;
-                                const next = [...prev, m.championId!];
-                                try {
-                                  localStorage.setItem('ringout_unlocked_champions', JSON.stringify(next));
-                                } catch {}
-                                return next;
-                              });
-                            }
-                          }}
-                          className="px-4 py-1.5 bg-gradient-to-b from-[#a3e635] to-[#65a30d] text-white font-black text-xs uppercase rounded-xl border border-lime-200 shadow-md active:translate-y-0.5 cursor-pointer"
-                        >
-                          Claim
-                        </button>
-                      ) : (
-                        <span className="px-3 py-1 rounded-full bg-slate-800/80 border border-slate-600 text-slate-400 text-xs font-bold flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> Locked
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 8. CLASH ROYALE STYLE TROPHY ROAD MODAL */}
+      <TrophyRoadModal
+        isOpen={isTrophyRoadOpen}
+        onClose={() => setIsTrophyRoadOpen(false)}
+        trophies={trophies}
+        claimedMilestones={claimedMilestones}
+        onClaimMilestone={(milestone) => {
+          setClaimedMilestones((prev) => {
+            const next = [...prev, milestone.trophies];
+            try {
+              localStorage.setItem('ringout_claimed_milestones', JSON.stringify(next));
+            } catch {}
+            return next;
+          });
+          if (milestone.amount && milestone.rewardType === 'gold') handleAddGold(milestone.amount);
+          if (milestone.amount && milestone.rewardType === 'gems') handleAddGems(milestone.amount);
+          if (milestone.championId && milestone.rewardType === 'champion') {
+            setUnlockedChampions((prev) => {
+              if (prev.includes(milestone.championId!)) return prev;
+              const next = [...prev, milestone.championId!];
+              try {
+                localStorage.setItem('ringout_unlocked_champions', JSON.stringify(next));
+              } catch {}
+              return next;
+            });
+          }
+        }}
+      />
 
       {/* 9. SETTINGS MODAL (AUDIO & PRESETS) */}
       {isSettingsOpen && (
@@ -1036,18 +908,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         </div>
       )}
-
-      {/* 8. 3D ARCADE SHOP MODAL (GEMS, REWARDED ADS, XSOLLA PACKS, CHAMPIONS) */}
-      <ShopModal
-        isOpen={isShopOpen}
-        onClose={() => setIsShopOpen(false)}
-        gold={gold}
-        gems={gems}
-        onAddGems={handleAddGems}
-        onAddGold={handleAddGold}
-        unlockedChampions={unlockedChampions}
-        onUnlockChampion={handleUnlockChampion}
-      />
 
       {/* 9. GLOBAL RANKINGS LEADERBOARD MODAL */}
       <LeaderboardModal

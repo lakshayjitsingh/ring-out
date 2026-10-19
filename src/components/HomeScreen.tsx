@@ -104,6 +104,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // Bottom Navigation Active Tab
   const [activeTab, setActiveTab] = useState<'home' | 'brawlers' | 'shop' | 'leaderboard'>('home');
 
+  // Interactive 2.5D Camera Parallax Offset
+  const [parallaxOffset, setParallaxOffset] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const normX = ((e.clientX / window.innerWidth) - 0.5) * -18;
+      const normY = ((e.clientY / window.innerHeight) - 0.5) * -12;
+      setParallaxOffset({ x: normX, y: normY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   // CrazyGames SDK Init
   useEffect(() => {
     crazyGames.init();
@@ -200,8 +213,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     const container = containerRef.current;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x38bdf8); // Radiant sunny azure sky
-    scene.fog = new THREE.FogExp2(0x7dd3fc, 0.008); // Soft coastal sea horizon haze
+    scene.background = null; // Ultra high-tech transparent canvas revealing 4K matte painting!
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
@@ -216,15 +228,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     container.appendChild(renderer.domElement);
 
     // Radiant Sunny Daylight Lighting
-    const ambient = new THREE.AmbientLight(0xffffff, 1.3);
+    const ambient = new THREE.AmbientLight(0xffffff, 1.35);
     scene.add(ambient);
 
-    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0284c7, 1.1);
+    const hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x0284c7, 1.1);
     scene.add(hemiLight);
 
-    // Warm Sun Directional Light
-    const sunLight = new THREE.DirectionalLight(0xfffbeb, 2.4);
-    sunLight.position.set(2.5, 6.0, 4.5);
+    // Warm Sun Directional Light (matching top-right sunburst in 4K backdrop)
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, 2.5);
+    sunLight.position.set(3.5, 6.0, 3.5);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 1024;
     sunLight.shadow.mapSize.height = 1024;
@@ -287,28 +299,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     modelHolderRef.current = modelHolder;
     scene.add(modelHolder);
 
-    // 1. Procedural Living Ocean Plane (Moving Waves)
-    const oceanGeo = new THREE.PlaneGeometry(80, 80, 48, 48);
-    oceanGeo.rotateX(-Math.PI / 2);
-    const oceanMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7, // Tropical azure water
-      roughness: 0.16,
-      metalness: 0.22,
-      transparent: true,
-      opacity: 0.94,
-    });
-    const oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
-    oceanMesh.position.y = -0.32;
-    scene.add(oceanMesh);
-
-    // 2. Multi-tier Sea Foam Ripple Rings around Pedestal
+    // Multi-tier Sea Foam Ripple Rings around Pedestal (anchors the pedestal in the lagoon water)
     const surfRings: { mesh: THREE.Mesh; pulseSpeed: number }[] = [];
     [
-      { r: 1.95, opacity: 0.45, speed: 2.2 },
-      { r: 2.30, opacity: 0.30, speed: 1.8 },
-      { r: 2.70, opacity: 0.18, speed: 1.4 },
+      { r: 1.95, opacity: 0.55, speed: 2.2 },
+      { r: 2.30, opacity: 0.38, speed: 1.8 },
+      { r: 2.70, opacity: 0.22, speed: 1.4 },
     ].forEach((spec) => {
-      const ringGeo = new THREE.RingGeometry(spec.r - 0.04, spec.r + 0.04, 48);
+      const ringGeo = new THREE.RingGeometry(spec.r - 0.05, spec.r + 0.05, 48);
       ringGeo.rotateX(-Math.PI / 2);
       const ringMat = new THREE.MeshBasicMaterial({
         color: 0xe0f2fe,
@@ -322,67 +320,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       surfRings.push({ mesh: ring, pulseSpeed: spec.speed });
     });
 
-    // 3. Distant Tropical Islands with Palm Silhouettes
-    const islandGroup = new THREE.Group();
-    const isleMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 });
-    const palmCanopyMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.70 });
-    const palmTrunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.90 });
-
-    // Island 1 (Left background mountain ridge)
-    const isle1Geo = new THREE.ConeGeometry(5.5, 4.5, 8);
-    isle1Geo.scale(1.8, 0.7, 1.2);
-    const isle1 = new THREE.Mesh(isle1Geo, isleMat);
-    isle1.position.set(-16, 0.5, -22);
-    islandGroup.add(isle1);
-
-    // Island 2 (Right background lush ridge)
-    const isle2Geo = new THREE.ConeGeometry(7.0, 5.0, 8);
-    isle2Geo.scale(2.0, 0.65, 1.4);
-    const isle2 = new THREE.Mesh(isle2Geo, isleMat);
-    isle2.position.set(18, 0.8, -25);
-    islandGroup.add(isle2);
-
-    // Palm tree clusters on islands
-    [[-14, 2.6, -21], [-17, 2.2, -20], [16, 2.9, -24], [20, 2.4, -23]].forEach(([px, py, pz]) => {
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.2, 6), palmTrunkMat);
-      trunk.position.set(px, py + 0.6, pz);
-      trunk.rotation.z = (Math.random() - 0.5) * 0.2;
-      islandGroup.add(trunk);
-      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.6, 6), palmCanopyMat);
-      crown.position.set(px, py + 1.3, pz);
-      islandGroup.add(crown);
-    });
-    scene.add(islandGroup);
-
-    // 4. Drifting 3D Fluffy Low-Poly Clouds
-    const cloudMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.95,
-      transparent: true,
-      opacity: 0.92,
-    });
-    const cloudsData: { group: THREE.Group; speed: number }[] = [];
-    [[-14, 4.2, -16, 0.35], [2, 5.0, -18, 0.22], [16, 3.8, -14, 0.28]].forEach(([cx, cy, cz, speed]) => {
-      const c = new THREE.Group();
-      c.position.set(cx, cy, cz);
-      const p1 = new THREE.Mesh(new THREE.SphereGeometry(1.2, 12, 10), cloudMat);
-      c.add(p1);
-      const p2 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 10, 8), cloudMat);
-      p2.position.set(0.9, -0.2, 0.1);
-      c.add(p2);
-      const p3 = new THREE.Mesh(new THREE.SphereGeometry(0.85, 10, 8), cloudMat);
-      p3.position.set(-0.85, -0.25, 0.15);
-      c.add(p3);
-      const p4 = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 8), cloudMat);
-      p4.position.set(0.3, 0.5, 0);
-      c.add(p4);
-      scene.add(c);
-      cloudsData.push({ group: c, speed: speed as number });
-    });
-
-    // 5. Drifting Tropical Foliage & Petals (Replacing static square star dots!)
-    const leafCount = 35;
-    const leafGeo = new THREE.PlaneGeometry(0.16, 0.09);
+    // 3D Volumetric Floating Tropical Petals & Golden Sunlight Embers
+    const leafCount = 40;
+    const leafGeo = new THREE.PlaneGeometry(0.14, 0.08);
     const leafMat = new THREE.MeshStandardMaterial({
       color: 0x86efac,
       side: THREE.DoubleSide,
@@ -393,14 +333,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       side: THREE.DoubleSide,
       roughness: 0.5,
     });
+    const emberMat = new THREE.MeshBasicMaterial({
+      color: 0xffedd5,
+      side: THREE.DoubleSide,
+    });
     const foliageList: { mesh: THREE.Mesh; rotSpeed: { x: number; y: number; z: number }; floatSpeed: number; swayAmp: number; seed: number }[] = [];
     const foliageGroup = new THREE.Group();
     for (let i = 0; i < leafCount; i++) {
-      const mesh = new THREE.Mesh(leafGeo, i % 2 === 0 ? leafMat : petalMat);
+      const mat = i % 3 === 0 ? leafMat : i % 3 === 1 ? petalMat : emberMat;
+      const mesh = new THREE.Mesh(leafGeo, mat);
       mesh.position.set(
-        (Math.random() - 0.5) * 14,
+        (Math.random() - 0.5) * 12,
         Math.random() * 5 + 0.2,
-        (Math.random() - 0.5) * 12
+        (Math.random() - 0.5) * 10
       );
       foliageGroup.add(mesh);
       foliageList.push({
@@ -422,32 +367,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       animationId = requestAnimationFrame(animate);
       const elapsedTime = (performance.now() - startTime) * 0.001;
 
-      // 1. Dynamic Ocean Waves Vertex Animation
-      const pos = oceanGeo.attributes.position;
-      for (let i = 0; i < pos.count; i++) {
-        const u = pos.getX(i);
-        const v = pos.getY(i);
-        const wave = Math.sin(u * 0.25 + elapsedTime * 1.8) * Math.cos(v * 0.25 + elapsedTime * 1.4) * 0.10
-                   + Math.sin(u * 0.5 + v * 0.3 + elapsedTime * 2.2) * 0.04;
-        pos.setZ(i, wave);
-      }
-      pos.needsUpdate = true;
-
-      // 2. Pulse Pedestal Foam Rings
+      // 1. Pulse Pedestal Foam Rings
       surfRings.forEach((sr) => {
         const s = 1.0 + Math.sin(elapsedTime * sr.pulseSpeed) * 0.04;
         sr.mesh.scale.set(s, s, 1);
       });
 
-      // 3. Drift 3D Clouds smoothly across the sky
-      cloudsData.forEach((cloud) => {
-        cloud.group.position.x += cloud.speed * 0.012;
-        if (cloud.group.position.x > 26) {
-          cloud.group.position.x = -26;
-        }
-      });
-
-      // 4. Flutter 3D Tropical Leaves & Petals in the breeze
+      // 2. Flutter 3D Tropical Petals & Sunlight Embers in the sea breeze
       foliageList.forEach((leaf) => {
         leaf.mesh.position.y -= leaf.floatSpeed;
         leaf.mesh.position.x += Math.sin(elapsedTime * 1.5 + leaf.seed) * leaf.swayAmp;
@@ -456,7 +382,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         leaf.mesh.rotation.z += leaf.rotSpeed.z;
         if (leaf.mesh.position.y < -0.2) {
           leaf.mesh.position.y = 5.2;
-          leaf.mesh.position.x = (Math.random() - 0.5) * 14;
+          leaf.mesh.position.x = (Math.random() - 0.5) * 12;
         }
       });
 
@@ -569,11 +495,41 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-gradient-to-b from-[#0284c7] via-[#38bdf8] to-[#7dd3fc] select-none text-white font-sans">
-      {/* 1. 3D HERO TURNTABLE BACKGROUND STAGE */}
-      <div ref={containerRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-0" />
+      {/* 0. HIGH-TECH 4K STYLIZED MATTE BACKDROP WITH INTERACTIVE 2.5D PARALLAX */}
+      <div
+        className="absolute inset-0 pointer-events-none overflow-hidden transition-transform duration-300 ease-out z-0"
+        style={{
+          transform: `scale(1.06) translate3d(${parallaxOffset.x}px, ${parallaxOffset.y}px, 0)`,
+        }}
+      >
+        <img
+          src="/lobby_bg.jpg"
+          alt="Emerald Island Lagoon"
+          className="w-full h-full object-cover object-center filter brightness-105 contrast-[1.02]"
+        />
 
-      {/* Atmospheric Sunny Vignette & Radial Light */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(2,132,199,0.25)_80%,rgba(3,105,161,0.5)_100%)] z-10" />
+        {/* Dynamic Sweeping Volumetric God Rays from Sunburst */}
+        <div
+          className="absolute -top-1/4 -right-1/4 w-[160%] h-[160%] pointer-events-none mix-blend-screen opacity-35 animate-pulse duration-[7000ms]"
+          style={{
+            background: 'conic-gradient(from 220deg at 78% 18%, rgba(254, 240, 138, 0.45) 0deg, transparent 22deg, rgba(253, 224, 71, 0.35) 48deg, transparent 70deg, rgba(254, 240, 138, 0.4) 95deg, transparent 125deg, rgba(254, 240, 138, 0.45) 155deg, transparent 195deg)',
+          }}
+        />
+
+        {/* Shimmering Sun Caustics on the Turquoise Lagoon */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1/2 pointer-events-none opacity-25 mix-blend-overlay"
+          style={{
+            background: 'radial-gradient(ellipse at 50% 85%, rgba(224, 242, 254, 0.7) 0%, rgba(56, 189, 248, 0.3) 45%, transparent 75%)',
+          }}
+        />
+
+        {/* Soft Vignette framing the UI cards */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_52%,rgba(2,132,199,0.18)_80%,rgba(1,63,107,0.42)_100%)]" />
+      </div>
+
+      {/* 1. 3D HERO TURNTABLE BACKGROUND STAGE (Transparent WebGL layer over the matte backdrop) */}
+      <div ref={containerRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-10" />
 
       {/* 2. TOP HEADER HUD (Profile & Trophy Road unified at TOP-LEFT, Currencies & Settings at TOP-RIGHT) */}
       <div className="absolute top-0 left-0 right-0 p-3 sm:p-5 flex items-center justify-between z-30 pointer-events-none">

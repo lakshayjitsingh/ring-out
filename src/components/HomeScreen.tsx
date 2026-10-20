@@ -6,7 +6,7 @@ import {
   createChampionMesh,
   type CreatedChampion,
 } from '../game/championModels';
-import { getEquippedSkin } from '../game/championSkins';
+import { getEquippedSkin, unlockSkin, setEquippedSkin } from '../game/championSkins';
 import {
   Trophy,
   Swords,
@@ -48,6 +48,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   setGold,
   gems,
   setGems,
+  onSelectChampion,
   onOpenBrawlers,
   onOpenShop,
   onStartCodeRoomMatch,
@@ -844,6 +845,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               } catch {}
               return next;
             });
+          }
+          if (milestone.rewardType === 'league_skin' && milestone.skinId) {
+            unlockSkin(milestone.skinId);
+            if (milestone.goldBonus) handleAddGold(milestone.goldBonus);
+            if (milestone.gemBonus) handleAddGems(milestone.gemBonus);
+            if (milestone.championId) {
+              setEquippedSkin(milestone.championId, milestone.skinId);
+              if (selectedChampion === milestone.championId && onSelectChampion) {
+                onSelectChampion(milestone.championId);
+              }
+            }
           }
         }}
       />

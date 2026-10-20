@@ -37,6 +37,7 @@ interface HomeScreenProps {
   onSelectChampion?: (id: ChampionId) => void;
   onOpenBrawlers: () => void;
   onOpenShop: () => void;
+  onOpenTrophyRoad?: () => void;
   onStartCodeRoomMatch: (roomCode: string, isHost: boolean) => void;
   onStartPvPMatch: () => void;
 }
@@ -51,6 +52,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onSelectChampion,
   onOpenBrawlers,
   onOpenShop,
+  onOpenTrophyRoad,
   onStartCodeRoomMatch,
   onStartPvPMatch,
 }) => {
@@ -504,7 +506,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div
             onClick={() => {
               sounds.playBump(0.8);
-              setIsTrophyRoadOpen(true);
+              if (onOpenTrophyRoad) {
+                onOpenTrophyRoad();
+              } else {
+                setIsTrophyRoadOpen(true);
+              }
             }}
             className="cursor-pointer group flex items-center gap-2.5 sm:gap-3 bg-gradient-to-r from-[#0288d1]/90 via-[#01579b]/90 to-[#0284c7]/90 backdrop-blur-md px-3 sm:px-3.5 py-2 rounded-2xl border-2 border-[#81d4fa]/70 shadow-[0_6px_20px_rgba(0,0,0,0.35),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
             title="Open Trophy Road"
@@ -748,40 +754,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* 6. BOTTOM NAVIGATION DOCK (Home, Brawlers, Shop) */}
-      <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-        <div className="flex items-center gap-2 sm:gap-3 bg-gradient-to-b from-[#0288d1]/90 to-[#01579b]/90 backdrop-blur-md px-4 sm:px-6 py-2 rounded-full border-2 border-[#81d4fa]/70 shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_3px_rgba(255,255,255,0.4)]">
-          {/* Tab 1: Home (Active) */}
-          <button
-            onClick={() => sounds.playBump(0.5)}
-            className="px-5 py-2 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow-md border border-[#bef264] cursor-pointer"
-          >
-            <span>🏠 Home</span>
-          </button>
-
-          {/* Tab 2: Brawlers */}
-          <button
-            onClick={() => {
-              sounds.playBump(0.6);
-              onOpenBrawlers();
-            }}
-            className="px-5 py-2 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-sky-100 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-          >
-            <span>🥊 Brawlers</span>
-          </button>
-
-          {/* Tab 3: Shop (Opens full dedicated Shop section) */}
-          <button
-            onClick={() => {
-              sounds.playBump(0.6);
-              onOpenShop();
-            }}
-            className="px-5 py-2 rounded-full flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-300 hover:text-white bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border border-amber-300/50 hover:border-amber-200 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
-          >
-            <span>🛒 Shop</span>
-          </button>
-        </div>
-      </div>
+      {/* 6. BOTTOM NAVIGATION (Handled persistently by Global Dock matching Image 2) */}
 
       {/* 7. MATCHMAKING RADAR OVERLAY (ONLINE PVP) */}
       {isMatchmaking && (
@@ -820,12 +793,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       )}
 
-      {/* 8. CLASH ROYALE STYLE TROPHY ROAD MODAL */}
+      {/* 8. BRAWL STARS STYLE FULLSCREEN TROPHY ROAD */}
       <TrophyRoadModal
         isOpen={isTrophyRoadOpen}
         onClose={() => setIsTrophyRoadOpen(false)}
         trophies={trophies}
         claimedMilestones={claimedMilestones}
+        gold={gold}
+        gems={gems}
         onClaimMilestone={(milestone) => {
           setClaimedMilestones((prev) => {
             const next = [...prev, milestone.trophies];
@@ -845,6 +820,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               } catch {}
               return next;
             });
+          }
+          if (milestone.rewardType === 'mega_box') {
+            if (milestone.goldBonus) handleAddGold(milestone.goldBonus);
+            if (milestone.gemBonus) handleAddGems(milestone.gemBonus);
           }
           if (milestone.rewardType === 'league_skin' && milestone.skinId) {
             unlockSkin(milestone.skinId);

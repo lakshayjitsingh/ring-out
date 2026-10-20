@@ -4,13 +4,17 @@ import { BattleHUD } from './components/BattleHUD';
 import { ChampionShowcase } from './components/ChampionShowcase';
 import { HomeScreen } from './components/HomeScreen';
 import { ShopScreen } from './components/ShopScreen';
+import { TrophyRoadModal, type TrophyMilestone } from './components/TrophyRoadModal';
 import { type ChampionId } from './game/championModels';
+import { unlockSkin, setEquippedSkin } from './game/championSkins';
+import { sounds } from './audio/soundManager';
 
 export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
 
   const [activeScreen, setActiveScreen] = useState<'home' | 'brawlers' | 'shop' | 'battle'>('home');
+  const [isTrophyRoadOpen, setIsTrophyRoadOpen] = useState(false);
   const [selectedChampion, setSelectedChampion] = useState<ChampionId>('leo');
 
   const [gameState, setGameState] = useState<GameState>({
@@ -80,12 +84,11 @@ export function App() {
     engineRef.current?.resetMatch();
   };
 
-  // User Profile & Currencies (Persisted across entire App - Starts at 0 for beginners)
+  // User Profile & Currencies
   const [trophies, setTrophies] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('ringout_trophies');
       if (saved !== null) {
-        // If it was the old hardcoded 1250, reset to 0 for beginners as requested!
         if (saved === '1250') {
           localStorage.setItem('ringout_trophies', '0');
           return 0;
@@ -124,6 +127,15 @@ export function App() {
     }
   });
 
+  const [claimedMilestones, setClaimedMilestones] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem('ringout_claimed_milestones');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const handleUnlockChampion = (id: ChampionId, cost: number) => {
     setGems((prev) => {
       const next = Math.max(0, prev - cost);
@@ -142,7 +154,65 @@ export function App() {
     });
   };
 
-  // Track match completion to reward / deduct trophies once per game
+  const handleAddGold = (amount: number) => {
+    setGold((prev) => {
+      const next = prev + amount;
+      try {
+        localStorage.setItem('ringout_gold', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleAddGems = (amount: number) => {
+    setGems((prev) => {
+      const next = prev + amount;
+      try {
+        localStorage.setItem('ringout_gems', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleClaimMilestone = (milestone: TrophyMilestone) => {
+    setClaimedMilestones((prev) => {
+      const next = [...prev, milestone.trophies];
+      try {
+        localStorage.setItem('ringout_claimed_milestones', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    if (milestone.amount && milestone.rewardType === 'gold') handleAddGold(milestone.amount);
+    if (milestone.amount && milestone.rewardType === 'gems') handleAddGems(milestone.amount);
+    if (milestone.championId && milestone.rewardType === 'champion') {
+      setUnlockedChampions((prev) => {
+        if (prev.includes(milestone.championId!)) return prev;
+        const next = [...prev, milestone.championId!];
+        try {
+          localStorage.setItem('ringout_unlocked_champions', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
+    if (milestone.rewardType === 'mega_box') {
+      if (milestone.goldBonus) handleAddGold(milestone.goldBonus);
+      if (milestone.gemBonus) handleAddGems(milestone.gemBonus);
+    }
+    if (milestone.skinId) {
+      unlockSkin(milestone.skinId);
+      if (milestone.goldBonus) handleAddGold(milestone.goldBonus);
+      if (milestone.gemBonus) handleAddGems(milestone.gemBonus);
+      if (milestone.championId) {
+        setEquippedSkin(milestone.championId, milestone.skinId);
+        if (selectedChampion === milestone.championId) {
+          handleSelectChampion(milestone.championId);
+        }
+      }
+    }
+  };
+
+  // Track match completion
   const hasProcessedGameOverRef = useRef(false);
 
   useEffect(() => {
@@ -218,7 +288,7 @@ export function App() {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans">
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans select-none">
       {/* 1. 3D Battle Arena View */}
       <div
         className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
@@ -254,12 +324,13 @@ export function App() {
           onSelectChampion={handleSelectChampion}
           onOpenBrawlers={() => setActiveScreen('brawlers')}
           onOpenShop={() => setActiveScreen('shop')}
+          onOpenTrophyRoad={() => setIsTrophyRoadOpen(true)}
           onStartCodeRoomMatch={handleStartCodeRoom}
           onStartPvPMatch={handleStartPvP}
         />
       )}
 
-      {/* 3. 3D Champion Roster / Brawlers Showcase */}
+      {/* 3. 3D Champion Roster / Brawlers Showcase (Matching Image 2) */}
       {activeScreen === 'brawlers' && (
         <ChampionShowcase
           selectedChampion={selectedChampion}
@@ -268,13 +339,11 @@ export function App() {
           gems={gems}
           setGems={setGems}
           onSelectChampion={handleSelectChampion}
-          onBackToBattle={() => {
-            setActiveScreen('home');
-          }}
+          onBackToBattle={() => setActiveScreen('home')}
         />
       )}
 
-      {/* 4. Dedicated Full-Page Brawl Shop (3 Divisions, 4K Tropical Backdrop, 2.5D Parallax) */}
+      {/* 4. Dedicated Full-Page Brawl Shop */}
       {activeScreen === 'shop' && (
         <ShopScreen
           gold={gold}
@@ -286,6 +355,91 @@ export function App() {
           onUnlockChampion={handleUnlockChampion}
           onBackToHome={() => setActiveScreen('home')}
         />
+      )}
+
+      {/* 5. FULLSCREEN BRAWL STARS HORIZONTAL TROPHY ROAD MODAL */}
+      <TrophyRoadModal
+        isOpen={isTrophyRoadOpen}
+        onClose={() => setIsTrophyRoadOpen(false)}
+        trophies={trophies}
+        claimedMilestones={claimedMilestones}
+        gold={gold}
+        gems={gems}
+        onClaimMilestone={handleClaimMilestone}
+      />
+
+      {/* ========================================================================= */}
+      {/* 6. PERSISTENT GLOBAL BOTTOM NAVIGATION BAR (Matching Image 2!) */}
+      {/* ========================================================================= */}
+      {activeScreen !== 'battle' && (
+        <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-18 bg-[#0f172a]/95 backdrop-blur-xl border-t border-white/15 px-2 sm:px-6 flex items-center justify-around z-40 shadow-[0_-8px_25px_rgba(0,0,0,0.5)]">
+          {/* Tab 1: HOME */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsTrophyRoadOpen(false);
+              setActiveScreen('home');
+            }}
+            className={`flex-1 max-w-[140px] py-2 sm:py-2.5 rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeScreen === 'home' && !isTrophyRoadOpen
+                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black border-2 border-yellow-200 shadow-[0_4px_15px_rgba(249,115,22,0.5)] scale-102'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 font-bold'
+            }`}
+          >
+            <span className="text-base sm:text-lg">🏠</span>
+            <span className="text-xs sm:text-sm uppercase tracking-wider">Home</span>
+          </button>
+
+          {/* Tab 2: BRAWLERS */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsTrophyRoadOpen(false);
+              setActiveScreen('brawlers');
+            }}
+            className={`flex-1 max-w-[140px] py-2 sm:py-2.5 rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeScreen === 'brawlers' && !isTrophyRoadOpen
+                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black border-2 border-yellow-200 shadow-[0_4px_15px_rgba(249,115,22,0.5)] scale-102'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 font-bold'
+            }`}
+          >
+            <span className="text-base sm:text-lg">🥊</span>
+            <span className="text-xs sm:text-sm uppercase tracking-wider">Brawlers</span>
+          </button>
+
+          {/* Tab 3: TROPHY ROAD */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsTrophyRoadOpen(true);
+            }}
+            className={`flex-1 max-w-[140px] py-2 sm:py-2.5 rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              isTrophyRoadOpen
+                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black border-2 border-yellow-200 shadow-[0_4px_15px_rgba(249,115,22,0.5)] scale-102'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 font-bold'
+            }`}
+          >
+            <span className="text-base sm:text-lg">🏆</span>
+            <span className="text-xs sm:text-sm uppercase tracking-wider">Trophies</span>
+          </button>
+
+          {/* Tab 4: SHOP */}
+          <button
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsTrophyRoadOpen(false);
+              setActiveScreen('shop');
+            }}
+            className={`flex-1 max-w-[140px] py-2 sm:py-2.5 rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeScreen === 'shop' && !isTrophyRoadOpen
+                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black border-2 border-yellow-200 shadow-[0_4px_15px_rgba(249,115,22,0.5)] scale-102'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 font-bold'
+            }`}
+          >
+            <span className="text-base sm:text-lg">🛒</span>
+            <span className="text-xs sm:text-sm uppercase tracking-wider">Shop</span>
+          </button>
+        </div>
       )}
     </div>
   );

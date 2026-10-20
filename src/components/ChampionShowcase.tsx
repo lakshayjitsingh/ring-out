@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import {
   CHAMPIONS,
@@ -20,9 +20,6 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  Crown,
-  Zap,
-  Diamond,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sounds } from '../audio/soundManager';
@@ -36,6 +33,8 @@ interface ChampionShowcaseProps {
   onSelectChampion: (id: ChampionId) => void;
   onBackToBattle: () => void;
 }
+
+const CHAMPION_IDS: ChampionId[] = ['leo', 'kai', 'nova', 'titan', 'kage', 'bolt'];
 
 export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
   selectedChampion,
@@ -75,28 +74,39 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
   const currentRotationYRef = useRef(Math.PI);
 
   // Switch between champions via Arrow buttons
-  const CHAMPION_IDS: ChampionId[] = ['leo', 'kai', 'nova', 'titan', 'kage', 'bolt'];
   const currentIndex = CHAMPION_IDS.indexOf(activeId);
 
-  const handlePrevChampion = () => {
+  const handlePrevChampion = useCallback(() => {
     sounds.playBump(0.6);
     const prevIdx = (currentIndex - 1 + CHAMPION_IDS.length) % CHAMPION_IDS.length;
     const newId = CHAMPION_IDS[prevIdx];
     setActiveId(newId);
+    onSelectChampion(newId);
     const skin = getEquippedSkin(newId);
     setEquippedSkinState(skin);
     setPreviewSkinId(skin);
-  };
+  }, [currentIndex, onSelectChampion]);
 
-  const handleNextChampion = () => {
+  const handleNextChampion = useCallback(() => {
     sounds.playBump(0.6);
     const nextIdx = (currentIndex + 1) % CHAMPION_IDS.length;
     const newId = CHAMPION_IDS[nextIdx];
     setActiveId(newId);
+    onSelectChampion(newId);
     const skin = getEquippedSkin(newId);
     setEquippedSkinState(skin);
     setPreviewSkinId(skin);
-  };
+  }, [currentIndex, onSelectChampion]);
+
+  // Keyboard navigation support (Arrow Left & Arrow Right)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') handlePrevChampion();
+      if (e.key === 'ArrowRight') handleNextChampion();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handlePrevChampion, handleNextChampion]);
 
   // 3D Turntable Initialization
   useEffect(() => {
@@ -106,8 +116,9 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
+    // Perfectly framed 3D stage sitting strictly above the bottom card
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-    camera.position.set(0, 1.35, 4.2);
+    camera.position.set(0, 1.35, 6.2);
     camera.lookAt(0, 1.0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -120,7 +131,7 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     const ambient = new THREE.AmbientLight(0xffffff, 1.4);
     scene.add(ambient);
 
-    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0284c7, 1.1);
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0284c7, 1.2);
     scene.add(hemiLight);
 
     const frontKey = new THREE.DirectionalLight(0xfffbeb, 2.4);
@@ -132,31 +143,34 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
     rimLight.position.set(0, 3, -4);
     scene.add(rimLight);
 
-    // Pedestal Turntable
+    // Pedestal Turntable (Sits cleanly on the stage floor)
     const pedestalGroup = new THREE.Group();
+    pedestalGroup.position.set(0, 0.05, 0);
     pedestalRef.current = pedestalGroup;
 
-    const baseGeo = new THREE.CylinderGeometry(1.8, 2.0, 0.25, 48);
+    const baseGeo = new THREE.CylinderGeometry(1.65, 1.85, 0.22, 48);
     const baseMat = new THREE.MeshStandardMaterial({
-      color: 0x0f172a,
-      metalness: 0.5,
-      roughness: 0.25,
+      color: 0x1e293b,
+      metalness: 0.4,
+      roughness: 0.35,
     });
     const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-    baseMesh.position.y = -0.125;
+    baseMesh.position.y = -0.11;
     baseMesh.receiveShadow = true;
     pedestalGroup.add(baseMesh);
 
-    const ringGeo = new THREE.TorusGeometry(1.85, 0.04, 16, 48);
+    const ringGeo = new THREE.TorusGeometry(1.7, 0.035, 16, 48);
     ringGeo.rotateX(Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-    ringMesh.position.y = 0.01;
+    ringMesh.position.y = 0.005;
     pedestalGroup.add(ringMesh);
 
     scene.add(pedestalGroup);
 
+    // Model Holder (Positioned at y = 0.05 matching pedestal)
     const modelHolder = new THREE.Group();
+    modelHolder.position.set(0, 0.05, 0);
     modelHolderRef.current = modelHolder;
     scene.add(modelHolder);
 
@@ -352,6 +366,12 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
           </div>
         </div>
 
+        {/* 360 Hint (Neatly centered in the header) */}
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-white/15 text-[10px] text-sky-200 font-bold uppercase tracking-wider backdrop-blur-md pointer-events-none shadow">
+          <Rotate3d className="w-3.5 h-3.5 text-amber-300" />
+          <span>Drag 360°</span>
+        </div>
+
         {/* Player Trophies */}
         <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/20 shadow-xl pointer-events-auto">
           <span className="text-amber-300 text-sm">🏆</span>
@@ -366,68 +386,70 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
         </div>
       )}
 
-      {/* 2. 3D TURNTABLE STAGE */}
-      <div ref={containerRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-10" />
+      {/* 2. 3D TURNTABLE STAGE (Confined to upper area above bottom cards) */}
+      <div ref={containerRef} className="absolute top-12 left-0 right-0 bottom-52 cursor-grab active:cursor-grabbing z-10" />
 
-      {/* 3. LARGE FLOATING NAVIGATION ARROWS (Matching Image 2!) */}
+      {/* 3. NAVIGATION ARROWS (Positioned at mid-body level z-50, fully clickable!) */}
       <button
-        onClick={handlePrevChampion}
-        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-12 h-14 sm:w-14 sm:h-16 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border-2 border-white/30 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-2xl backdrop-blur-md group"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handlePrevChampion();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="absolute left-3 sm:left-6 top-[32%] -translate-y-1/2 z-50 w-12 h-14 sm:w-14 sm:h-16 rounded-2xl bg-black/75 hover:bg-black/90 border-2 border-white/40 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-2xl backdrop-blur-md group pointer-events-auto"
         title="Previous Champion"
+        aria-label="Previous Champion"
       >
-        <ChevronLeft className="w-7 h-7 sm:w-8 sm:h-8 group-hover:-translate-x-0.5 transition-transform" />
+        <ChevronLeft className="w-8 h-8 sm:w-9 sm:h-9 group-hover:-translate-x-0.5 transition-transform pointer-events-none" />
       </button>
 
       <button
-        onClick={handleNextChampion}
-        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-12 h-14 sm:w-14 sm:h-16 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border-2 border-white/30 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-2xl backdrop-blur-md group"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleNextChampion();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="absolute right-3 sm:right-6 top-[32%] -translate-y-1/2 z-50 w-12 h-14 sm:w-14 sm:h-16 rounded-2xl bg-black/75 hover:bg-black/90 border-2 border-white/40 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-2xl backdrop-blur-md group pointer-events-auto"
         title="Next Champion"
+        aria-label="Next Champion"
       >
-        <ChevronRight className="w-7 h-7 sm:w-8 sm:h-8 group-hover:translate-x-0.5 transition-transform" />
+        <ChevronRight className="w-8 h-8 sm:w-9 sm:h-9 group-hover:translate-x-0.5 transition-transform pointer-events-none" />
       </button>
 
-      {/* 360 Hint */}
-      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-white/15 text-[10px] text-sky-200 font-bold uppercase tracking-wider backdrop-blur-md pointer-events-none shadow">
-        <Rotate3d className="w-3.5 h-3.5 text-amber-300" />
-        <span>Drag to rotate 360°</span>
-      </div>
-
-      {/* 4. BOTTOM CHARACTER CARD & SKINS CAROUSEL (Matching Image 2!) */}
-      <div className="absolute bottom-20 left-0 right-0 z-30 px-3 sm:px-6 pointer-events-auto">
-        <div className="max-w-2xl mx-auto bg-slate-950/85 backdrop-blur-xl border-2 border-white/20 rounded-3xl p-3.5 sm:p-4 shadow-[0_15px_40px_rgba(0,0,0,0.6)] flex flex-col gap-3">
+      {/* 4. SLEEK COMPACT BOTTOM CARD (Matching Image 2: Zero Overlap with Character/Pedestal!) */}
+      <div className="absolute bottom-18 sm:bottom-20 left-0 right-0 z-40 px-3 sm:px-6 pointer-events-auto">
+        <div className="max-w-xl mx-auto bg-slate-950/90 backdrop-blur-xl border border-white/20 rounded-2xl p-2.5 sm:p-3 shadow-[0_15px_35px_rgba(0,0,0,0.6)] flex flex-col gap-2">
           
-          {/* Character & Skin Lore Title Bar */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-black uppercase text-white tracking-wide">
-                  {activeChampion.name}
-                </h2>
-                <span
-                  className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-sm"
-                  style={{
-                    backgroundColor: `${activeChampion.color}25`,
-                    borderColor: activeChampion.color,
-                    color: activeChampion.color,
-                  }}
-                >
-                  {activeChampion.archetype}
-                </span>
-              </div>
-              <div className="text-xs font-bold text-amber-300 mt-0.5">
-                {activeSkin.name} • <span className="text-sky-200">{activeSkin.tagline}</span>
-              </div>
+          {/* Character & Skin Lore Title Bar (Sleek single row) */}
+          <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black uppercase text-white tracking-wide">
+                {activeChampion.name}
+              </h2>
+              <span
+                className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border shadow-sm"
+                style={{
+                  backgroundColor: `${activeChampion.color}25`,
+                  borderColor: activeChampion.color,
+                  color: activeChampion.color,
+                }}
+              >
+                {activeChampion.archetype}
+              </span>
             </div>
 
-            {/* Trait Pill */}
-            <div className="hidden sm:block text-right">
-              <div className="text-[9px] uppercase font-bold text-slate-400">Signature Trait</div>
-              <div className="text-xs font-black text-amber-200">{activeChampion.stats.trait}</div>
+            {/* Currently selected skin badge */}
+            <div className="text-right">
+              <span className="text-xs font-black text-amber-300">{activeSkin.name}</span>
             </div>
           </div>
 
-          {/* HORIZONTAL SKINS STRIP (Click displays skin on 3D character in real time!) */}
-          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {/* SMALL SKINS THUMBNAILS ROW (Compact mini-thumbnails - Zero character obstruction!) */}
+          <div className="flex items-center gap-2 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {skins.map((skin) => {
               const isSelected = skin.id === previewSkinId;
               const isUnlocked = isSkinUnlocked(skin.id);
@@ -437,33 +459,16 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
                 <div
                   key={skin.id}
                   onClick={() => handleSelectSkin(skin)}
-                  className={`relative flex-shrink-0 w-24 sm:w-28 p-2 rounded-2xl border-2 transition-all cursor-pointer flex flex-col items-center text-center ${
+                  className={`relative flex-shrink-0 w-14 h-16 sm:w-16 sm:h-17 p-1 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center justify-between text-center ${
                     isSelected
-                      ? 'bg-gradient-to-b from-sky-900/90 to-slate-900/95 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-105'
-                      : 'bg-slate-900/60 hover:bg-slate-900/80 border-white/15'
+                      ? 'bg-sky-950/90 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.6)] scale-105'
+                      : 'bg-slate-900/70 hover:bg-slate-900/90 border-white/15'
                   }`}
+                  title={`${skin.name} (${skin.rarity.toUpperCase()})`}
                 >
-                  {/* Rarity Pill */}
-                  <span
-                    className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full border mb-1 flex items-center gap-0.5 ${
-                      skin.rarity === 'legendary'
-                        ? 'bg-amber-400/20 text-amber-300 border-amber-400'
-                        : skin.rarity === 'epic'
-                        ? 'bg-purple-400/20 text-purple-300 border-purple-400'
-                        : skin.rarity === 'rare'
-                        ? 'bg-cyan-400/20 text-cyan-300 border-cyan-400'
-                        : 'bg-white/10 text-slate-300 border-white/20'
-                    }`}
-                  >
-                    {skin.rarity === 'legendary' && <Crown className="w-2.5 h-2.5" />}
-                    {skin.rarity === 'epic' && <Zap className="w-2.5 h-2.5" />}
-                    {skin.rarity === 'rare' && <Diamond className="w-2.5 h-2.5" />}
-                    <span>{skin.rarity.toUpperCase()}</span>
-                  </span>
-
-                  {/* Skin Icon Artwork */}
+                  {/* Skin Icon Artwork Circle */}
                   <div
-                    className="w-10 h-10 rounded-xl border flex items-center justify-center text-lg shadow mb-1"
+                    className="w-8 h-8 rounded-full border flex items-center justify-center text-sm shadow mt-0.5"
                     style={{
                       backgroundColor: `${skin.themeColor}35`,
                       borderColor: skin.themeColor,
@@ -472,22 +477,18 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
                     {skin.rarity === 'legendary' ? '👑' : skin.rarity === 'epic' ? '⚡' : skin.rarity === 'rare' ? '💎' : '🥊'}
                   </div>
 
-                  <div className="text-[10px] font-black text-white truncate w-full leading-tight">
-                    {skin.name}
-                  </div>
-
-                  {/* Status Badge */}
-                  <div className="mt-1">
+                  {/* Status Indicator */}
+                  <div className="w-full truncate px-0.5">
                     {isSkinEquipped ? (
-                      <span className="text-[8px] font-black text-emerald-400 uppercase bg-emerald-500/20 px-1.5 py-0.2 rounded-full border border-emerald-400/40">
+                      <span className="text-[7.5px] font-black text-emerald-400 uppercase tracking-tight">
                         EQUIPPED
                       </span>
                     ) : isUnlocked ? (
-                      <span className="text-[8px] font-bold text-sky-300 uppercase">
+                      <span className="text-[7.5px] font-bold text-sky-300 uppercase tracking-tight">
                         OWNED
                       </span>
                     ) : (
-                      <span className="text-[8px] font-mono font-bold text-amber-300">
+                      <span className="text-[7.5px] font-mono font-bold text-amber-300">
                         💎 {skin.gemCost}
                       </span>
                     )}
@@ -497,31 +498,33 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
             })}
           </div>
 
-          {/* FULL-WIDTH ACTION BUTTON (Matching Image 2: "EQUIP" / "UNLOCK") */}
+          {/* ACTION BUTTON (Matching Image 2: "EQUIP" / "UNLOCK") */}
           <div>
             {isEquipped ? (
-              <div className="w-full py-3 bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 font-black text-sm uppercase tracking-wider rounded-2xl flex items-center justify-center gap-2 shadow-inner">
+              <div className="w-full py-2.5 bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-inner">
                 <Check className="w-4 h-4 stroke-[3]" /> EQUIPPED FOR COMBAT
               </div>
             ) : isPreviewSkinUnlocked ? (
               <button
+                type="button"
                 onClick={handleEquip}
-                className="w-full py-3.5 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 text-white font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-cyan-200 shadow-[0_4px_0_#0284c7,0_6px_15px_rgba(6,182,212,0.4)] active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-[#0284c7] via-[#0ea5e9] to-[#0284c7] hover:from-[#38bdf8] hover:to-[#0284c7] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl border-2 border-sky-200 shadow-[0_3px_0_#0369a1,0_6px_15px_rgba(14,165,233,0.4)] active:translate-y-0.5 transition-all cursor-pointer flex items-center justify-center"
               >
                 <span>EQUIP</span>
               </button>
             ) : (
               <button
+                type="button"
                 onClick={() => handleUnlockSkin(activeSkin)}
-                className={`w-full py-3.5 font-black text-sm uppercase tracking-wider rounded-2xl border-2 shadow active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                className={`w-full py-2.5 sm:py-3 font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl border-2 shadow active:translate-y-0.5 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                   activeSkin.rarity === 'legendary'
-                    ? 'bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-slate-950 border-yellow-200 shadow-[0_4px_0_#b45309]'
+                    ? 'bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-slate-950 border-yellow-200 shadow-[0_3px_0_#b45309]'
                     : activeSkin.rarity === 'epic'
-                    ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white border-purple-200 shadow-[0_4px_0_#6b21a8]'
-                    : 'bg-gradient-to-r from-cyan-400 via-sky-500 to-blue-600 text-white border-cyan-200 shadow-[0_4px_0_#0369a1]'
+                    ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white border-purple-200 shadow-[0_3px_0_#6b21a8]'
+                    : 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white border-cyan-200 shadow-[0_3px_0_#0369a1]'
                 }`}
               >
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-3.5 h-3.5" />
                 <span>UNLOCK FOR {activeSkin.gemCost} GEMS 💎</span>
               </button>
             )}

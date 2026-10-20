@@ -6,7 +6,6 @@ import { HomeScreen } from './components/HomeScreen';
 import { ShopScreen } from './components/ShopScreen';
 import { TrophyRoadModal, type TrophyMilestone } from './components/TrophyRoadModal';
 import { type ChampionId } from './game/championModels';
-import { unlockSkin, setEquippedSkin } from './game/championSkins';
 import { sounds } from './audio/soundManager';
 
 export function App() {
@@ -185,30 +184,9 @@ export function App() {
 
     if (milestone.amount && milestone.rewardType === 'gold') handleAddGold(milestone.amount);
     if (milestone.amount && milestone.rewardType === 'gems') handleAddGems(milestone.amount);
-    if (milestone.championId && milestone.rewardType === 'champion') {
-      setUnlockedChampions((prev) => {
-        if (prev.includes(milestone.championId!)) return prev;
-        const next = [...prev, milestone.championId!];
-        try {
-          localStorage.setItem('ringout_unlocked_champions', JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-    }
     if (milestone.rewardType === 'mega_box') {
       if (milestone.goldBonus) handleAddGold(milestone.goldBonus);
       if (milestone.gemBonus) handleAddGems(milestone.gemBonus);
-    }
-    if (milestone.skinId) {
-      unlockSkin(milestone.skinId);
-      if (milestone.goldBonus) handleAddGold(milestone.goldBonus);
-      if (milestone.gemBonus) handleAddGems(milestone.gemBonus);
-      if (milestone.championId) {
-        setEquippedSkin(milestone.championId, milestone.skinId);
-        if (selectedChampion === milestone.championId) {
-          handleSelectChampion(milestone.championId);
-        }
-      }
     }
   };
 

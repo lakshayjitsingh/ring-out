@@ -6,7 +6,7 @@ import {
   createChampionMesh,
   type CreatedChampion,
 } from '../game/championModels';
-import { getEquippedSkin, unlockSkin, setEquippedSkin } from '../game/championSkins';
+import { getEquippedSkin } from '../game/championSkins';
 import {
   Trophy,
   Swords,
@@ -24,7 +24,6 @@ import {
 import { sounds } from '../audio/soundManager';
 import { crazyGames } from '../game/crazyGamesSdk';
 import { LeaderboardModal } from './LeaderboardModal';
-import { TrophyRoadModal } from './TrophyRoadModal';
 
 interface HomeScreenProps {
   selectedChampion: ChampionId;
@@ -46,10 +45,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   selectedChampion,
   trophies,
   gold,
-  setGold,
   gems,
-  setGems,
-  onSelectChampion,
   onOpenBrawlers,
   onOpenShop,
   onOpenTrophyRoad,
@@ -62,27 +58,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // Dynamic Player Level based on real trophies (Starts at 1 for beginner)
   const playerLevel = Math.max(1, Math.floor(trophies / 250) + 1);
 
-  const [, setUnlockedChampions] = useState<ChampionId[]>(() => {
-    try {
-      const saved = localStorage.getItem('ringout_unlocked_champions');
-      return saved ? JSON.parse(saved) : ['leo', 'bolt', 'kai'];
-    } catch {
-      return ['leo', 'bolt', 'kai'];
-    }
-  });
-
-  // Track claimed milestones in localStorage
-  const [claimedMilestones, setClaimedMilestones] = useState<number[]>(() => {
-    try {
-      const saved = localStorage.getItem('ringout_claimed_milestones');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
   // Modals
-  const [isTrophyRoadOpen, setIsTrophyRoadOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isMatchmaking, setIsMatchmaking] = useState(false);
@@ -113,26 +89,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   useEffect(() => {
     crazyGames.init();
   }, []);
-
-  const handleAddGems = (amount: number) => {
-    setGems((prev) => {
-      const next = prev + amount;
-      try {
-        localStorage.setItem('ringout_gems', String(next));
-      } catch {}
-      return next;
-    });
-  };
-
-  const handleAddGold = (amount: number) => {
-    setGold((prev) => {
-      const next = prev + amount;
-      try {
-        localStorage.setItem('ringout_gold', String(next));
-      } catch {}
-      return next;
-    });
-  };
 
   // Three.js Turntable Refs
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -506,11 +462,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div
             onClick={() => {
               sounds.playBump(0.8);
-              if (onOpenTrophyRoad) {
-                onOpenTrophyRoad();
-              } else {
-                setIsTrophyRoadOpen(true);
-              }
+              onOpenTrophyRoad?.();
             }}
             className="cursor-pointer group flex items-center gap-2.5 sm:gap-3 bg-gradient-to-r from-[#0288d1]/90 via-[#01579b]/90 to-[#0284c7]/90 backdrop-blur-md px-3 sm:px-3.5 py-2 rounded-2xl border-2 border-[#81d4fa]/70 shadow-[0_6px_20px_rgba(0,0,0,0.35),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
             title="Open Trophy Road"
@@ -793,51 +745,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       )}
 
-      {/* 8. BRAWL STARS STYLE FULLSCREEN TROPHY ROAD */}
-      <TrophyRoadModal
-        isOpen={isTrophyRoadOpen}
-        onClose={() => setIsTrophyRoadOpen(false)}
-        trophies={trophies}
-        claimedMilestones={claimedMilestones}
-        gold={gold}
-        gems={gems}
-        onClaimMilestone={(milestone) => {
-          setClaimedMilestones((prev) => {
-            const next = [...prev, milestone.trophies];
-            try {
-              localStorage.setItem('ringout_claimed_milestones', JSON.stringify(next));
-            } catch {}
-            return next;
-          });
-          if (milestone.amount && milestone.rewardType === 'gold') handleAddGold(milestone.amount);
-          if (milestone.amount && milestone.rewardType === 'gems') handleAddGems(milestone.amount);
-          if (milestone.championId && milestone.rewardType === 'champion') {
-            setUnlockedChampions((prev) => {
-              if (prev.includes(milestone.championId!)) return prev;
-              const next = [...prev, milestone.championId!];
-              try {
-                localStorage.setItem('ringout_unlocked_champions', JSON.stringify(next));
-              } catch {}
-              return next;
-            });
-          }
-          if (milestone.rewardType === 'mega_box') {
-            if (milestone.goldBonus) handleAddGold(milestone.goldBonus);
-            if (milestone.gemBonus) handleAddGems(milestone.gemBonus);
-          }
-          if (milestone.rewardType === 'league_skin' && milestone.skinId) {
-            unlockSkin(milestone.skinId);
-            if (milestone.goldBonus) handleAddGold(milestone.goldBonus);
-            if (milestone.gemBonus) handleAddGems(milestone.gemBonus);
-            if (milestone.championId) {
-              setEquippedSkin(milestone.championId, milestone.skinId);
-              if (selectedChampion === milestone.championId && onSelectChampion) {
-                onSelectChampion(milestone.championId);
-              }
-            }
-          }
-        }}
-      />
 
       {/* 9. SETTINGS MODAL (AUDIO & PRESETS) */}
       {isSettingsOpen && (

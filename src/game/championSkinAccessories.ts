@@ -624,7 +624,7 @@ export function buildPoseidonGodKingLegendary(group: THREE.Group, accentMeshes: 
     accentMeshes.push(gem);
   });
 
-  // 2. Four Orbiting Azure Water Orbs around shoulders
+  // 2. Four Orbiting Azure Water Orbs around hips/waist (below chest/face)
   const waterMat = new THREE.MeshStandardMaterial({
     color: 0x38bdf8,
     emissive: 0x06b6d4,
@@ -637,7 +637,7 @@ export function buildPoseidonGodKingLegendary(group: THREE.Group, accentMeshes: 
   const orbDistance = 0.68;
   [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5].forEach((angle) => {
     const orb = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 16), waterMat);
-    orb.position.set(Math.cos(angle) * orbDistance, 1.35, Math.sin(angle) * orbDistance);
+    orb.position.set(Math.cos(angle) * orbDistance, 0.70, Math.sin(angle) * orbDistance);
     floatingGroup.add(orb);
     accentMeshes.push(orb);
   });
@@ -689,13 +689,17 @@ export function buildQuantumOverdriveLegendary(group: THREE.Group, accentMeshes:
     side: THREE.DoubleSide,
   });
 
-  // 1. Twin Angular Tachyon Energy Wings
+  // 1. Twin Angular Tachyon Energy Wings (Anchored firmly to character BACK - NEVER sweeps through face!)
+  const backWingsGroup = new THREE.Group();
+  backWingsGroup.position.set(0, 1.40, 0.28);
+  group.add(backWingsGroup);
+
   [-1, 1].forEach((dir) => {
     const wingGroup = new THREE.Group();
-    wingGroup.position.set(dir * 0.35, 1.40, 0.28);
+    wingGroup.position.set(dir * 0.35, 0, 0);
     wingGroup.rotation.y = dir * 0.40;
     wingGroup.rotation.z = dir * -0.20;
-    floatingGroup.add(wingGroup);
+    backWingsGroup.add(wingGroup);
 
     // Primary wing blade
     const blade1Geo = new THREE.ConeGeometry(0.12, 0.75, 4);
@@ -713,18 +717,22 @@ export function buildQuantumOverdriveLegendary(group: THREE.Group, accentMeshes:
     accentMeshes.push(blade2);
   });
 
-  // 2. Spinning Tachyon Pulse Halo around chest
-  const haloGeo = new THREE.TorusGeometry(0.62, 0.024, 8, 32);
+  // 2. Quantum Pulse Halo (Floats HIGH ABOVE HEAD at y = 2.22 in floatingGroup)
+  const haloGroup = new THREE.Group();
+  haloGroup.position.set(0, 2.22, 0);
+  floatingGroup.add(haloGroup);
+
+  const haloGeo = new THREE.TorusGeometry(0.28, 0.024, 8, 32);
   const halo = new THREE.Mesh(haloGeo, tachyonMat);
-  halo.position.set(0, 1.25, 0);
-  halo.rotation.x = Math.PI * 0.35;
-  floatingGroup.add(halo);
+  halo.rotateX(Math.PI / 2);
+  haloGroup.add(halo);
   accentMeshes.push(halo);
 
-  // 3. Orbiting Tachyon Prisms
-  [-0.55, 0.55].forEach((xSide) => {
-    const prism = new THREE.Mesh(new THREE.OctahedronGeometry(0.05), purpleTachyonMat);
-    prism.position.set(xSide, 1.65, 0);
+  // 3. Orbiting Tachyon Prisms around WAIST/HIPS (y = 0.65, radius = 0.70)
+  const prismDist = 0.70;
+  [0, Math.PI * 0.66, Math.PI * 1.33].forEach((angle) => {
+    const prism = new THREE.Mesh(new THREE.OctahedronGeometry(0.048), purpleTachyonMat);
+    prism.position.set(Math.cos(angle) * prismDist, 0.65, Math.sin(angle) * prismDist);
     floatingGroup.add(prism);
     accentMeshes.push(prism);
   });
@@ -734,6 +742,7 @@ export function buildQuantumOverdriveLegendary(group: THREE.Group, accentMeshes:
 
 /**
  * Builds the Solar Eclipse Goddess twin coronal wings and radiant sun halo.
+ * Designed so wings stay on her back and halo floats above head, never blocking the face!
  */
 export function buildSolarEclipseGoddessLegendary(group: THREE.Group, accentMeshes: THREE.Mesh[]): THREE.Group {
   const floatingGroup = new THREE.Group();
@@ -752,40 +761,61 @@ export function buildSolarEclipseGoddessLegendary(group: THREE.Group, accentMesh
     emissive: 0xfacc15,
     emissiveIntensity: 1.0,
     transparent: true,
-    opacity: 0.90,
+    opacity: 0.92,
     side: THREE.DoubleSide,
   });
 
-  // 1. Massive Twin Solar Corona Wings
-  [-1, 1].forEach((dir) => {
-    const wingGroup = new THREE.Group();
-    wingGroup.position.set(dir * 0.32, 1.45, 0.25);
-    wingGroup.rotation.y = dir * 0.35;
-    floatingGroup.add(wingGroup);
+  // 1. BACK SOLAR WINGS (Attached directly to character group, strictly behind back!)
+  const backWingsGroup = new THREE.Group();
+  backWingsGroup.position.set(0, 1.35, 0.28);
+  group.add(backWingsGroup);
 
-    // 3 Golden Feather Arcs per wing
-    [0, 1, 2].forEach((idx) => {
-      const arcGeo = new THREE.TorusGeometry(0.35 - idx * 0.06, 0.022, 8, 24, Math.PI * 0.75);
-      arcGeo.rotateZ(dir * (0.4 + idx * 0.25));
-      const arc = new THREE.Mesh(arcGeo, solarGoldMat);
-      wingGroup.add(arc);
-      accentMeshes.push(arc);
+  [-1, 1].forEach((dir) => {
+    const wing = new THREE.Group();
+    wing.position.set(dir * 0.22, 0, 0);
+    wing.rotation.y = dir * 0.35;
+    backWingsGroup.add(wing);
+
+    // 4 Layered Radiant Solar Feather Blades per wing
+    [0, 1, 2, 3].forEach((idx) => {
+      const bladeGeo = new THREE.ConeGeometry(0.045, 0.45 + idx * 0.14, 4);
+      bladeGeo.rotateZ(dir * (0.65 + idx * 0.30));
+      const blade = new THREE.Mesh(bladeGeo, solarGoldMat);
+      blade.position.set(dir * (0.15 + idx * 0.08), 0.10 + idx * 0.09, 0);
+      wing.add(blade);
+      accentMeshes.push(blade);
     });
   });
 
-  // 2. Coronal Sun Eclipse Halo hovering behind head
-  const haloGeo = new THREE.RingGeometry(0.26, 0.36, 24);
-  const halo = new THREE.Mesh(haloGeo, eclipseCoronaMat);
-  halo.position.set(0, 1.78, 0.22);
-  floatingGroup.add(halo);
-  accentMeshes.push(halo);
+  // 2. Coronal Sun Eclipse Halo (HIGH ABOVE HEAD at y = 2.22 in floatingGroup)
+  const haloGroup = new THREE.Group();
+  haloGroup.position.set(0, 2.22, 0);
+  floatingGroup.add(haloGroup);
 
-  // 3. Miniature Solar Orbs Orbiting Fists
-  [-0.60, 0.60].forEach((xSide) => {
-    const sunOrb = new THREE.Mesh(new THREE.SphereGeometry(0.052, 16, 16), solarGoldMat);
-    sunOrb.position.set(xSide, 0.95, -0.15);
-    floatingGroup.add(sunOrb);
-    accentMeshes.push(sunOrb);
+  // Radiant Sun Ring
+  const haloRing = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.022, 10, 32), eclipseCoronaMat);
+  haloRing.rotateX(Math.PI / 2);
+  haloGroup.add(haloRing);
+  accentMeshes.push(haloRing);
+
+  // 8 Diamond Sunburst Spikes radiating outward
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const spikeGeo = new THREE.ConeGeometry(0.024, 0.14, 4);
+    spikeGeo.rotateZ(angle - Math.PI / 2);
+    const spike = new THREE.Mesh(spikeGeo, solarGoldMat);
+    spike.position.set(Math.cos(angle) * 0.32, 0, Math.sin(angle) * 0.32);
+    haloGroup.add(spike);
+    accentMeshes.push(spike);
+  }
+
+  // 3. Orbiting Solar Flare Orbs around WAIST/HIPS (y = 0.65, radius = 0.72)
+  const orbDistance = 0.72;
+  [0, Math.PI * 0.66, Math.PI * 1.33].forEach((angle) => {
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.048, 16, 16), eclipseCoronaMat);
+    orb.position.set(Math.cos(angle) * orbDistance, 0.65, Math.sin(angle) * orbDistance);
+    floatingGroup.add(orb);
+    accentMeshes.push(orb);
   });
 
   return floatingGroup;
@@ -829,12 +859,12 @@ export function buildMagmaTitanDestroyerLegendary(group: THREE.Group, accentMesh
     accentMeshes.push(hornLavaTip);
   });
 
-  // 2. Three Massive Orbiting Volcanic Basalt Boulders
-  const boulderDistance = 0.88;
+  // 2. Three Massive Orbiting Volcanic Basalt Boulders around WAIST/HIPS (y = 0.70, completely clear of face!)
+  const boulderDistance = 0.95;
   [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3].forEach((angle) => {
     const boulderGeo = new THREE.DodecahedronGeometry(0.12, 1);
     const boulder = new THREE.Mesh(boulderGeo, basaltMat);
-    boulder.position.set(Math.cos(angle) * boulderDistance, 1.40, Math.sin(angle) * boulderDistance);
+    boulder.position.set(Math.cos(angle) * boulderDistance, 0.70, Math.sin(angle) * boulderDistance);
     floatingGroup.add(boulder);
 
     // Glowing magma vein running through boulder
@@ -856,6 +886,7 @@ export function buildMagmaTitanDestroyerLegendary(group: THREE.Group, accentMesh
 /**
  * Builds the Void Phantom Kage 6 floating spectral obsidian blade wings,
  * singularity event horizon halo, and shadow horn crown.
+ * Blades are anchored behind the back so they NEVER sweep across his face!
  */
 export function buildVoidPhantomKageLegendary(group: THREE.Group, accentMeshes: THREE.Mesh[]): THREE.Group {
   const floatingGroup = new THREE.Group();
@@ -864,75 +895,88 @@ export function buildVoidPhantomKageLegendary(group: THREE.Group, accentMeshes: 
   const voidBladeMat = new THREE.MeshStandardMaterial({
     color: 0x0f172a,
     emissive: 0x7c3aed,
-    emissiveIntensity: 0.85,
+    emissiveIntensity: 0.90,
     roughness: 0.15,
-    metalness: 0.90,
+    metalness: 0.95,
   });
 
   const voidSingularityMat = new THREE.MeshStandardMaterial({
     color: 0x3b0764,
     emissive: 0xa855f7,
-    emissiveIntensity: 0.90,
+    emissiveIntensity: 0.95,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.88,
     side: THREE.DoubleSide,
   });
 
-  // 1. Six Floating Spectral Obsidian Void Blades Fanned as Wings
+  // 1. BACK SPECTRAL OBSIDIAN BLADES (Attached to character group behind back, NEVER in front of face!)
+  const backBladesGroup = new THREE.Group();
+  backBladesGroup.position.set(0, 1.35, 0.30);
+  group.add(backBladesGroup);
+
   [-1, 1].forEach((dir) => {
-    [0, 1, 2].forEach((bladeIdx) => {
-      const bladeGeo = new THREE.ConeGeometry(0.045, 0.55 + bladeIdx * 0.12, 4);
-      bladeGeo.rotateZ(dir * (0.6 + bladeIdx * 0.35));
+    [0, 1, 2].forEach((idx) => {
+      const bladeGeo = new THREE.ConeGeometry(0.042, 0.52 + idx * 0.15, 4);
+      bladeGeo.rotateZ(dir * (0.65 + idx * 0.38));
       const blade = new THREE.Mesh(bladeGeo, voidBladeMat);
-      blade.position.set(dir * (0.30 + bladeIdx * 0.10), 1.35 + bladeIdx * 0.12, 0.28);
-      floatingGroup.add(blade);
+      blade.position.set(dir * (0.24 + idx * 0.12), 0.08 + idx * 0.12, 0);
+      backBladesGroup.add(blade);
       accentMeshes.push(blade);
     });
   });
 
-  // 2. Void Singularity Event Horizon Halo
-  const haloGeo = new THREE.TorusGeometry(0.48, 0.024, 8, 32);
-  const halo = new THREE.Mesh(haloGeo, voidSingularityMat);
-  halo.position.set(0, 1.45, 0.22);
-  halo.rotation.x = Math.PI * 0.25;
-  floatingGroup.add(halo);
-  accentMeshes.push(halo);
+  // 2. Void Singularity Halo (HIGH ABOVE HEAD at y = 2.22 in floatingGroup)
+  const haloGroup = new THREE.Group();
+  haloGroup.position.set(0, 2.22, 0);
+  floatingGroup.add(haloGroup);
 
-  // 3. Floating Shadow Horn Crown
-  const shadowCrownGroup = new THREE.Group();
-  shadowCrownGroup.position.set(0, 2.15, 0);
-  floatingGroup.add(shadowCrownGroup);
+  const haloRing = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.024, 8, 32), voidSingularityMat);
+  haloRing.rotateX(Math.PI / 2);
+  haloGroup.add(haloRing);
+  accentMeshes.push(haloRing);
 
-  [-0.15, 0.15].forEach((xSide) => {
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.22, 5), voidBladeMat);
-    horn.position.set(xSide, 0.10, -0.15);
-    horn.rotation.z = xSide > 0 ? -0.45 : 0.45;
-    shadowCrownGroup.add(horn);
+  // 3 Floating Void Spikes on the halo
+  [-0.18, 0, 0.18].forEach((xPos, idx) => {
+    const spikeHeight = idx === 1 ? 0.22 : 0.14;
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.03, spikeHeight, 5), voidBladeMat);
+    spike.position.set(xPos, spikeHeight * 0.5, 0);
+    haloGroup.add(spike);
+    accentMeshes.push(spike);
+  });
+
+  // 3. Orbiting Void Singularity Pearls around WAIST (y = 0.65, radius = 0.70)
+  const orbDistance = 0.70;
+  [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5].forEach((angle) => {
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 14, 14), voidSingularityMat);
+    orb.position.set(Math.cos(angle) * orbDistance, 0.65, Math.sin(angle) * orbDistance);
+    floatingGroup.add(orb);
+    accentMeshes.push(orb);
   });
 
   return floatingGroup;
 }
 
 /**
- * Builds the Thunder God Raijin Axel legendary floating ring of 6 Taiko thunder drums
+ * Builds the Thunder God Raijin Axel legendary crescent of Taiko thunder drums
  * with connecting golden lightning arcs and storm crown!
+ * Drums are mounted strictly behind the back, framing shoulders from behind.
  */
 export function buildRaijinThunderGodLegendary(group: THREE.Group, accentMeshes: THREE.Mesh[]): THREE.Group {
   const floatingGroup = new THREE.Group();
   group.add(floatingGroup);
 
   const drumBodyMat = new THREE.MeshStandardMaterial({
-    color: 0x78350f,
-    roughness: 0.40,
-    metalness: 0.15,
+    color: 0x451a03,
+    roughness: 0.35,
+    metalness: 0.25,
   });
 
   const drumRimMat = new THREE.MeshStandardMaterial({
     color: 0xfacc15,
-    metalness: 0.90,
-    roughness: 0.20,
+    metalness: 0.95,
+    roughness: 0.15,
     emissive: 0xd97706,
-    emissiveIntensity: 0.4,
+    emissiveIntensity: 0.45,
   });
 
   const lightningMat = new THREE.MeshStandardMaterial({
@@ -942,55 +986,87 @@ export function buildRaijinThunderGodLegendary(group: THREE.Group, accentMeshes:
     roughness: 0.1,
   });
 
-  // 1. Ring of Six Floating Taiko Thunder Drums
-  const ringRadius = 0.65;
-  const drumCount = 6;
-  for (let i = 0; i < drumCount; i++) {
-    const angle = (i / drumCount) * Math.PI * 2;
-    const drumX = Math.cos(angle) * ringRadius;
-    const drumY = 1.35 + Math.sin(angle) * ringRadius;
+  // 1. AUTHENTIC RAIJIN TAIKO DRUMS CRESCENT ARCH (Firmly on character BACK at z = 0.35, NEVER sweeps face!)
+  const drumsArchGroup = new THREE.Group();
+  drumsArchGroup.position.set(0, 1.45, 0.35);
+  group.add(drumsArchGroup);
+
+  // 5 Taiko drums arranged in a dramatic semi-circular crescent over shoulders & behind head
+  const archRadius = 0.58;
+  const drumAngles = [-Math.PI * 0.65, -Math.PI * 0.35, 0, Math.PI * 0.35, Math.PI * 0.65];
+
+  drumAngles.forEach((angle) => {
+    const drumX = Math.sin(angle) * archRadius;
+    const drumY = Math.cos(angle) * archRadius * 0.7;
 
     const drum = new THREE.Group();
-    drum.position.set(drumX, drumY, 0.28);
-    floatingGroup.add(drum);
+    drum.position.set(drumX, drumY, 0);
+    drumsArchGroup.add(drum);
 
-    // Drum barrel
-    const drumGeo = new THREE.CylinderGeometry(0.085, 0.085, 0.11, 16);
-    drumGeo.rotateX(Math.PI / 2);
-    drum.add(new THREE.Mesh(drumGeo, drumBodyMat));
+    // Barrel
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.10, 16), drumBodyMat);
+    barrel.rotateX(Math.PI / 2);
+    drum.add(barrel);
 
-    // Gold rims on both ends
-    [-0.055, 0.055].forEach((zOff) => {
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.015, 8, 16), drumRimMat);
+    // Golden Rims
+    [-0.05, 0.05].forEach((zOff) => {
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.014, 8, 16), drumRimMat);
       rim.position.set(0, 0, zOff);
       drum.add(rim);
     });
 
-    // Lightning Arc connecting to next drum
-    const nextAngle = ((i + 1) / drumCount) * Math.PI * 2;
-    const nextX = Math.cos(nextAngle) * ringRadius;
-    const nextY = 1.35 + Math.sin(nextAngle) * ringRadius;
+    // Golden Mitsudomoe Thunder Crest on front face
+    const crest = new THREE.Mesh(new THREE.CircleGeometry(0.045, 8), lightningMat);
+    crest.position.set(0, 0, 0.052);
+    drum.add(crest);
+    accentMeshes.push(crest);
+  });
 
-    const midX = (drumX + nextX) * 0.5;
-    const midY = (drumY + nextY) * 0.5;
-    const arcLength = Math.hypot(nextX - drumX, nextY - drumY);
+  // Connecting Golden Lightning Rods between the 5 drums in the arch
+  for (let i = 0; i < drumAngles.length - 1; i++) {
+    const x1 = Math.sin(drumAngles[i]) * archRadius;
+    const y1 = Math.cos(drumAngles[i]) * archRadius * 0.7;
+    const x2 = Math.sin(drumAngles[i + 1]) * archRadius;
+    const y2 = Math.cos(drumAngles[i + 1]) * archRadius * 0.7;
 
-    const arc = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, arcLength, 6), lightningMat);
-    arc.position.set(midX, midY, 0.28);
-    arc.rotation.z = Math.atan2(nextY - drumY, nextX - drumX) - Math.PI / 2;
-    floatingGroup.add(arc);
-    accentMeshes.push(arc);
+    const midX = (x1 + x2) * 0.5;
+    const midY = (y1 + y2) * 0.5;
+    const len = Math.hypot(x2 - x1, y2 - y1);
+
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, len, 6), lightningMat);
+    rod.position.set(midX, midY, 0);
+    rod.rotation.z = Math.atan2(y2 - y1, x2 - x1) - Math.PI / 2;
+    drumsArchGroup.add(rod);
+    accentMeshes.push(rod);
   }
 
-  // 2. Storm Cloud Crown
-  const stormCrown = new THREE.Mesh(
-    new THREE.TorusGeometry(0.24, 0.028, 8, 24),
-    lightningMat
-  );
-  stormCrown.rotateX(Math.PI / 2);
-  stormCrown.position.set(0, 2.18, 0);
-  floatingGroup.add(stormCrown);
-  accentMeshes.push(stormCrown);
+  // 2. Storm Lightning Crown Nimbus (HIGH ABOVE HEAD at y = 2.22 in floatingGroup)
+  const stormGroup = new THREE.Group();
+  stormGroup.position.set(0, 2.22, 0);
+  floatingGroup.add(stormGroup);
+
+  const stormRing = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.022, 8, 24), lightningMat);
+  stormRing.rotateX(Math.PI / 2);
+  stormGroup.add(stormRing);
+  accentMeshes.push(stormRing);
+
+  // 4 Zigzag Lightning Tendrils on Crown
+  [-0.16, 0.16].forEach((xSide) => {
+    const spark = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.18, 4), lightningMat);
+    spark.position.set(xSide, 0.09, 0);
+    spark.rotation.z = xSide > 0 ? -0.4 : 0.4;
+    stormGroup.add(spark);
+    accentMeshes.push(spark);
+  });
+
+  // 3. Orbiting Electric Sparks around WAIST (y = 0.65, radius = 0.68)
+  const sparkDistance = 0.68;
+  [0, Math.PI * 0.66, Math.PI * 1.33].forEach((angle) => {
+    const sparkOrb = new THREE.Mesh(new THREE.OctahedronGeometry(0.045), lightningMat);
+    sparkOrb.position.set(Math.cos(angle) * sparkDistance, 0.65, Math.sin(angle) * sparkDistance);
+    floatingGroup.add(sparkOrb);
+    accentMeshes.push(sparkOrb);
+  });
 
   return floatingGroup;
 }

@@ -1498,22 +1498,24 @@ function createKageMesh(skinId?: string): CreatedChampion {
   chest.castShadow = true;
   group.add(chest);
 
-  // Crossed Jade Sash
-  const sashGeo = new THREE.CapsuleGeometry(0.045, 0.48, 8, 16);
-  sashGeo.rotateZ(0.42);
-  const sash = new THREE.Mesh(sashGeo, jadeMat);
-  sash.position.set(0, 1.25, -0.22);
-  group.add(sash);
-  accentMeshes.push(sash);
+  // Symmetrical Shinobi Gi Lapel V-Trim
+  [-1, 1].forEach((dir) => {
+    const lapelGeo = new THREE.CapsuleGeometry(0.022, 0.38, 6, 12);
+    lapelGeo.rotateZ(dir * -0.32);
+    const lapel = new THREE.Mesh(lapelGeo, jadeMat);
+    lapel.position.set(dir * 0.08, 1.28, -0.23);
+    group.add(lapel);
+    accentMeshes.push(lapel);
+  });
 
-  // Jade Emblem Core
-  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.024, 16), jadeGlowMat);
+  // Central Ninja Shuriken Talisman on Chest
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.020, 16), jadeGlowMat);
   core.rotateX(Math.PI / 2);
-  core.position.set(0, 1.25, -0.24);
+  core.position.set(0, 1.18, -0.25);
   group.add(core);
   accentMeshes.push(core);
 
-  // 3. Badass Shinobi Cowl, Hitai-ate Forehead Plate & Angular Mempo Face Mask
+  // 3. Badass Shinobi Cowl, Hitai-ate Forehead Plate & Smooth Mempo Face Mask
   // Wrapped Midnight Cowl Collar around neck
   const cowlCollar = new THREE.Mesh(
     new THREE.TorusGeometry(0.18, 0.05, 12, 24),
@@ -1568,39 +1570,11 @@ function createKageMesh(skinId?: string): CreatedChampion {
     group.add(browPlate);
   });
 
-  // Sculpted Shinobi Mempo (Smooth lower face mask covering from nose bridge to chin)
+  // Sculpted Shinobi Mempo (Smooth clean lower face mask covering chin and mouth)
   const maskGeo = new THREE.SphereGeometry(0.288, 28, 22, 0, Math.PI * 2, Math.PI * 0.44, Math.PI * 0.38);
   const maskMesh = new THREE.Mesh(maskGeo, ninjaBlackMat);
   maskMesh.position.set(0, 1.72, 0);
   group.add(maskMesh);
-
-  // Angular Chiseled Center Nose/Chin Seam
-  const centerSeamGeo = new THREE.CapsuleGeometry(0.014, 0.22, 8, 14);
-  const centerSeam = new THREE.Mesh(centerSeamGeo, jadeMat);
-  centerSeam.position.set(0, 1.63, -0.288);
-  group.add(centerSeam);
-  accentMeshes.push(centerSeam);
-
-  // Left & Right Aerodynamic Jade Breathing Vents (Embedded in cheek curve)
-  [-0.12, 0.12].forEach((xSide) => {
-    const isRight = xSide > 0;
-    [-0.022, 0.015].forEach((yOff) => {
-      const ventGeo = new THREE.CapsuleGeometry(0.009, 0.055, 6, 10);
-      ventGeo.rotateZ(isRight ? 0.30 : -0.30);
-      const vent = new THREE.Mesh(ventGeo, jadeGlowMat);
-      vent.position.set(xSide, 1.63 + yOff, -0.278);
-      group.add(vent);
-      accentMeshes.push(vent);
-    });
-  });
-
-  // Top Edge Trim of Mask (Contoured Jade Lip directly below the eyes)
-  const maskLipGeo = new THREE.CapsuleGeometry(0.015, 0.25, 8, 16);
-  maskLipGeo.rotateZ(Math.PI / 2);
-  const maskLip = new THREE.Mesh(maskLipGeo, jadeMat);
-  maskLip.position.set(0, 1.70, -0.284);
-  group.add(maskLip);
-  accentMeshes.push(maskLip);
 
   // Crimson Headband wrapping around the head
   const tieBand = new THREE.Mesh(new THREE.TorusGeometry(0.288, 0.022, 10, 32), crimsonCordMat);

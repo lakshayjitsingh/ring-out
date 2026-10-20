@@ -19,10 +19,16 @@ import {
   Check,
   KeyRound,
   Sparkles,
+  User,
+  Dices,
+  Radio,
 } from 'lucide-react';
 import { sounds } from '../audio/soundManager';
 import { crazyGames } from '../game/crazyGamesSdk';
 import { LeaderboardModal } from './LeaderboardModal';
+import { WelcomeNameModal } from './WelcomeNameModal';
+import { generateRandomBot, generateRandomBotName, type BotProfile } from '../game/botGenerator';
+import { getSkinPortrait } from '../game/skinThumbnails';
 
 interface HomeScreenProps {
   selectedChampion: ChampionId;
@@ -37,7 +43,9 @@ interface HomeScreenProps {
   onOpenShop: () => void;
   onOpenTrophyRoad?: () => void;
   onStartCodeRoomMatch: (roomCode: string, isHost: boolean) => void;
-  onStartPvPMatch: () => void;
+  onStartPvPMatch: (bot?: BotProfile) => void;
+  playerName?: string;
+  onUpdatePlayerName?: (name: string) => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -49,6 +57,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenShop,
   onStartCodeRoomMatch,
   onStartPvPMatch,
+  playerName = 'Brawler',
+  onUpdatePlayerName,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeChampion = CHAMPIONS[selectedChampion];
@@ -56,11 +66,37 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // Dynamic Player Level based on real trophies (Starts at 1 for beginner)
   const playerLevel = Math.max(1, Math.floor(trophies / 250) + 1);
 
+  // Player Username & Welcome Modal
+  const [username, setUsername] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ringout_username') || playerName || '';
+    } catch {
+      return playerName || '';
+    }
+  });
+
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(() => {
+    try {
+      return !localStorage.getItem('ringout_username');
+    } catch {
+      return false;
+    }
+  });
+
+  const [settingsName, setSettingsName] = useState<string>(() => username || 'Brawler');
+  const [settingsSavedToast, setSettingsSavedToast] = useState(false);
+
   // Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+
+  // Online PvP Matchmaking State (Random 10 to 20 seconds duration)
   const [isMatchmaking, setIsMatchmaking] = useState(false);
-  const [matchmakingCountdown, setMatchmakingCountdown] = useState(3);
+  const [estimatedTime, setEstimatedTime] = useState(15);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [matchFoundBot, setMatchFoundBot] = useState<BotProfile | null>(null);
+  const matchmakingIntervalRef = useRef<number | null>(null);
+
   const [soundMuted, setSoundMuted] = useState(!sounds.enabled);
 
   // 1v1 Private Code Room Modal State
@@ -385,24 +421,80 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     };
   }, [selectedChampion]);
 
-  // Handle Online PvP Matchmaking Flow
+  useEffect(() => {
+    return () => {
+      if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
+    };
+  }, []);
+
+  // Handle Online PvP Matchmaking Flow (Random 10 to 20 seconds connection)
   const handleLaunchPvP = () => {
     sounds.playBump(1.0);
     setIsMatchmaking(true);
-    setMatchmakingCountdown(3);
+    setMatchFoundBot(null);
 
-    const interval = setInterval(() => {
-      setMatchmakingCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
+    // Random between 10 to 20 seconds!
+    const targetDuration = Math.floor(10 + Math.random() * 11);
+    const estWait = Math.floor(10 + Math.random() * 11);
+    setEstimatedTime(estWait);
+    setElapsedSeconds(0);
+
+    const generatedBot = generateRandomBot(selectedChampion);
+    let currentElapsed = 0;
+
+    if (matchmakingIntervalRef.current) {
+      clearInterval(matchmakingIntervalRef.current);
+    }
+
+    matchmakingIntervalRef.current = window.setInterval(() => {
+      currentElapsed += 1;
+      setElapsedSeconds(currentElapsed);
+
+      if (currentElapsed >= targetDuration) {
+        if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
+        matchmakingIntervalRef.current = null;
+        setMatchFoundBot(generatedBot);
+        sounds.playVictory?.();
+
+        // Reveal opponent card for 1.3s before battle arena
+        setTimeout(() => {
           setIsMatchmaking(false);
-          onStartPvPMatch();
-          return 0;
-        }
-        sounds.playBump(0.6);
-        return prev - 1;
-      });
-    }, 800);
+          setMatchFoundBot(null);
+          onStartPvPMatch(generatedBot);
+        }, 1300);
+      } else {
+        sounds.playBump(0.2);
+      }
+    }, 1000);
+  };
+
+  const handleCancelMatchmaking = () => {
+    if (matchmakingIntervalRef.current) {
+      clearInterval(matchmakingIntervalRef.current);
+      matchmakingIntervalRef.current = null;
+    }
+    sounds.playBump(0.5);
+    setIsMatchmaking(false);
+    setMatchFoundBot(null);
+    setElapsedSeconds(0);
+  };
+
+  const handleSaveSettingsName = () => {
+    const trimmed = settingsName.trim() || 'Brawler';
+    try {
+      localStorage.setItem('ringout_username', trimmed);
+    } catch {}
+    setUsername(trimmed);
+    onUpdatePlayerName?.(trimmed);
+    sounds.playVictory?.();
+    setSettingsSavedToast(true);
+    setTimeout(() => setSettingsSavedToast(false), 2000);
+  };
+
+  const handleRandomizeSettingsName = () => {
+    sounds.playBump(0.5);
+    const newTag = generateRandomBotName().replace(/\[.*?\]/, '').replace(/^xX_/, '').replace(/_xX$/, '');
+    setSettingsName(newTag);
   };
 
 
@@ -456,8 +548,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         
         {/* Top-Left: Player Profile Badge & Leaderboard Rankings Button */}
         <div className="flex items-center gap-2 pointer-events-auto">
-          {/* Player Level Badge */}
-          <div className="flex items-center gap-2 bg-gradient-to-r from-slate-900/90 to-blue-950/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border-2 border-sky-400/50 shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
+          {/* Player Level Badge (Clickable -> Opens Settings/Profile) */}
+          <div
+            onClick={() => {
+              sounds.playBump(0.6);
+              setIsSettingsOpen(true);
+            }}
+            className="flex items-center gap-2 bg-gradient-to-r from-slate-900/90 to-blue-950/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border-2 border-sky-400/50 shadow-[0_4px_15px_rgba(0,0,0,0.3)] cursor-pointer hover:border-sky-300 hover:scale-102 transition-all active:scale-95"
+            title="Edit Player Profile & Settings"
+          >
             <div className="relative w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-white flex items-center justify-center shadow">
               <span className="text-xs font-black text-amber-950">🥋</span>
               <span className="absolute -bottom-1 -right-1 bg-sky-500 border border-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow text-white">
@@ -465,8 +564,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </span>
             </div>
             <div className="text-left">
-              <span className="text-[9px] text-sky-200 font-bold uppercase tracking-wider block">BRAWLER</span>
-              <span className="text-xs font-black text-white">LEVEL {playerLevel}</span>
+              <span className="text-[9px] text-sky-200 font-bold uppercase tracking-wider block truncate max-w-[80px] sm:max-w-[120px]">
+                {username || 'BRAWLER'}
+              </span>
+              <span className="text-xs font-black text-amber-300">LEVEL {playerLevel}</span>
             </div>
           </div>
 
@@ -683,52 +784,97 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
       {/* 6. BOTTOM NAVIGATION (Handled persistently by Global Dock matching Image 2) */}
 
-      {/* 7. MATCHMAKING RADAR OVERLAY (ONLINE PVP) */}
+      {/* 7. MATCHMAKING RADAR OVERLAY (ONLINE PVP - 10 TO 20 SECONDS) */}
       {isMatchmaking && (
         <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="relative w-full max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
             {/* Top Glossy Ribbon */}
             <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-8 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
               <span className="text-sm font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                MATCHMAKING
+                {matchFoundBot ? 'MATCH FOUND!' : 'SEARCHING FOR MATCH'}
               </span>
             </div>
 
-            {/* Radar Animation Rings */}
-            <div className="relative w-28 h-28 mx-auto my-3 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-40" />
-              <div className="absolute inset-3 rounded-full border-2 border-sky-300 animate-pulse opacity-60" />
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-600 to-sky-400 border-2 border-white flex items-center justify-center shadow-lg">
-                <Swords className="w-8 h-8 text-white stroke-[2.5]" />
+            {!matchFoundBot ? (
+              <>
+                {/* Radar Animation Rings */}
+                <div className="relative w-32 h-32 mx-auto my-3 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-35" />
+                  <div className="absolute inset-4 rounded-full border-2 border-sky-300 animate-pulse opacity-60" />
+                  <div className="absolute inset-8 rounded-full border border-sky-200 opacity-40 animate-spin" />
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-600 via-sky-500 to-blue-600 border-2 border-white flex items-center justify-center shadow-lg">
+                    <Radio className="w-8 h-8 text-white animate-pulse" />
+                  </div>
+                </div>
+
+                <div className="text-lg font-black text-white drop-shadow mb-1">
+                  SEARCHING FOR BRAWLER
+                </div>
+
+                <div className="bg-black/40 border border-white/15 rounded-2xl p-2.5 my-2">
+                  <div className="text-[11px] text-cyan-300 font-mono font-black">
+                    {elapsedSeconds < 4
+                      ? 'Scanning regional server nodes...'
+                      : elapsedSeconds < 8
+                      ? 'Filtering brawlers in your trophy league...'
+                      : elapsedSeconds < 12
+                      ? 'Checking connection ping & sync...'
+                      : 'Locking in challenger arena duel...'}
+                  </div>
+                  <div className="text-[10px] text-sky-200 font-bold mt-1">
+                    Estimated wait: ~{estimatedTime}s • Elapsed: {elapsedSeconds}s
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCancelMatchmaking}
+                  className="mt-3 px-6 py-2 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#7f1d1d] transition-all cursor-pointer"
+                >
+                  Cancel Matchmaking
+                </button>
+              </>
+            ) : (
+              <div className="animate-in zoom-in-95 duration-200 py-2">
+                <div className="text-xs font-black uppercase tracking-wider text-emerald-300 mb-2">
+                  OPPONENT IDENTIFIED!
+                </div>
+
+                <div className="relative w-28 h-28 mx-auto my-2 rounded-2xl border-4 border-amber-400 overflow-hidden bg-slate-900 shadow-2xl">
+                  {getSkinPortrait(matchFoundBot.championId, matchFoundBot.skinId) ? (
+                    <img
+                      src={getSkinPortrait(matchFoundBot.championId, matchFoundBot.skinId)!}
+                      alt={matchFoundBot.name}
+                      className="w-full h-full object-cover scale-110"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-4xl">🥊</div>
+                  )}
+                </div>
+
+                <div className="text-xl font-black text-white drop-shadow">
+                  {matchFoundBot.name}
+                </div>
+                <div className="text-xs font-bold text-amber-300 mt-0.5">
+                  Main: {CHAMPIONS[matchFoundBot.championId].name}
+                </div>
+
+                <div className="mt-4 px-4 py-1.5 rounded-full bg-emerald-500/25 border border-emerald-400 text-emerald-300 font-mono font-black text-xs animate-pulse">
+                  ENTERING ARENA...
+                </div>
               </div>
-            </div>
-
-            <div className="text-lg font-black text-white drop-shadow mb-1">
-              SEARCHING FOR BRAWLER
-            </div>
-            <div className="text-xs text-sky-200 font-semibold mb-4">
-              Estimated wait: {matchmakingCountdown}s • Arena: Emerald Isles
-            </div>
-
-            <button
-              onClick={() => setIsMatchmaking(false)}
-              className="px-6 py-2 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#7f1d1d] transition-all cursor-pointer"
-            >
-              Cancel Matchmaking
-            </button>
+            )}
           </div>
         </div>
       )}
 
-
-      {/* 9. SETTINGS MODAL (AUDIO & PRESETS) */}
+      {/* 8. SETTINGS MODAL (PLAYER PROFILE & AUDIO) */}
       {isSettingsOpen && (
         <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-14 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
             {/* Top Glossy Ribbon */}
             <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-10 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
-              <span className="text-lg font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                SETTINGS
+              <span className="text-base sm:text-lg font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                SETTINGS & PROFILE
               </span>
             </div>
 
@@ -736,21 +882,55 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <button
               onClick={() => setIsSettingsOpen(false)}
               className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-rose-500 hover:bg-rose-400 border-2 border-white flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 shadow-lg shadow-rose-950/50"
-              title="Close"
+              title="Close Settings"
             >
               <X className="w-5 h-5 stroke-[3]" />
             </button>
 
             <div className="space-y-3 my-2 text-left">
-              {/* Sound Toggle */}
+              {/* 1. USERNAME / PLAYER IDENTITY */}
+              <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 shadow-inner">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black uppercase text-amber-300 tracking-wider flex items-center gap-1">
+                    <User className="w-3.5 h-3.5" /> BRAWLER USERNAME
+                  </span>
+                  <span className="text-[9px] font-mono text-sky-200">LVL {playerLevel}</span>
+                </div>
+                
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={settingsName}
+                    onChange={(e) => setSettingsName(e.target.value)}
+                    maxLength={16}
+                    placeholder="Enter Name"
+                    className="flex-1 bg-[#013f6b] text-white placeholder-sky-300/40 font-black text-sm px-3 py-2 rounded-xl border border-sky-300/50 focus:border-amber-400 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleRandomizeSettingsName}
+                    className="px-2.5 bg-white/15 hover:bg-white/25 border border-white/30 text-yellow-300 rounded-xl cursor-pointer active:scale-90"
+                    title="Roll Random Tag"
+                  >
+                    <Dices className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleSaveSettingsName}
+                    className="px-3.5 py-2 bg-gradient-to-b from-[#a3e635] to-[#4d7c0f] text-white font-black text-xs uppercase rounded-xl border border-lime-200 shadow cursor-pointer active:scale-95"
+                  >
+                    {settingsSavedToast ? 'SAVED!' : 'SAVE'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. AUDIO SFX TOGGLE */}
               <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow">
-                    <Volume2 className="w-5 h-5 text-white" />
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shadow">
+                    <Volume2 className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <span className="text-sm font-black text-white block">Sound SFX</span>
-                    <span className="text-[10px] text-sky-200">Combat & UI effects</span>
+                    <span className="text-xs font-black text-white block">Battle SFX</span>
+                    <span className="text-[10px] text-sky-200">Sound effects</span>
                   </div>
                 </div>
                 <button
@@ -758,7 +938,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   className="bg-[#013f6b] p-1 rounded-full border border-sky-300/40 flex items-center cursor-pointer shadow-inner"
                 >
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                    className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
                       !soundMuted
                         ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow border border-[#bef264]'
                         : 'text-sky-300 opacity-60'
@@ -767,7 +947,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     ON
                   </span>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                    className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
                       soundMuted
                         ? 'bg-gradient-to-b from-slate-400 to-slate-600 text-white shadow border border-slate-300'
                         : 'text-sky-300 opacity-60'
@@ -778,10 +958,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 </button>
               </div>
 
-              {/* Version & Build Info */}
-              <div className="bg-black/40 rounded-2xl p-3 text-center border border-white/10">
+              {/* 3. VERSION & SERVER STATUS */}
+              <div className="bg-black/40 rounded-2xl p-2.5 text-center border border-white/10">
                 <div className="text-xs font-black text-white">Ring Out: Chapter 1</div>
-                <div className="text-[10px] text-sky-300 font-mono mt-0.5">Version 1.0.4 • Emerald Isles</div>
+                <div className="text-[10px] text-sky-300 font-mono mt-0.5">
+                  Version 1.0.5 • Server: Online 🟢
+                </div>
               </div>
             </div>
           </div>
@@ -961,6 +1143,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* 11. WELCOME NAME MODAL ON FIRST PLAY */}
+      <WelcomeNameModal
+        isOpen={isWelcomeModalOpen}
+        onConfirm={(name) => {
+          try {
+            localStorage.setItem('ringout_username', name);
+          } catch {}
+          setUsername(name);
+          setSettingsName(name);
+          onUpdatePlayerName?.(name);
+          setIsWelcomeModalOpen(false);
+        }}
+      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { sounds } from '../audio/soundManager';
 import confetti from 'canvas-confetti';
 import { createChampionMesh, CHAMPIONS, type ChampionId } from './championModels';
 import { getEquippedSkin, getChampionSkins } from './championSkins';
+import { type BotProfile } from './botGenerator';
 
 export type CameraMode = 'third_person' | 'isometric' | 'close_action';
 export type RoundWinner = 'player' | 'bot' | 'draw';
@@ -83,6 +84,8 @@ export class GameEngine {
   public bot!: Brawler;
   public playerChampionId: ChampionId = 'leo';
   public botChampionId: ChampionId = 'kage';
+  public botProfile: BotProfile | null = null;
+  private botAITimer = 0;
   private particles: { mesh: THREE.Mesh; life: number; maxLife: number; vel: THREE.Vector3 }[] = [];
 
   // Chapter 1: Emerald Isles Environment Elements
@@ -1664,6 +1667,31 @@ export class GameEngine {
     }
   }
 
+  public setBotProfile(profile: BotProfile) {
+    this.botProfile = profile;
+    this.botChampionId = profile.championId;
+
+    if (this.bot && this.bot.mesh) {
+      const pos = this.bot.pos.clone();
+      const rotY = this.bot.currentAngle;
+      this.scene.remove(this.bot.mesh);
+
+      const bMesh = createChampionMesh(profile.championId, profile.skinId);
+      bMesh.group.position.copy(pos);
+      bMesh.group.rotation.y = rotY;
+      this.scene.add(bMesh.group);
+
+      this.bot.mesh = bMesh.group;
+      this.bot.bodyMesh = bMesh.bodyMesh;
+      this.bot.coreMesh = bMesh.coreMesh;
+      this.bot.fists = bMesh.fists;
+      this.bot.legs = bMesh.legs;
+      this.bot.arms = bMesh.arms;
+      this.bot.floatingGroup = bMesh.floatingGroup;
+      this.bot.pos = bMesh.group.position;
+    }
+  }
+
   public setBotChampion(id: ChampionId) {
     if (this.botChampionId === id && this.bot) return;
     this.botChampionId = id;
@@ -2335,6 +2363,11 @@ export class GameEngine {
   private updateBotAI(dt: number) {
     if (this.bot.isKnockedOut || !this.bot.isGrounded) return;
 
+    this.botAITimer += dt;
+    const personality = this.botProfile?.personality || 'aggressive';
+    const chargeThreshold = this.botProfile?.chargeThreshold || 60;
+    const speedMod = this.botProfile?.speedModifier || 1.0;
+
     // Bot continuous power charge
     if (!this.bot.isDashing) {
       const bChargeMult = CHAMPIONS[this.botChampionId]?.stats?.chargeMult || 1.0;
@@ -2348,6 +2381,26 @@ export class GameEngine {
     let steerX = dx / Math.max(0.1, distToPlayer);
     let steerZ = dz / Math.max(0.1, distToPlayer);
 
+    // Dynamic Personality Steering
+    if (personality === 'evasive_flanker') {
+      const perpX = -steerZ * Math.sin(this.botAITimer * 2.2);
+      const perpZ = steerX * Math.sin(this.botAITimer * 2.2);
+      steerX = steerX * 0.75 + perpX * 0.45;
+      steerZ = steerZ * 0.75 + perpZ * 0.45;
+    } else if (personality === 'defensive') {
+      if (distToPlayer < 3.2 && this.bot.chargePercent < chargeThreshold) {
+        steerX = -steerX * 0.5;
+        steerZ = -steerZ * 0.5;
+      }
+    } else if (personality === 'tactical_baiter') {
+      if (this.player.isDashing && distToPlayer < 4.2) {
+        const perpX = -steerZ;
+        const perpZ = steerX;
+        steerX = perpX * 0.85;
+        steerZ = perpZ * 0.85;
+      }
+    }
+
     // Smart Edge Braking: If bot is getting close to the boundary, steer hard back toward center!
     const botDistToCenter = Math.hypot(this.bot.pos.x, this.bot.pos.z);
     const safeZone = this.currentRadius * 0.65;
@@ -2360,14 +2413,15 @@ export class GameEngine {
     }
 
     // Bot executes power dash when in range and sufficiently charged (>= 60%)
-    if (distToPlayer < 4.2 && botDistToCenter < safeZone && this.bot.chargePercent >= 60 && !this.bot.isDashing) {
+    const dashRange = personality === 'dash_rusher' ? 4.8 : personality === 'defensive' ? 3.8 : 4.2;
+    if (distToPlayer < dashRange && botDistToCenter < safeZone && this.bot.chargePercent >= chargeThreshold && !this.bot.isDashing) {
       const bRatio = this.bot.chargePercent / 100;
       this.bot.isDashing = true;
       this.bot.dashTimer = 0.16 + bRatio * 0.14;
       this.bot.dashPowerPercent = this.bot.chargePercent;
-      const bSpeed = 12 + bRatio * 18;
-      this.bot.vel.x = steerX * bSpeed;
-      this.bot.vel.z = steerZ * bSpeed;
+      const bSpeed = (12 + bRatio * 18) * speedMod;
+      this.bot.vel.x = (dx / Math.max(0.1, distToPlayer)) * bSpeed;
+      this.bot.vel.z = (dz / Math.max(0.1, distToPlayer)) * bSpeed;
       sounds.playDash(this.bot.chargePercent);
       this.spawnDashParticles(this.bot.pos, 0xef4444, Math.floor(6 + bRatio * 16));
       this.bot.chargePercent = 0;

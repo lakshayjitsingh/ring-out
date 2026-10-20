@@ -7,6 +7,7 @@ import { ShopScreen } from './components/ShopScreen';
 import { TrophyRoadModal, type TrophyMilestone } from './components/TrophyRoadModal';
 import { type ChampionId } from './game/championModels';
 import { sounds } from './audio/soundManager';
+import { generateRandomBot, type BotProfile } from './game/botGenerator';
 
 export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -239,7 +240,16 @@ export function App() {
     }
   }, [gameState.isGameOver, gameState.winner, trophies]);
 
-  const [botChampion, setBotChampion] = useState<ChampionId>('kage');
+  const [playerName, setPlayerName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ringout_username') || 'Brawler';
+    } catch {
+      return 'Brawler';
+    }
+  });
+
+  const [currentBotProfile, setCurrentBotProfile] = useState<BotProfile>(() => generateRandomBot('leo'));
+  const [botChampion, setBotChampion] = useState<ChampionId>(() => currentBotProfile.championId);
   const [matchMode, setMatchMode] = useState<'ranked' | 'friend'>('ranked');
   const [activeRoomCode, setActiveRoomCode] = useState<string>('');
 
@@ -248,27 +258,25 @@ export function App() {
     hasProcessedGameOverRef.current = false;
     setMatchMode('friend');
     setActiveRoomCode(roomCode);
+    const bot = generateRandomBot(selectedChampion);
+    setCurrentBotProfile(bot);
+    setBotChampion(bot.championId);
     engineRef.current?.setPlayerChampion(selectedChampion);
-    const rivalChamps: ChampionId[] = ['kage', 'titan', 'nova', 'bolt', 'kai'];
-    const filtered = rivalChamps.filter((c) => c !== selectedChampion);
-    const rival = filtered[Math.floor(Math.random() * filtered.length)] || 'kage';
-    engineRef.current?.setBotChampion(rival);
+    engineRef.current?.setBotProfile(bot);
     engineRef.current?.resetMatch();
-    setBotChampion(rival);
     setActiveScreen('battle');
   };
 
-  const handleStartPvP = () => {
+  const handleStartPvP = (customBot?: BotProfile) => {
     hasProcessedGameOverRef.current = false;
     setMatchMode('ranked');
     setActiveRoomCode('');
+    const bot = customBot || generateRandomBot(selectedChampion);
+    setCurrentBotProfile(bot);
+    setBotChampion(bot.championId);
     engineRef.current?.setPlayerChampion(selectedChampion);
-    const rivalChamps: ChampionId[] = ['titan', 'nova', 'bolt', 'kai', 'kage'];
-    const filtered = rivalChamps.filter((c) => c !== selectedChampion);
-    const rival = filtered[Math.floor(Math.random() * filtered.length)] || 'kage';
-    engineRef.current?.setBotChampion(rival);
+    engineRef.current?.setBotProfile(bot);
     engineRef.current?.resetMatch();
-    setBotChampion(rival);
     setActiveScreen('battle');
   };
 
@@ -288,6 +296,8 @@ export function App() {
           trophies={trophies}
           matchMode={matchMode}
           roomCode={activeRoomCode}
+          playerName={playerName}
+          botName={currentBotProfile.name}
           onOpenShowcase={() => setActiveScreen('home')}
           onDash={handleDash}
           onAimChange={handleAimChange}
@@ -314,6 +324,8 @@ export function App() {
           onOpenTrophyRoad={() => setIsTrophyRoadOpen(true)}
           onStartCodeRoomMatch={handleStartCodeRoom}
           onStartPvPMatch={handleStartPvP}
+          playerName={playerName}
+          onUpdatePlayerName={setPlayerName}
         />
       )}
 

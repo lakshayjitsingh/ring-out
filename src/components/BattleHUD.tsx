@@ -56,6 +56,8 @@ interface BattleHUDProps {
   trophies?: number;
   matchMode?: 'ranked' | 'friend';
   roomCode?: string;
+  playerName?: string;
+  botName?: string;
   onOpenShowcase?: () => void;
   onDash: (aimX?: number, aimZ?: number) => void;
   onAimChange: (isAiming: boolean, aimX?: number, aimZ?: number) => void;
@@ -72,6 +74,8 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   trophies = 0,
   matchMode = 'ranked',
   roomCode,
+  playerName = 'Brawler',
+  botName,
   onOpenShowcase,
   onDash,
   onAimChange,
@@ -514,6 +518,9 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             <div className="flex flex-col items-start gap-1">
               <div className="flex items-center gap-2">
                 <span className="text-xl sm:text-2xl font-black tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                  {playerName}
+                </span>
+                <span className="text-[10px] text-sky-300 font-bold uppercase tracking-wider bg-black/40 px-2 py-0.5 rounded-full border border-sky-400/30">
                   {champ.name}
                 </span>
               </div>
@@ -547,8 +554,11 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
           return (
             <div className="flex flex-col items-end gap-1">
               <div className="flex items-center gap-2">
-                <span className="text-xl sm:text-2xl font-black tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider bg-black/40 px-2 py-0.5 rounded-full border border-amber-400/30">
                   {botChamp.name}
+                </span>
+                <span className="text-xl sm:text-2xl font-black tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                  {botName || botChamp.name}
                 </span>
               </div>
 
@@ -950,7 +960,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   <Trophy className="w-10 h-10 text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.8)]" />
                 </div>
                 <p className="text-slate-300 text-sm font-semibold mt-1">
-                  You conquered the arena {state.playerRoundWins} - {state.botRoundWins}
+                  {playerName} conquered the arena {state.playerRoundWins} - {state.botRoundWins}
                 </p>
 
                 {/* Match Rewards */}
@@ -1011,7 +1021,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                   <span className="text-4xl filter drop-shadow-[0_2px_6px_rgba(244,63,94,0.8)]">💥</span>
                 </div>
                 <p className="text-slate-300 text-sm font-semibold mt-1">
-                  {(CHAMPIONS[botChampion || 'kage'] || CHAMPIONS.kage).name} won {state.botRoundWins} - {state.playerRoundWins}
+                  {botName || (CHAMPIONS[botChampion || 'kage'] || CHAMPIONS.kage).name} won {state.botRoundWins} - {state.playerRoundWins}
                 </p>
 
                 {/* Consolation Rewards */}

@@ -21,6 +21,7 @@ import {
   setEquippedSkin,
 } from '../game/championSkins';
 import { MegaBoxGraphic } from './MegaBoxGraphic';
+import { StandardBoxGraphic } from './StandardBoxGraphic';
 import { BoxOpeningModal, type BoxReward } from './BoxOpeningModal';
 import { getSkinPortrait } from '../game/skinThumbnails';
 
@@ -670,12 +671,7 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                       </div>
 
                       <div className="h-40 flex items-center justify-center my-2">
-                        {/* Normal Blue Brawl Box */}
-                        <div className={`transition-transform ${isOpeningNormal ? 'animate-bounce scale-110' : ''}`}>
-                          <div className="w-28 h-24 rounded-3xl bg-gradient-to-b from-sky-400 via-blue-600 to-indigo-800 border-4 border-yellow-300 shadow-[0_12px_30px_rgba(2,132,199,0.5)] flex items-center justify-center text-4xl">
-                            📦
-                          </div>
-                        </div>
+                        <StandardBoxGraphic size={135} isOpening={isOpeningNormal} />
                       </div>
 
                       <h3 className="text-lg font-black text-white text-center">Standard Brawl Box</h3>

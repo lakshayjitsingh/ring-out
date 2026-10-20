@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { type ChampionSkin } from '../game/championSkins';
 import { CHAMPIONS, createChampionMesh, type CreatedChampion } from '../game/championModels';
 import { MegaBoxGraphic } from './MegaBoxGraphic';
+import { StandardBoxGraphic } from './StandardBoxGraphic';
 import { sounds } from '../audio/soundManager';
 import confetti from 'canvas-confetti';
 import { Check, Sparkles, ChevronRight, Crown, Zap, Diamond } from 'lucide-react';
@@ -37,7 +38,6 @@ export const BoxOpeningModal: React.FC<BoxOpeningModalProps> = ({
   // 2: Second item pop up: COINS (+coins gained)
   // 3: Grand final reveal: COMPLETE SKIN VISIBLE in 3D!
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
-  const [isEquipped, setIsEquipped] = useState(false);
 
   // 3D Canvas ref for the skin reveal step
   const canvasHolderRef = useRef<HTMLDivElement>(null);
@@ -46,7 +46,6 @@ export const BoxOpeningModal: React.FC<BoxOpeningModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setStep(0);
-      setIsEquipped(false);
       sounds.playBump(0.7);
     }
   }, [isOpen]);
@@ -179,7 +178,7 @@ export const BoxOpeningModal: React.FC<BoxOpeningModalProps> = ({
         
         {/* Top Header Badge */}
         <div className="mb-3 px-4 py-1 rounded-full bg-white/10 border border-white/20 text-white font-mono font-bold text-xs uppercase tracking-widest flex items-center gap-1.5 shadow">
-          <span>🎁</span>
+          <span>{reward.isMegaBox ? '🎁' : '📦'}</span>
           <span>{reward.boxTitle}</span>
         </div>
 
@@ -192,7 +191,11 @@ export const BoxOpeningModal: React.FC<BoxOpeningModalProps> = ({
             className="w-full flex flex-col items-center py-6 cursor-pointer group"
           >
             <div className="animate-bounce transition-transform group-hover:scale-110 mb-4">
-              <MegaBoxGraphic size={140} isOpening />
+              {reward.isMegaBox ? (
+                <MegaBoxGraphic size={140} isOpening />
+              ) : (
+                <StandardBoxGraphic size={140} isOpening />
+              )}
             </div>
 
             <div className="text-xl sm:text-2xl font-black uppercase text-amber-300 drop-shadow mb-1 animate-pulse">
@@ -355,31 +358,19 @@ export const BoxOpeningModal: React.FC<BoxOpeningModalProps> = ({
               </div>
             )}
 
-            {/* Action Buttons: EQUIP or AWESOME */}
+            {/* Action Buttons: EQUIP (Closes Immediately) or CONTINUE */}
             <div className="w-full mt-4 flex items-center gap-3">
               {!reward.isDuplicate && (
                 <button
                   onClick={() => {
                     sounds.playVictory?.();
-                    setIsEquipped(true);
                     onEquipSkin?.(skin);
-                    confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+                    onClose();
                   }}
-                  disabled={isEquipped}
-                  className={`flex-1 py-3 font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow ${
-                    isEquipped
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
-                      : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white border-emerald-200 shadow-[0_4px_0_#065f46]'
-                  }`}
+                  className="flex-1 py-3 font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white border-emerald-200 shadow-[0_4px_0_#065f46] active:translate-y-1 active:scale-95"
                 >
-                  {isEquipped ? (
-                    <>
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>EQUIPPED!</span>
-                    </>
-                  ) : (
-                    <span>EQUIP SKIN</span>
-                  )}
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>EQUIP SKIN</span>
                 </button>
               )}
 
@@ -388,13 +379,13 @@ export const BoxOpeningModal: React.FC<BoxOpeningModalProps> = ({
                   sounds.playBump(0.6);
                   onClose();
                 }}
-                className={`py-3 px-6 font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 shadow transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`py-3 px-6 font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 shadow transition-all cursor-pointer flex items-center justify-center gap-1.5 active:translate-y-1 active:scale-95 ${
                   reward.isDuplicate
                     ? 'w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 text-white border-yellow-200 shadow-[0_4px_0_#9a3412]'
                     : 'bg-slate-800 hover:bg-slate-700 text-white border-white/20'
                 }`}
               >
-                <span>AWESOME!</span>
+                <span>CONTINUE</span>
               </button>
             </div>
           </div>

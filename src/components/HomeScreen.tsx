@@ -14,7 +14,6 @@ import {
   Settings,
   Play,
   X,
-  ChevronRight,
   Volume2,
   Copy,
   Check,
@@ -48,7 +47,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   gems,
   onOpenBrawlers,
   onOpenShop,
-  onOpenTrophyRoad,
   onStartCodeRoomMatch,
   onStartPvPMatch,
 }) => {
@@ -456,46 +454,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* 2. TOP HEADER HUD (Profile & Trophy Road + Rankings at TOP-LEFT, Currencies & Settings at TOP-RIGHT) */}
       <div className="absolute top-0 left-0 right-0 p-3 sm:p-5 flex items-center justify-between z-30 pointer-events-none">
         
-        {/* Top-Left: Unified Player Profile & Trophy Road + Rankings Button */}
+        {/* Top-Left: Player Profile Badge & Leaderboard Rankings Button */}
         <div className="flex items-center gap-2 pointer-events-auto">
-          {/* Trophy Road Card */}
-          <div
-            onClick={() => {
-              sounds.playBump(0.8);
-              onOpenTrophyRoad?.();
-            }}
-            className="cursor-pointer group flex items-center gap-2.5 sm:gap-3 bg-gradient-to-r from-[#0288d1]/90 via-[#01579b]/90 to-[#0284c7]/90 backdrop-blur-md px-3 sm:px-3.5 py-2 rounded-2xl border-2 border-[#81d4fa]/70 shadow-[0_6px_20px_rgba(0,0,0,0.35),inset_0_1px_3px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all"
-            title="Open Trophy Road"
-          >
-            {/* Avatar with level badge */}
-            <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-white flex items-center justify-center shadow-md">
-              <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-900 drop-shadow" />
+          {/* Player Level Badge */}
+          <div className="flex items-center gap-2 bg-gradient-to-r from-slate-900/90 to-blue-950/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border-2 border-sky-400/50 shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
+            <div className="relative w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 border-2 border-white flex items-center justify-center shadow">
+              <span className="text-xs font-black text-amber-950">🥋</span>
               <span className="absolute -bottom-1 -right-1 bg-sky-500 border border-white text-[9px] font-black px-1.5 py-0.2 rounded-full shadow text-white">
                 {playerLevel}
               </span>
             </div>
-
             <div className="text-left">
-              <div className="flex items-center gap-2">
-                <span className="text-xs sm:text-base font-black text-amber-300 drop-shadow">
-                  {trophies.toLocaleString()} 🏆
-                </span>
-                <span className="text-[9px] sm:text-[10px] text-sky-200 font-bold uppercase tracking-wider">
-                  TROPHY ROAD
-                </span>
-              </div>
-              {/* Progress Bar towards 500/1000/1500 milestone */}
-              <div className="w-20 sm:w-32 h-2 bg-black/50 rounded-full overflow-hidden border border-white/20 mt-1">
-                <div
-                  className="h-full bg-gradient-to-r from-amber-400 to-yellow-300 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, (trophies / 500) * 100)}%` }}
-                />
-              </div>
+              <span className="text-[9px] text-sky-200 font-bold uppercase tracking-wider block">BRAWLER</span>
+              <span className="text-xs font-black text-white">LEVEL {playerLevel}</span>
             </div>
-            <ChevronRight className="w-4 h-4 text-sky-200 group-hover:translate-x-0.5 transition-transform ml-0.5 hidden sm:block" />
           </div>
 
-          {/* Rankings / Leaderboard Button Directly Next to Trophy Road */}
+          {/* Rankings / Leaderboard Button Directly Next to Player Badge */}
           <button
             onClick={() => {
               sounds.playBump(0.8);

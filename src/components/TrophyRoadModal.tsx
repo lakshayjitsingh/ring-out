@@ -13,7 +13,7 @@ import confetti from 'canvas-confetti';
 import { sounds } from '../audio/soundManager';
 import { MegaBoxGraphic } from './MegaBoxGraphic';
 import { BoxOpeningModal, type BoxReward } from './BoxOpeningModal';
-import { ALL_SKINS, isSkinUnlocked, unlockSkin } from '../game/championSkins';
+import { ALL_SKINS, isSkinUnlocked, unlockSkin, setEquippedSkin } from '../game/championSkins';
 
 export interface TrophyMilestone {
   trophies: number;
@@ -756,6 +756,9 @@ export const TrophyRoadModal: React.FC<TrophyRoadModalProps> = ({
         isOpen={!!boxReward}
         reward={boxReward}
         onClose={() => setBoxReward(null)}
+        onEquipSkin={(skin) => {
+          setEquippedSkin(skin.championId, skin.id);
+        }}
       />
     </div>
   );

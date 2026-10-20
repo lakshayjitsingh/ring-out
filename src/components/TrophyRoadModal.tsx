@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   Trophy,
   X,
@@ -12,6 +12,8 @@ import {
 import confetti from 'canvas-confetti';
 import { sounds } from '../audio/soundManager';
 import { MegaBoxGraphic } from './MegaBoxGraphic';
+import { BoxOpeningModal, type BoxReward } from './BoxOpeningModal';
+import { ALL_SKINS, isSkinUnlocked, unlockSkin } from '../game/championSkins';
 
 export interface TrophyMilestone {
   trophies: number;
@@ -306,6 +308,9 @@ export const TrophyRoadModal: React.FC<TrophyRoadModalProps> = ({
   const dragStartX = useRef<number>(0);
   const dragScrollLeft = useRef<number>(0);
 
+  // Interactive Brawl Stars Step-by-Step Box Opening Reward State
+  const [boxReward, setBoxReward] = useState<BoxReward | null>(null);
+
   useEffect(() => {
     if (isOpen && currentStepRef.current && scrollRef.current) {
       setTimeout(() => {
@@ -358,13 +363,36 @@ export const TrophyRoadModal: React.FC<TrophyRoadModalProps> = ({
 
   const handleClaim = (m: TrophyMilestone) => {
     sounds.playVictory();
-    confetti({
-      particleCount: 90,
-      spread: 75,
-      origin: { y: 0.5 },
-      colors: ['#facc15', '#38bdf8', '#22c55e', '#ec4899'],
-    });
     onClaimMilestone(m);
+
+    if (m.rewardType === 'mega_box') {
+      const skinPool = Object.values(ALL_SKINS).filter(
+        (s) => s.rarity === 'legendary' || s.rarity === 'epic' || s.rarity === 'rare'
+      );
+      const pickedSkin = skinPool[Math.floor(Math.random() * skinPool.length)];
+      const isDuplicate = isSkinUnlocked(pickedSkin.id);
+
+      if (!isDuplicate) {
+        unlockSkin(pickedSkin.id);
+      }
+
+      setBoxReward({
+        boxTitle: m.rewardLabel,
+        isMegaBox: true,
+        skin: pickedSkin,
+        isDuplicate,
+        coins: m.goldBonus || 1000,
+        gems: m.gemBonus || 150,
+        duplicateGemRefund: Math.floor(pickedSkin.gemCost / 2),
+      });
+    } else {
+      confetti({
+        particleCount: 90,
+        spread: 75,
+        origin: { y: 0.5 },
+        colors: ['#facc15', '#38bdf8', '#22c55e', '#ec4899'],
+      });
+    }
   };
 
   const scrollToMyPosition = () => {
@@ -722,6 +750,13 @@ export const TrophyRoadModal: React.FC<TrophyRoadModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 5. INTERACTIVE BRAWL STARS STEP-BY-STEP BOX OPENING MODAL */}
+      <BoxOpeningModal
+        isOpen={!!boxReward}
+        reward={boxReward}
+        onClose={() => setBoxReward(null)}
+      />
     </div>
   );
 };

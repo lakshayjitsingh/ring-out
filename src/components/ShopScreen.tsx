@@ -18,8 +18,11 @@ import {
   isSkinUnlocked,
   unlockSkin,
   type ChampionSkin,
+  setEquippedSkin,
 } from '../game/championSkins';
 import { MegaBoxGraphic } from './MegaBoxGraphic';
+import { BoxOpeningModal, type BoxReward } from './BoxOpeningModal';
+import { getSkinPortrait } from '../game/skinThumbnails';
 
 export type ShopCategory = 'brawlers' | 'skins' | 'gold' | 'gems';
 
@@ -53,16 +56,8 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
   const [isOpeningNormal, setIsOpeningNormal] = useState<boolean>(false);
   const [isOpeningMega, setIsOpeningMega] = useState<boolean>(false);
 
-  // Reward Modal State
-  const [rewardModal, setRewardModal] = useState<{
-    isOpen: boolean;
-    type: 'duplicate' | 'new';
-    boxTitle: string;
-    skin: ChampionSkin;
-    gemRefund?: number;
-    coinsGained?: number;
-    gemsGained?: number;
-  } | null>(null);
+  // Brawl Stars Step-by-Step Box Opening Reward State
+  const [boxReward, setBoxReward] = useState<BoxReward | null>(null);
 
   // Check Daily Normal Box Cooldown
   const checkDailyBoxCooldown = () => {
@@ -160,31 +155,31 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
           const isDuplicate = isSkinUnlocked(pickedSkin.id);
 
           handleAddGold(300);
+          const baseDailyGems = 35;
+          handleAddGems(baseDailyGems);
 
           if (isDuplicate) {
             const gemRefund = Math.floor(pickedSkin.gemCost / 2);
             handleAddGems(gemRefund);
-            triggerCelebration();
-            sounds.playLevelUp?.();
-            setRewardModal({
-              isOpen: true,
-              type: 'duplicate',
+            setBoxReward({
               boxTitle: 'DAILY BRAWL BOX',
+              isMegaBox: false,
               skin: pickedSkin,
-              gemRefund,
-              coinsGained: 300,
+              isDuplicate: true,
+              duplicateGemRefund: gemRefund,
+              coins: 300,
+              gems: baseDailyGems + gemRefund,
             });
             showToast(`Duplicate skin converted to +${gemRefund} 💎 Gems!`);
           } else {
             unlockSkin(pickedSkin.id);
-            triggerCelebration();
-            sounds.playVictory?.();
-            setRewardModal({
-              isOpen: true,
-              type: 'new',
+            setBoxReward({
               boxTitle: 'DAILY BRAWL BOX',
+              isMegaBox: false,
               skin: pickedSkin,
-              coinsGained: 300,
+              isDuplicate: false,
+              coins: 300,
+              gems: baseDailyGems,
             });
             showToast(`🎉 UNLOCKED NEW SKIN: ${pickedSkin.name}!`);
           }
@@ -248,29 +243,25 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
       if (isDuplicate) {
         const gemRefund = Math.floor(pickedSkin.gemCost / 2);
         handleAddGems(gemRefund);
-        triggerCelebration();
-        sounds.playLevelUp?.();
-        setRewardModal({
-          isOpen: true,
-          type: 'duplicate',
+        setBoxReward({
           boxTitle: 'ULTIMATE MEGA BOX',
+          isMegaBox: true,
           skin: pickedSkin,
-          gemRefund,
-          coinsGained: bonusCoins,
-          gemsGained: bonusGems,
+          isDuplicate: true,
+          duplicateGemRefund: gemRefund,
+          coins: bonusCoins,
+          gems: bonusGems + gemRefund,
         });
         showToast(`Duplicate ${pickedSkin.name} converted to +${gemRefund} 💎 Gems!`);
       } else {
         unlockSkin(pickedSkin.id);
-        triggerCelebration();
-        sounds.playVictory?.();
-        setRewardModal({
-          isOpen: true,
-          type: 'new',
+        setBoxReward({
           boxTitle: 'ULTIMATE MEGA BOX',
+          isMegaBox: true,
           skin: pickedSkin,
-          coinsGained: bonusCoins,
-          gemsGained: bonusGems,
+          isDuplicate: false,
+          coins: bonusCoins,
+          gems: bonusGems,
         });
         showToast(`👑 UNLOCKED ${pickedSkin.rarity.toUpperCase()} SKIN: ${pickedSkin.name}!`);
       }
@@ -899,7 +890,7 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {featuredVaultSkins.map(({ skin, accessoryHighlight, avatarColor, avatarEmoji, classTitle }) => {
+                  {featuredVaultSkins.map(({ skin, accessoryHighlight, avatarColor, classTitle }) => {
                     const isOwned = isSkinUnlocked(skin.id);
 
                     return (
@@ -936,11 +927,16 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                           </div>
 
                           <div
-                            className={`relative h-28 rounded-2xl bg-gradient-to-br ${avatarColor} p-3 mb-3 flex items-center justify-between overflow-hidden shadow-inner border border-white/20`}
+                            className={`relative h-32 rounded-2xl bg-gradient-to-br ${avatarColor} p-3 mb-3 flex items-center justify-between overflow-hidden shadow-inner border border-white/20`}
                           >
                             <div className="relative z-10 flex items-center gap-3">
-                              <div className="w-16 h-16 rounded-2xl bg-black/40 border-2 border-white/40 flex items-center justify-center text-3xl shadow-xl backdrop-blur-sm">
-                                {avatarEmoji}
+                              {/* Real 3D Skin Portrait Picture */}
+                              <div className="w-20 h-20 rounded-2xl bg-black/50 border-2 border-white/40 overflow-hidden flex items-center justify-center shadow-xl backdrop-blur-sm flex-shrink-0">
+                                <img
+                                  src={getSkinPortrait(skin.championId, skin.id)}
+                                  alt={skin.name}
+                                  className="w-full h-full object-cover scale-110 drop-shadow"
+                                />
                               </div>
                               <div>
                                 <div className="text-[10px] font-black uppercase tracking-wider text-white/80">
@@ -948,6 +944,9 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                                 </div>
                                 <div className="text-base font-black text-white drop-shadow leading-tight">
                                   {skin.name}
+                                </div>
+                                <div className="text-xs font-bold text-amber-300 mt-0.5">
+                                  {skin.tagline}
                                 </div>
                               </div>
                             </div>
@@ -1042,14 +1041,16 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                           </div>
 
                           <div className="flex items-center gap-3 mb-2.5">
+                            {/* Real 3D Brawler Portrait */}
                             <div
-                              className="w-12 h-12 rounded-2xl border-2 flex items-center justify-center text-2xl font-black text-white shadow-lg"
-                              style={{
-                                backgroundColor: `${c.color}35`,
-                                borderColor: c.color,
-                              }}
+                              className="w-16 h-16 rounded-2xl border-2 overflow-hidden flex items-center justify-center shadow-lg bg-black/60 flex-shrink-0"
+                              style={{ borderColor: c.color }}
                             >
-                              {champion.name.charAt(0)}
+                              <img
+                                src={getSkinPortrait(c.id)}
+                                alt={champion.name}
+                                className="w-full h-full object-cover scale-110 drop-shadow"
+                              />
                             </div>
                             <div>
                               <h3 className="text-lg font-black text-white leading-tight">{champion.name}</h3>
@@ -1233,79 +1234,16 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
         </div>
       </div>
 
-      {/* 5. REWARD CELEBRATION MODAL */}
-      {rewardModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-4 border-amber-400 rounded-[32px] p-6 text-center shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-150">
-            
-            <div className="mb-2">
-              <MegaBoxGraphic size={90} />
-            </div>
-
-            <div className="text-[10px] font-black uppercase text-amber-300 tracking-wider mb-1">
-              {rewardModal.boxTitle}
-            </div>
-
-            {rewardModal.type === 'duplicate' ? (
-              <>
-                <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[10px] font-black uppercase tracking-wider mb-2">
-                  DUPLICATE SKIN DETECTED
-                </span>
-                <h2 className="text-2xl font-black text-white mb-1">
-                  {rewardModal.skin.name}
-                </h2>
-                <p className="text-xs text-sky-200 mb-3">
-                  You already own this skin in your locker! Converted to half its gem value:
-                </p>
-
-                <div className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-emerald-500/20 border-2 border-cyan-400 text-cyan-300 font-mono font-black text-lg mb-4 flex items-center gap-2 shadow-inner">
-                  <span>💎</span>
-                  <span>+{rewardModal.gemRefund} GEMS CONVERTED!</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-2 border ${
-                  rewardModal.skin.rarity === 'legendary'
-                    ? 'bg-amber-400/20 text-amber-300 border-amber-400'
-                    : rewardModal.skin.rarity === 'epic'
-                    ? 'bg-purple-400/20 text-purple-300 border-purple-400'
-                    : 'bg-cyan-400/20 text-cyan-300 border-cyan-400'
-                }`}>
-                  🎉 NEW {rewardModal.skin.rarity.toUpperCase()} SKIN UNLOCKED!
-                </span>
-                <h2 className="text-2xl font-black text-white mb-1">
-                  {rewardModal.skin.name}
-                </h2>
-                <div className="text-xs text-cyan-300 font-bold mb-2">
-                  {rewardModal.skin.tagline}
-                </div>
-                <p className="text-xs text-slate-300 bg-black/40 p-2.5 rounded-xl border border-white/10 mb-4 leading-relaxed">
-                  {rewardModal.skin.description}
-                </p>
-              </>
-            )}
-
-            {/* Bonus Coins/Gems pill if any */}
-            {(rewardModal.coinsGained || rewardModal.gemsGained) && (
-              <div className="flex items-center gap-2 mb-4 text-xs font-mono font-bold text-amber-300 bg-black/40 px-3 py-1 rounded-xl border border-white/10">
-                {rewardModal.coinsGained && <span>+{rewardModal.coinsGained}🪙 Coins</span>}
-                {rewardModal.gemsGained && <span>+{rewardModal.gemsGained}💎 Gems</span>}
-              </div>
-            )}
-
-            <button
-              onClick={() => {
-                sounds.playBump(0.6);
-                setRewardModal(null);
-              }}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 text-slate-950 font-black text-sm uppercase tracking-wider rounded-2xl border-2 border-yellow-200 shadow-[0_4px_0_#b45309] active:translate-y-1 transition-all cursor-pointer"
-            >
-              AWESOME!
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 5. INTERACTIVE BRAWL STARS STEP-BY-STEP BOX OPENING MODAL */}
+      <BoxOpeningModal
+        isOpen={!!boxReward}
+        reward={boxReward}
+        onClose={() => setBoxReward(null)}
+        onEquipSkin={(skin) => {
+          setEquippedSkin(skin.championId, skin.id);
+          showToast(`Equipped ${skin.name}!`);
+        }}
+      />
     </div>
   );
 };

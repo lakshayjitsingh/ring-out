@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sounds } from '../audio/soundManager';
+import { getSkinPortrait } from '../game/skinThumbnails';
 
 interface ChampionShowcaseProps {
   selectedChampion: ChampionId;
@@ -466,15 +467,22 @@ export const ChampionShowcase: React.FC<ChampionShowcaseProps> = ({
                   }`}
                   title={`${skin.name} (${skin.rarity.toUpperCase()})`}
                 >
-                  {/* Skin Icon Artwork Circle */}
+                  {/* Real 3D Skin Portrait Image */}
                   <div
-                    className="w-8 h-8 rounded-full border flex items-center justify-center text-sm shadow mt-0.5"
-                    style={{
-                      backgroundColor: `${skin.themeColor}35`,
-                      borderColor: skin.themeColor,
-                    }}
+                    className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border-2 overflow-hidden flex items-center justify-center shadow-md bg-slate-900/90 mt-0.5"
+                    style={{ borderColor: skin.themeColor }}
                   >
-                    {skin.rarity === 'legendary' ? '👑' : skin.rarity === 'epic' ? '⚡' : skin.rarity === 'rare' ? '💎' : '🥊'}
+                    <img
+                      src={getSkinPortrait(skin.championId, skin.id)}
+                      alt={skin.name}
+                      className="w-full h-full object-cover scale-110 drop-shadow"
+                    />
+                    <span
+                      className="absolute bottom-0 right-0 w-3 h-3 rounded-full border border-black flex items-center justify-center text-[7px]"
+                      style={{ backgroundColor: skin.themeColor }}
+                    >
+                      {skin.rarity === 'legendary' ? '👑' : skin.rarity === 'epic' ? '⚡' : skin.rarity === 'rare' ? '💎' : '•'}
+                    </span>
                   </div>
 
                   {/* Status Indicator */}

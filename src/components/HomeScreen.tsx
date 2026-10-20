@@ -650,7 +650,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="bg-black/40 border border-white/15 rounded-2xl p-3 mb-3 shadow-inner text-left">
             <div className="flex items-center justify-between text-[10px] text-cyan-300 font-black uppercase tracking-wider mb-1">
               <span>Ranked 1v1</span>
-              <span className="text-amber-300 font-mono font-black">+30 🏆</span>
+              <span className="text-emerald-300 font-bold uppercase tracking-wider text-[9px]">Competitive Duel</span>
             </div>
             <div className="text-sm font-black text-white drop-shadow flex items-center gap-1.5">
               <span>Emerald Ring Duel</span>
@@ -660,13 +660,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
           </div>
 
-          {/* Stakes Info Pills */}
+          {/* Quick Match Info Pills */}
           <div className="flex items-center justify-center gap-2 mb-3.5 text-[10px] font-black uppercase text-sky-100">
-            <span className="px-2.5 py-1 rounded-full bg-black/40 border border-sky-300/30">
-              Win: +30 🏆
+            <span className="px-3 py-1 rounded-full bg-black/40 border border-sky-300/30">
+              ⚡ FAST PACED
             </span>
-            <span className="px-2.5 py-1 rounded-full bg-black/40 border border-rose-400/30 text-rose-300">
-              Loss: -10 🏆
+            <span className="px-3 py-1 rounded-full bg-black/40 border border-amber-300/30 text-amber-300">
+              🏆 TROPHY LADDER
             </span>
           </div>
 
@@ -793,7 +793,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
         playerTrophies={trophies}
-        playerChampion={selectedChampion}
       />
 
       {/* 10. 1V1 CODE ROOM MODAL (PLAY WITH FRIEND) */}

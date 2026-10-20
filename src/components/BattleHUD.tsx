@@ -54,6 +54,8 @@ interface BattleHUDProps {
   selectedChampion?: ChampionId;
   botChampion?: ChampionId;
   trophies?: number;
+  matchMode?: 'ranked' | 'friend';
+  roomCode?: string;
   onOpenShowcase?: () => void;
   onDash: (aimX?: number, aimZ?: number) => void;
   onAimChange: (isAiming: boolean, aimX?: number, aimZ?: number) => void;
@@ -68,6 +70,8 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   selectedChampion,
   botChampion,
   trophies = 0,
+  matchMode = 'ranked',
+  roomCode,
   onOpenShowcase,
   onDash,
   onAimChange,
@@ -602,6 +606,14 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
             {state.warningText}
           </div>
         )}
+
+        {/* Friend Match Room Code Pill */}
+        {matchMode === 'friend' && (
+          <div className="mt-1 px-3 py-0.5 bg-sky-950/80 border border-sky-400/50 rounded-full text-[9px] font-black uppercase tracking-wider text-sky-200 flex items-center gap-1 shadow">
+            <span>👥</span>
+            <span>FRIEND DUEL {roomCode ? `• ${roomCode}` : ''}</span>
+          </div>
+        )}
       </div>
 
       {/* CUSTOMIZATION MODE ACTION BAR (NO BOXY THEME: SLEEK FLOATING GAME BUTTONS) */}
@@ -945,8 +957,12 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                 <div className="grid grid-cols-3 gap-2 bg-black/40 border border-white/10 rounded-2xl p-3 my-4 shadow-inner">
                   <div>
                     <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Trophies</div>
-                    <div className="text-base sm:text-lg font-black text-amber-400 drop-shadow">+30 🏆</div>
-                    <div className="text-[10px] text-amber-300 font-bold">Total: {trophies} 🏆</div>
+                    <div className="text-base sm:text-lg font-black text-amber-400 drop-shadow">
+                      {matchMode === 'friend' ? '±0 🏆' : '+30 🏆'}
+                    </div>
+                    <div className="text-[10px] text-amber-300 font-bold">
+                      {matchMode === 'friend' ? 'Friendly Match' : `Total: ${trophies} 🏆`}
+                    </div>
                   </div>
                   <div>
                     <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Gold</div>
@@ -1002,8 +1018,12 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
                 <div className="grid grid-cols-3 gap-2 bg-black/40 border border-white/10 rounded-2xl p-3 my-4 shadow-inner">
                   <div>
                     <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Trophies</div>
-                    <div className="text-base sm:text-lg font-black text-rose-400 drop-shadow">-10 🏆</div>
-                    <div className="text-[10px] text-rose-300 font-bold">Total: {trophies} 🏆</div>
+                    <div className={`text-base sm:text-lg font-black ${matchMode === 'friend' || trophies < 10 ? 'text-slate-400' : 'text-rose-400'} drop-shadow`}>
+                      {matchMode === 'friend' ? '±0 🏆' : trophies < 10 ? '±0 🏆' : '-10 🏆'}
+                    </div>
+                    <div className="text-[10px] text-rose-300 font-bold">
+                      {matchMode === 'friend' ? 'Friendly Match' : trophies < 10 ? 'Shield (Protected)' : `Total: ${trophies} 🏆`}
+                    </div>
                   </div>
                   <div>
                     <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Gold</div>

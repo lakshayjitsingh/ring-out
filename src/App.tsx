@@ -215,7 +215,8 @@ export function App() {
             return next;
           });
         } else if (gameState.winner === 'bot') {
-          const deltaTrophies = 10;
+          // If player has 0 or less than 10 trophies, cannot deduct (beginner protection)
+          const deltaTrophies = trophies < 10 ? 0 : 10;
           const deltaGold = 25;
           setTrophies((prev) => {
             const next = Math.max(0, prev - deltaTrophies);
@@ -236,13 +237,17 @@ export function App() {
     } else {
       hasProcessedGameOverRef.current = false;
     }
-  }, [gameState.isGameOver, gameState.winner]);
+  }, [gameState.isGameOver, gameState.winner, trophies]);
 
   const [botChampion, setBotChampion] = useState<ChampionId>('kage');
+  const [matchMode, setMatchMode] = useState<'ranked' | 'friend'>('ranked');
+  const [activeRoomCode, setActiveRoomCode] = useState<string>('');
 
   // 1v1 Private Code Room Match Flow
-  const handleStartCodeRoom = (_roomCode: string, _isHost: boolean) => {
+  const handleStartCodeRoom = (roomCode: string, _isHost: boolean) => {
     hasProcessedGameOverRef.current = false;
+    setMatchMode('friend');
+    setActiveRoomCode(roomCode);
     engineRef.current?.setPlayerChampion(selectedChampion);
     const rivalChamps: ChampionId[] = ['kage', 'titan', 'nova', 'bolt', 'kai'];
     const filtered = rivalChamps.filter((c) => c !== selectedChampion);
@@ -255,6 +260,8 @@ export function App() {
 
   const handleStartPvP = () => {
     hasProcessedGameOverRef.current = false;
+    setMatchMode('ranked');
+    setActiveRoomCode('');
     engineRef.current?.setPlayerChampion(selectedChampion);
     const rivalChamps: ChampionId[] = ['titan', 'nova', 'bolt', 'kai', 'kage'];
     const filtered = rivalChamps.filter((c) => c !== selectedChampion);
@@ -279,6 +286,8 @@ export function App() {
           selectedChampion={selectedChampion}
           botChampion={botChampion}
           trophies={trophies}
+          matchMode={matchMode}
+          roomCode={activeRoomCode}
           onOpenShowcase={() => setActiveScreen('home')}
           onDash={handleDash}
           onAimChange={handleAimChange}

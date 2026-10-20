@@ -22,8 +22,12 @@ import {
   User,
   Dices,
   Radio,
+  Music,
+  Wifi,
+  Zap,
 } from 'lucide-react';
 import { sounds } from '../audio/soundManager';
+import { music } from '../audio/musicManager';
 import { crazyGames } from '../game/crazyGamesSdk';
 import { LeaderboardModal } from './LeaderboardModal';
 import { WelcomeNameModal } from './WelcomeNameModal';
@@ -97,7 +101,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [matchFoundBot, setMatchFoundBot] = useState<BotProfile | null>(null);
   const matchmakingIntervalRef = useRef<number | null>(null);
 
+  const [matchTargetDuration, setMatchTargetDuration] = useState(15);
   const [soundMuted, setSoundMuted] = useState(!sounds.enabled);
+  const [musicMuted, setMusicMuted] = useState(!music.enabled);
+  const [sfxVolume, setSfxVolume] = useState(() => Math.round(sounds.volume * 100));
+  const [musicVolume, setMusicVolume] = useState(() => Math.round(music.volume * 100));
 
   // 1v1 Private Code Room Modal State
   const [isCodeRoomOpen, setIsCodeRoomOpen] = useState(false);
@@ -434,7 +442,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setMatchFoundBot(null);
 
     // Random between 10 to 20 seconds!
-    const targetDuration = Math.floor(10 + Math.random() * 11);
+    const target = Math.floor(10 + Math.random() * 11);
+    setMatchTargetDuration(target);
     const estWait = Math.floor(10 + Math.random() * 11);
     setEstimatedTime(estWait);
     setElapsedSeconds(0);
@@ -446,24 +455,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       clearInterval(matchmakingIntervalRef.current);
     }
 
+    sounds.playSonarPing();
+
     matchmakingIntervalRef.current = window.setInterval(() => {
       currentElapsed += 1;
       setElapsedSeconds(currentElapsed);
 
-      if (currentElapsed >= targetDuration) {
+      if (currentElapsed >= target) {
         if (matchmakingIntervalRef.current) clearInterval(matchmakingIntervalRef.current);
         matchmakingIntervalRef.current = null;
         setMatchFoundBot(generatedBot);
-        sounds.playVictory?.();
+        sounds.playMatchFound();
 
-        // Reveal opponent card for 1.3s before battle arena
+        // Reveal opponent card for 1.8s before battle arena
         setTimeout(() => {
           setIsMatchmaking(false);
           setMatchFoundBot(null);
           onStartPvPMatch(generatedBot);
-        }, 1300);
+        }, 1800);
       } else {
-        sounds.playBump(0.2);
+        if (currentElapsed % 2 === 0) {
+          sounds.playSonarPing();
+        }
       }
     }, 1000);
   };
@@ -497,12 +510,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     setSettingsName(newTag);
   };
 
-
   const toggleSound = () => {
     const next = !sounds.enabled;
-    sounds.enabled = next;
+    sounds.setEnabled(next);
     setSoundMuted(!next);
     if (next) sounds.playBump(1.0);
+  };
+
+  const toggleMusic = () => {
+    const next = !music.enabled;
+    music.setEnabled(next);
+    setMusicMuted(!next);
+    if (sounds.enabled) sounds.playBump(0.6);
+  };
+
+  const handleSfxVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const vol = parseInt(e.target.value, 10);
+    setSfxVolume(vol);
+    sounds.setVolume(vol / 100);
+  };
+
+  const handleMusicVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const vol = parseInt(e.target.value, 10);
+    setMusicVolume(vol);
+    music.setVolume(vol / 100);
   };
 
   return (
@@ -786,88 +817,196 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
       {/* 7. MATCHMAKING RADAR OVERLAY (ONLINE PVP - 10 TO 20 SECONDS) */}
       {isMatchmaking && (
-        <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-16 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
+        <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-200 select-none">
+          <div className="relative w-full max-w-lg bg-gradient-to-b from-[#1e88e5] via-[#0277bd] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-14 px-4 sm:px-6 pb-6 shadow-[0_25px_60px_rgba(0,0,0,0.85),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
             {/* Top Glossy Ribbon */}
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-8 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
-              <span className="text-sm font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                {matchFoundBot ? 'MATCH FOUND!' : 'SEARCHING FOR MATCH'}
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gradient-to-b from-[#fde047] via-[#f59e0b] to-[#d97706] border-2 border-[#fef08a] px-6 sm:px-8 py-1.5 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.4),inset_0_2px_4px_rgba(255,255,255,0.5)] whitespace-nowrap">
+              <span className="text-xs sm:text-sm font-black tracking-widest text-[#78350f] uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] flex items-center gap-1.5 sm:gap-2">
+                {matchFoundBot ? (
+                  <>
+                    <Sparkles className="w-4 h-4 fill-amber-700" />
+                    <span>MATCH FOUND!</span>
+                    <Sparkles className="w-4 h-4 fill-amber-700" />
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 fill-amber-700" />
+                    <span>SEARCHING FOR MATCH</span>
+                    <Zap className="w-4 h-4 fill-amber-700" />
+                  </>
+                )}
               </span>
             </div>
 
-            {!matchFoundBot ? (
-              <>
-                {/* Radar Animation Rings */}
-                <div className="relative w-32 h-32 mx-auto my-3 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-35" />
-                  <div className="absolute inset-4 rounded-full border-2 border-sky-300 animate-pulse opacity-60" />
-                  <div className="absolute inset-8 rounded-full border border-sky-200 opacity-40 animate-spin" />
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-600 via-sky-500 to-blue-600 border-2 border-white flex items-center justify-center shadow-lg">
-                    <Radio className="w-8 h-8 text-white animate-pulse" />
-                  </div>
+            {/* 1. Main VS Match Confrontation Grid */}
+            <div className="grid grid-cols-11 items-center gap-2 my-2">
+              {/* Left Side: PLAYER (YOU) */}
+              <div className="col-span-4 bg-[#013f6b]/90 border-2 border-sky-300/50 rounded-2xl p-2 sm:p-2.5 shadow-inner flex flex-col items-center relative overflow-hidden">
+                <div className="text-[9px] font-black uppercase tracking-wider text-sky-200 bg-sky-950/70 px-2 py-0.5 rounded-full mb-1">
+                  YOU • LVL {playerLevel}
                 </div>
-
-                <div className="text-lg font-black text-white drop-shadow mb-1">
-                  SEARCHING FOR BRAWLER
-                </div>
-
-                <div className="bg-black/40 border border-white/15 rounded-2xl p-2.5 my-2">
-                  <div className="text-[11px] text-cyan-300 font-mono font-black">
-                    {elapsedSeconds < 4
-                      ? 'Scanning regional server nodes...'
-                      : elapsedSeconds < 8
-                      ? 'Filtering brawlers in your trophy league...'
-                      : elapsedSeconds < 12
-                      ? 'Checking connection ping & sync...'
-                      : 'Locking in challenger arena duel...'}
-                  </div>
-                  <div className="text-[10px] text-sky-200 font-bold mt-1">
-                    Estimated wait: ~{estimatedTime}s • Elapsed: {elapsedSeconds}s
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleCancelMatchmaking}
-                  className="mt-3 px-6 py-2 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-xs uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#7f1d1d] transition-all cursor-pointer"
-                >
-                  Cancel Matchmaking
-                </button>
-              </>
-            ) : (
-              <div className="animate-in zoom-in-95 duration-200 py-2">
-                <div className="text-xs font-black uppercase tracking-wider text-emerald-300 mb-2">
-                  OPPONENT IDENTIFIED!
-                </div>
-
-                <div className="relative w-28 h-28 mx-auto my-2 rounded-2xl border-4 border-amber-400 overflow-hidden bg-slate-900 shadow-2xl">
-                  {getSkinPortrait(matchFoundBot.championId, matchFoundBot.skinId) ? (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-amber-300 shadow-md bg-slate-900 relative">
+                  {getSkinPortrait(selectedChampion, getEquippedSkin(selectedChampion)) ? (
                     <img
-                      src={getSkinPortrait(matchFoundBot.championId, matchFoundBot.skinId)!}
-                      alt={matchFoundBot.name}
+                      src={getSkinPortrait(selectedChampion, getEquippedSkin(selectedChampion))!}
+                      alt={playerName}
                       className="w-full h-full object-cover scale-110"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl">🥊</div>
+                    <div className="w-full h-full flex items-center justify-center text-3xl">🥊</div>
                   )}
                 </div>
+                <div className="text-xs sm:text-sm font-black text-white truncate max-w-full drop-shadow mt-1">
+                  {playerName}
+                </div>
+                <div className="text-[10px] font-bold text-amber-300 uppercase truncate max-w-full">
+                  {CHAMPIONS[selectedChampion].name}
+                </div>
+                <div className="mt-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-[9px] font-black uppercase animate-pulse flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  READY
+                </div>
+              </div>
 
-                <div className="text-xl font-black text-white drop-shadow">
-                  {matchFoundBot.name}
-                </div>
-                <div className="text-xs font-bold text-amber-300 mt-0.5">
-                  Main: {CHAMPIONS[matchFoundBot.championId].name}
+              {/* Center: VS & Holographic Radar Scanner */}
+              <div className="col-span-3 flex flex-col items-center justify-center relative py-1">
+                <div className="text-xl sm:text-2xl font-black italic tracking-tighter text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.8)] animate-pulse mb-0.5">
+                  VS
                 </div>
 
-                <div className="mt-4 px-4 py-1.5 rounded-full bg-emerald-500/25 border border-emerald-400 text-emerald-300 font-mono font-black text-xs animate-pulse">
-                  ENTERING ARENA...
+                {/* Animated Holographic Circular Radar */}
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-cyan-400/60 bg-[#001e38] shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center justify-center overflow-hidden">
+                  {/* Concentric grid lines */}
+                  <div className="absolute inset-1.5 rounded-full border border-cyan-300/30" />
+                  <div className="absolute inset-3.5 rounded-full border border-cyan-300/20" />
+                  <div className="absolute inset-x-0 top-1/2 h-px bg-cyan-400/40" />
+                  <div className="absolute inset-y-0 left-1/2 w-px bg-cyan-400/40" />
+
+                  {/* 360° Rotating Radar Sweep Beam */}
+                  <div className="absolute inset-0 rounded-full animate-spin [animation-duration:2.5s] bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(34,211,238,0.5)_360deg)]" />
+
+                  {/* Blinking ping blips */}
+                  <div className="absolute top-2.5 left-3 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                  <div className="absolute bottom-3 right-3 w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping [animation-delay:1s]" />
+
+                  {/* Center Node */}
+                  <div className="relative z-10 w-2 h-2 rounded-full bg-white shadow-[0_0_6px_#fff]" />
                 </div>
+              </div>
+
+              {/* Right Side: CHALLENGER CARD (SEARCHING / OPPONENT) */}
+              {!matchFoundBot ? (
+                <div className="col-span-4 bg-[#013f6b]/60 border-2 border-dashed border-sky-300/40 rounded-2xl p-2 sm:p-2.5 shadow-inner flex flex-col items-center relative overflow-hidden">
+                  <div className="text-[9px] font-black uppercase tracking-wider text-amber-200 bg-amber-950/60 px-2 py-0.5 rounded-full mb-1">
+                    CHALLENGER
+                  </div>
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-sky-400/50 bg-gradient-to-b from-sky-900/60 to-slate-900/90 flex flex-col items-center justify-center shadow-md relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/15 to-transparent animate-pulse" />
+                    <span className="text-2xl sm:text-3xl font-black text-sky-300 animate-bounce">?</span>
+                  </div>
+                  <div className="text-xs sm:text-sm font-black text-sky-200 mt-1 animate-pulse">
+                    MATCHING...
+                  </div>
+                  <div className="text-[9px] font-mono text-cyan-300 mt-0.5 flex items-center gap-1">
+                    <Wifi className="w-2.5 h-2.5" /> 24ms • GLOBAL
+                  </div>
+                  <div className="mt-1 px-2 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/50 text-sky-300 text-[9px] font-black uppercase flex items-center gap-1">
+                    <Radio className="w-2.5 h-2.5 animate-spin" /> SCANNING
+                  </div>
+                </div>
+              ) : (
+                <div className="col-span-4 bg-[#013f6b]/95 border-2 border-amber-400 rounded-2xl p-2 sm:p-2.5 shadow-2xl flex flex-col items-center relative overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="text-[9px] font-black uppercase tracking-wider text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full mb-1 border border-amber-400/60">
+                    OPPONENT
+                  </div>
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-amber-400 shadow-xl bg-slate-900">
+                    {getSkinPortrait(matchFoundBot.championId, matchFoundBot.skinId) ? (
+                      <img
+                        src={getSkinPortrait(matchFoundBot.championId, matchFoundBot.skinId)!}
+                        alt={matchFoundBot.name}
+                        className="w-full h-full object-cover scale-110"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-3xl">🥊</div>
+                    )}
+                  </div>
+                  <div className="text-xs sm:text-sm font-black text-amber-200 truncate max-w-full drop-shadow mt-1">
+                    {matchFoundBot.name}
+                  </div>
+                  <div className="text-[10px] font-bold text-sky-300 uppercase truncate max-w-full">
+                    {CHAMPIONS[matchFoundBot.championId].name}
+                  </div>
+                  <div className="mt-1 px-2 py-0.5 rounded-full bg-amber-500/30 border border-amber-400 text-amber-300 text-[9px] font-black uppercase animate-bounce">
+                    LOCKED IN!
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Striped Connection Progress Bar */}
+            <div className="w-full h-3 bg-black/50 rounded-full border border-sky-300/40 overflow-hidden relative p-0.5 my-2">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-lime-400 transition-all duration-300 shadow-[0_0_10px_rgba(34,211,238,0.7)]"
+                style={{
+                  width: `${Math.min(100, Math.round((elapsedSeconds / Math.max(1, matchTargetDuration)) * 100))}%`,
+                }}
+              />
+            </div>
+
+            {/* 3. Live Server Telemetry Capsule */}
+            <div className="bg-[#012d4d]/80 border border-sky-300/30 rounded-2xl p-2.5 my-2 text-center shadow-inner">
+              <div className="text-xs sm:text-sm text-cyan-200 font-mono font-bold flex items-center justify-center gap-2">
+                <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <span>
+                  {elapsedSeconds < 4
+                    ? 'Scanning regional server match nodes...'
+                    : elapsedSeconds < 8
+                    ? 'Filtering brawlers in your trophy league...'
+                    : elapsedSeconds < 12
+                    ? 'Synchronizing duel physics & arena sync...'
+                    : 'Handshake confirmed! Finalizing ring drop...'}
+                </span>
+              </div>
+              <div className="text-[11px] text-sky-200 font-bold mt-1 flex items-center justify-center gap-3">
+                <span>⏱️ Estimated: ~{estimatedTime}s</span>
+                <span>•</span>
+                <span>⏳ Elapsed: {elapsedSeconds}s</span>
+                <span>•</span>
+                <span>🏆 League: Bronze III+</span>
+              </div>
+            </div>
+
+            {/* 4. Tactical Gameplay Tip Ticker */}
+            <div className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-[11px] text-sky-200 italic my-2">
+              {elapsedSeconds % 16 < 4
+                ? '💡 Tip: Fully charged dashes knock enemies 2x further off the edge!'
+                : elapsedSeconds % 16 < 8
+                ? '💡 Tip: Circle around your enemy to dodge dashes and strike their back!'
+                : elapsedSeconds % 16 < 12
+                ? '💡 Tip: The island ring shrinks over time—keep control of the center!'
+                : '💡 Tip: Win matches to unlock Mega Boxes and rare skins on the Trophy Road!'}
+            </div>
+
+            {/* 5. Action Buttons */}
+            {!matchFoundBot ? (
+              <button
+                onClick={handleCancelMatchmaking}
+                className="mt-1 px-8 py-2.5 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#b91c1c] hover:from-[#fca5a5] hover:to-[#ef4444] text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl border-2 border-rose-200 shadow-[0_4px_0_#7f1d1d,0_6px_14px_rgba(0,0,0,0.4)] active:translate-y-1 active:shadow-[0_1px_0_#7f1d1d] transition-all cursor-pointer inline-flex items-center gap-2"
+              >
+                <X className="w-4 h-4 stroke-[3]" />
+                <span>CANCEL MATCHMAKING</span>
+              </button>
+            ) : (
+              <div className="mt-1 py-2.5 px-8 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider border-2 border-white shadow-xl animate-pulse inline-flex items-center gap-2">
+                <Swords className="w-4 h-4 stroke-[2.5]" />
+                <span>ENTERING ARENA...</span>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* 8. SETTINGS MODAL (PLAYER PROFILE & AUDIO) */}
+      {/* 8. SETTINGS MODAL (PLAYER PROFILE & AUDIO CONTROLS) */}
       {isSettingsOpen && (
         <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="relative w-full max-w-sm bg-gradient-to-b from-[#29b6f6] via-[#0288d1] to-[#01579b] border-4 border-[#81d4fa] rounded-[36px] pt-14 px-6 pb-6 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_2px_10px_rgba(255,255,255,0.4)] text-center animate-in zoom-in-95 duration-150">
@@ -896,7 +1035,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   </span>
                   <span className="text-[9px] font-mono text-sky-200">LVL {playerLevel}</span>
                 </div>
-                
+
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -922,47 +1061,113 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 </div>
               </div>
 
-              {/* 2. AUDIO SFX TOGGLE */}
-              <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shadow">
-                    <Volume2 className="w-4 h-4 text-white" />
+              {/* 2. LOBBY & BATTLE MUSIC TOGGLE */}
+              <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 space-y-2 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shadow">
+                      <Music className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-white block">Game Music</span>
+                      <span className="text-[10px] text-sky-200">Lobby & Battle Tracks</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs font-black text-white block">Battle SFX</span>
-                    <span className="text-[10px] text-sky-200">Sound effects</span>
-                  </div>
+                  <button
+                    onClick={toggleMusic}
+                    className="bg-[#013f6b] p-1 rounded-full border border-sky-300/40 flex items-center cursor-pointer shadow-inner"
+                  >
+                    <span
+                      className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                        !musicMuted
+                          ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow border border-[#bef264]'
+                          : 'text-sky-300 opacity-60'
+                      }`}
+                    >
+                      ON
+                    </span>
+                    <span
+                      className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                        musicMuted
+                          ? 'bg-gradient-to-b from-slate-400 to-slate-600 text-white shadow border border-slate-300'
+                          : 'text-sky-300 opacity-60'
+                      }`}
+                    >
+                      OFF
+                    </span>
+                  </button>
                 </div>
-                <button
-                  onClick={toggleSound}
-                  className="bg-[#013f6b] p-1 rounded-full border border-sky-300/40 flex items-center cursor-pointer shadow-inner"
-                >
-                  <span
-                    className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
-                      !soundMuted
-                        ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow border border-[#bef264]'
-                        : 'text-sky-300 opacity-60'
-                    }`}
-                  >
-                    ON
-                  </span>
-                  <span
-                    className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
-                      soundMuted
-                        ? 'bg-gradient-to-b from-slate-400 to-slate-600 text-white shadow border border-slate-300'
-                        : 'text-sky-300 opacity-60'
-                    }`}
-                  >
-                    OFF
-                  </span>
-                </button>
+                {!musicMuted && (
+                  <div className="flex items-center gap-2 pt-1 border-t border-sky-300/20">
+                    <span className="text-[10px] font-mono text-sky-200 min-w-8">{musicVolume}%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={musicVolume}
+                      onChange={handleMusicVolumeChange}
+                      className="w-full accent-amber-400 h-1.5 bg-[#013f6b] rounded-lg cursor-pointer"
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* 3. VERSION & SERVER STATUS */}
+              {/* 3. AUDIO SFX TOGGLE */}
+              <div className="bg-[#02568f]/80 border-2 border-[#81d4fa]/40 rounded-2xl p-3 space-y-2 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shadow">
+                      <Volume2 className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-white block">Battle SFX</span>
+                      <span className="text-[10px] text-sky-200">Sound effects & hits</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={toggleSound}
+                    className="bg-[#013f6b] p-1 rounded-full border border-sky-300/40 flex items-center cursor-pointer shadow-inner"
+                  >
+                    <span
+                      className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                        !soundMuted
+                          ? 'bg-gradient-to-b from-[#84cc16] to-[#4d7c0f] text-white shadow border border-[#bef264]'
+                          : 'text-sky-300 opacity-60'
+                      }`}
+                    >
+                      ON
+                    </span>
+                    <span
+                      className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                        soundMuted
+                          ? 'bg-gradient-to-b from-slate-400 to-slate-600 text-white shadow border border-slate-300'
+                          : 'text-sky-300 opacity-60'
+                      }`}
+                    >
+                      OFF
+                    </span>
+                  </button>
+                </div>
+                {!soundMuted && (
+                  <div className="flex items-center gap-2 pt-1 border-t border-sky-300/20">
+                    <span className="text-[10px] font-mono text-sky-200 min-w-8">{sfxVolume}%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={sfxVolume}
+                      onChange={handleSfxVolumeChange}
+                      className="w-full accent-amber-400 h-1.5 bg-[#013f6b] rounded-lg cursor-pointer"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* 4. VERSION & SERVER STATUS */}
               <div className="bg-black/40 rounded-2xl p-2.5 text-center border border-white/10">
                 <div className="text-xs font-black text-white">Ring Out: Chapter 1</div>
                 <div className="text-[10px] text-sky-300 font-mono mt-0.5">
-                  Version 1.0.5 • Server: Online 🟢
+                  Version 1.0.6 • Server: Online 🟢 • Audio Engine: Active 🎵
                 </div>
               </div>
             </div>

@@ -7,6 +7,7 @@ import { ShopScreen } from './components/ShopScreen';
 import { TrophyRoadModal, type TrophyMilestone } from './components/TrophyRoadModal';
 import { type ChampionId } from './game/championModels';
 import { sounds } from './audio/soundManager';
+import { music } from './audio/musicManager';
 import { generateRandomBot, type BotProfile } from './game/botGenerator';
 
 export function App() {
@@ -14,6 +15,14 @@ export function App() {
   const engineRef = useRef<GameEngine | null>(null);
 
   const [activeScreen, setActiveScreen] = useState<'home' | 'brawlers' | 'shop' | 'battle'>('home');
+
+  useEffect(() => {
+    if (activeScreen === 'battle') {
+      music.play('battle');
+    } else {
+      music.play('lobby');
+    }
+  }, [activeScreen]);
   const [isTrophyRoadOpen, setIsTrophyRoadOpen] = useState(false);
   const [selectedChampion, setSelectedChampion] = useState<ChampionId>('leo');
 
@@ -46,6 +55,7 @@ export function App() {
     });
     engineRef.current = engine;
     engine.setPlayerChampion(selectedChampion);
+    engine.stopMatch();
     (window as unknown as { __gameEngine: GameEngine }).__gameEngine = engine;
 
     return () => {
@@ -81,7 +91,7 @@ export function App() {
 
   const handleRestart = () => {
     hasProcessedGameOverRef.current = false;
-    engineRef.current?.resetMatch();
+    engineRef.current?.startMatch();
   };
 
   // User Profile & Currencies
@@ -263,7 +273,7 @@ export function App() {
     setBotChampion(bot.championId);
     engineRef.current?.setPlayerChampion(selectedChampion);
     engineRef.current?.setBotProfile(bot);
-    engineRef.current?.resetMatch();
+    engineRef.current?.startMatch();
     setActiveScreen('battle');
   };
 
@@ -276,7 +286,7 @@ export function App() {
     setBotChampion(bot.championId);
     engineRef.current?.setPlayerChampion(selectedChampion);
     engineRef.current?.setBotProfile(bot);
-    engineRef.current?.resetMatch();
+    engineRef.current?.startMatch();
     setActiveScreen('battle');
   };
 
@@ -298,7 +308,10 @@ export function App() {
           roomCode={activeRoomCode}
           playerName={playerName}
           botName={currentBotProfile.name}
-          onOpenShowcase={() => setActiveScreen('home')}
+          onOpenShowcase={() => {
+            engineRef.current?.stopMatch();
+            setActiveScreen('home');
+          }}
           onDash={handleDash}
           onAimChange={handleAimChange}
           onJoystickMove={handleJoystickMove}

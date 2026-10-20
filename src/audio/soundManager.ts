@@ -4,6 +4,32 @@ class SoundManager {
   public enabled: boolean = true;
   public volume: number = 0.8;
 
+  constructor() {
+    try {
+      const savedEnabled = localStorage.getItem('ringout_sfx_enabled');
+      if (savedEnabled !== null) {
+        this.enabled = savedEnabled === 'true';
+      }
+      const savedVol = localStorage.getItem('ringout_sfx_volume');
+      if (savedVol !== null) {
+        const v = parseFloat(savedVol);
+        if (!isNaN(v)) this.volume = Math.max(0, Math.min(1, v));
+      }
+    } catch {}
+
+    const unlock = () => {
+      this.initCtx();
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('click', unlock, { once: true });
+      window.addEventListener('touchstart', unlock, { once: true });
+      window.addEventListener('keydown', unlock, { once: true });
+    }
+  }
+
   private initCtx() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -12,6 +38,20 @@ class SoundManager {
     if (this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
+  }
+
+  public setEnabled(enabled: boolean) {
+    this.enabled = enabled;
+    try {
+      localStorage.setItem('ringout_sfx_enabled', String(enabled));
+    } catch {}
+  }
+
+  public setVolume(vol: number) {
+    this.volume = Math.max(0, Math.min(1, vol));
+    try {
+      localStorage.setItem('ringout_sfx_volume', String(this.volume));
+    } catch {}
   }
 
   // Punchy physical collision bump
@@ -253,6 +293,71 @@ class SoundManager {
 
     osc.start();
     osc.stop(this.ctx.currentTime + 0.36);
+  }
+
+  // Sonar radar pulse for matchmaking
+  playSonarPing() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1400, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 0.18);
+
+    gain.gain.setValueAtTime(0.08 * this.volume, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.18);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.2);
+  }
+
+  // Triumphant gong & clash when opponent is found in matchmaking
+  playMatchFound() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    // Brass Fanfare Chord (F Major: F4, A4, C5, F5)
+    [349.23, 440.00, 523.25, 698.46].forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.04);
+
+      gain.gain.setValueAtTime(0.25 * this.volume, this.ctx.currentTime + idx * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.04 + 0.6);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(this.ctx.currentTime + idx * 0.04);
+      osc.stop(this.ctx.currentTime + idx * 0.04 + 0.65);
+    });
+
+    // Deep Impact Bass Boom
+    const sub = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    sub.type = 'triangle';
+    sub.frequency.setValueAtTime(180, this.ctx.currentTime);
+    sub.frequency.exponentialRampToValueAtTime(35, this.ctx.currentTime + 0.4);
+
+    subGain.gain.setValueAtTime(0.6 * this.volume, this.ctx.currentTime);
+    subGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.4);
+
+    sub.connect(subGain);
+    subGain.connect(this.ctx.destination);
+
+    sub.start();
+    sub.stop(this.ctx.currentTime + 0.42);
   }
 }
 

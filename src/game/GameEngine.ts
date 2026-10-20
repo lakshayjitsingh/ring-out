@@ -123,6 +123,7 @@ export class GameEngine {
   private shakeTimer = 0;
   private shakeIntensity = 0;
   private animationId: number = 0;
+  public isMatchActive: boolean = false;
 
   constructor(container: HTMLElement, onStateChange: (state: GameState) => void) {
     this.container = container;
@@ -1721,6 +1722,7 @@ export class GameEngine {
 
   // Input Handling
   private onKeyDown = (e: KeyboardEvent) => {
+    if (!this.isMatchActive) return;
     this.keys[e.key.toLowerCase()] = true;
     if (e.code === 'Space' && !this.spaceKeyHeld) {
       this.spaceKeyHeld = true;
@@ -1730,6 +1732,7 @@ export class GameEngine {
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
+    if (!this.isMatchActive) return;
     this.keys[e.key.toLowerCase()] = false;
     if (e.code === 'Space' && this.spaceKeyHeld) {
       this.spaceKeyHeld = false;
@@ -1738,6 +1741,7 @@ export class GameEngine {
   };
 
   public setTouchJoystick(x: number, z: number) {
+    if (!this.isMatchActive) return;
     this.inputVector.x = x;
     this.inputVector.z = z;
     // If aiming with space key, update aim direction with joystick movement
@@ -1748,7 +1752,7 @@ export class GameEngine {
 
   // Set 3D Aim Reticle (Option C: Hold & Drag to Aim)
   public setAim(isAiming: boolean, aimX?: number, aimZ?: number) {
-    if (this.state.isGameOver || this.state.isPaused || this.player.isKnockedOut) {
+    if (!this.isMatchActive || this.state.isGameOver || this.state.isPaused || this.player.isKnockedOut) {
       this.aimReticleGroup.visible = false;
       this.state.isAiming = false;
       return;
@@ -1811,7 +1815,7 @@ export class GameEngine {
 
   // Option C: Tap to dash in movement direction, or drag to aim and release
   public triggerDash(aimX?: number, aimZ?: number) {
-    if (this.state.isGameOver || this.state.isPaused || this.player.isKnockedOut || this.state.countdown > 0) return;
+    if (!this.isMatchActive || this.state.isGameOver || this.state.isPaused || this.player.isKnockedOut || this.state.countdown > 0) return;
 
     // Minimum 10% charge to activate dash
     if (this.player.chargePercent < 10) return;
@@ -1883,6 +1887,23 @@ export class GameEngine {
 
   public togglePause() {
     this.state.isPaused = !this.state.isPaused;
+    this.onStateChange({ ...this.state });
+  }
+
+  public startMatch() {
+    this.isMatchActive = true;
+    this.resetMatch();
+  }
+
+  public stopMatch() {
+    this.isMatchActive = false;
+    if (this.roundTimeoutId) {
+      clearTimeout(this.roundTimeoutId);
+      this.roundTimeoutId = null;
+    }
+    this.state.countdown = 3;
+    this.state.isPaused = false;
+    this.state.warningText = null;
     this.onStateChange({ ...this.state });
   }
 
@@ -1976,7 +1997,7 @@ export class GameEngine {
 
     this.updateEnvironment(dt);
 
-    if (!this.state.isPaused) {
+    if (this.isMatchActive && !this.state.isPaused) {
       this.update(dt);
     }
 

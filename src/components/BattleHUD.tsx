@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { GameState, CameraMode } from '../game/GameEngine';
 import { sounds } from '../audio/soundManager';
+import { music } from '../audio/musicManager';
 import { CHAMPIONS, type ChampionId } from '../game/championModels';
 import {
   Volume2,
@@ -85,7 +86,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   onRestart,
 }) => {
   const [soundEnabled, setSoundEnabled] = useState(sounds.enabled);
-  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [musicEnabled, setMusicEnabled] = useState(music.enabled);
   const [volumeLevel, setVolumeLevel] = useState(Math.round(sounds.volume * 100));
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -168,7 +169,9 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   };
 
   const toggleMusic = () => {
-    setMusicEnabled((prev) => !prev);
+    const next = !musicEnabled;
+    music.setEnabled(next);
+    setMusicEnabled(next);
     if (soundEnabled) {
       sounds.playBump(0.6);
     }
@@ -177,7 +180,8 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const vol = parseInt(e.target.value, 10);
     setVolumeLevel(vol);
-    sounds.volume = vol / 100;
+    sounds.setVolume(vol / 100);
+    music.setVolume(vol / 100);
   };
 
   const openSettings = () => {
